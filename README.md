@@ -4,17 +4,17 @@ Spiderweb is an endpoint focused framework.
 
 The goals of Spiderweb:
 * Handlers ready-to-go
-** All data setup up before handler is called
-** Reduce/Eliminate the boilerplate handler code
-** Focus should be on business logic and not the `*http.Request`
+    * All data setup up before handler is called
+    * Reduce/Eliminate the boilerplate handler code
+    * Focus should be on business logic and not the `*http.Request`
 * Endpoint testability
-** Endpoints should be independently testable without a `*http.Request`
-** Tests should allow for simple testing without needing framework setup and overhead
-** Be able to test an endpoint for given an input `*http.Request`, does it return the correct HTTP status code and `[]byte`
+    * Endpoints should be independently testable without a `*http.Request`
+    * Tests should allow for simple testing without needing framework setup and overhead
+    * Be able to test an endpoint for given an input `*http.Request`, does it return the correct HTTP status code and `[]byte`
 * Behavior driven
-** Allow for feature replacement and testing using interface driven design
-** Use of interfaces to prevent forcing opinionated code
-** Retain flexibility to allow for exceptions
+    * Allow for feature replacement and testing using interface driven design
+    * Use of interfaces to prevent forcing opinionated code
+    * Retain flexibility to allow for exceptions
 
 # Design Discussion
 
