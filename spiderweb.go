@@ -1,7 +1,7 @@
 package spiderweb
 
 import (
-	_ "spiderweb/endpoint_tags"
+	_ "spiderweb/endpoint"
 )
 
 type framework struct {
