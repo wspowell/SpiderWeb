@@ -7,20 +7,10 @@ import (
 
 // This file contains all the reflection that is not nice to look at.
 
-func newStructFromHandler(handler Handler, isHandlerPtr bool, fieldNum int) interface{} {
-	var handlerValue reflect.Value
-	if isHandlerPtr {
-		handlerValue = reflect.ValueOf(handler).Elem()
-	} else {
-		handlerValue = reflect.ValueOf(handler)
-	}
-
-	if !handlerValue.Field(fieldNum).IsValid() {
-		return nil
-	}
-
-	newValue := handlerValue.Field(fieldNum)
-	return newValue.Addr().Interface()
+type handlerAllocation struct {
+	handler      Handler
+	requestBody  interface{}
+	responseBody interface{}
 }
 
 // handlerTypeData cached so that reflection is optimized.
@@ -29,9 +19,15 @@ type handlerTypeData struct {
 	requestBodyValue  reflect.Value
 	responseBodyValue reflect.Value
 
+	requestBodyType  reflect.Type
+	responseBodyType reflect.Type
+
 	isStructPtr   bool
 	isRequestPtr  bool
 	isResponsePtr bool
+
+	hasRequest  bool
+	hasResponse bool
 
 	requestFieldNum  int
 	responseFieldNum int
@@ -47,6 +43,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var structValue reflect.Value
 	var requestBodyValue reflect.Value
 	var responseBodyValue reflect.Value
+	var requestBodyType reflect.Type
+	var responseBodyType reflect.Type
 	var isStructPtr bool
 	var isRequestPtr bool
 	var isResponsePtr bool
@@ -56,6 +54,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var shouldValidateResponse bool
 	var requestMimeType string
 	var responseMimeType string
+	var hasRequest bool
+	var hasResponse bool
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -90,12 +90,16 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				isRequestPtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateRequest = hasStructTagOption(tagValue, structTagOptionValidate)
 				requestMimeType = mimeType
+				hasRequest = structFieldValue.IsValid()
+				requestBodyType = structFieldValue.Type()
 			case structTagValueResponse:
 				responseBodyValue = getFieldValue(structFieldValue)
 				responseFieldNum = i
 				isResponsePtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateResponse = hasStructTagOption(tagValue, structTagOptionValidate)
 				responseMimeType = mimeType
+				hasResponse = structFieldValue.IsValid()
+				responseBodyType = structFieldValue.Type()
 			}
 
 		}
@@ -105,6 +109,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		structValue:            structValue,
 		requestBodyValue:       requestBodyValue,
 		responseBodyValue:      responseBodyValue,
+		requestBodyType:        requestBodyType,
+		responseBodyType:       responseBodyType,
 		isStructPtr:            isStructPtr,
 		isRequestPtr:           isRequestPtr,
 		isResponsePtr:          isResponsePtr,
@@ -114,35 +120,52 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		shouldValidateResponse: shouldValidateResponse,
 		requestMimeType:        requestMimeType,
 		responseMimeType:       responseMimeType,
+		hasRequest:             hasRequest,
+		hasResponse:            hasResponse,
 	}
-
 }
 
-func (self handlerTypeData) newHandler() interface{} {
-	if !self.isStructPtr && !self.isRequestPtr && !self.isResponsePtr {
-		handlerCopy := self.structValue.Interface()
-		return handlerCopy
+func (self handlerTypeData) allocateHandler() handlerAllocation {
+	handlerValue := self.newHandlerValue()
+	return handlerAllocation{
+		handler:      handlerValue.Interface().(Handler),
+		requestBody:  self.newRequestBody(handlerValue),
+		responseBody: self.newResponseBody(handlerValue),
 	}
+}
 
-	var handlerCopy reflect.Value
+func (self handlerTypeData) newHandlerValue() reflect.Value {
 	if self.isStructPtr {
-		handlerCopy = reflect.New(self.structValue.Type())
+		return reflect.New(self.structValue.Type())
 	} else {
-		handlerCopy = reflect.ValueOf(self.structValue)
+		return reflect.New(self.structValue.Type()).Addr()
 	}
-
-	setNewFieldValue(handlerCopy, self.requestFieldNum, self.requestBodyValue)
-	setNewFieldValue(handlerCopy, self.responseFieldNum, self.responseBodyValue)
-
-	return handlerCopy.Interface()
 }
 
-func setNewFieldValue(structValue reflect.Value, fieldNum int, value reflect.Value) {
-	// Only if the value is a pointer. Values will be zero initialized automatically.
-	if value.Kind() == reflect.Ptr {
-		requestBodyValue := structValue.Elem().Field(fieldNum)
-		requestBodyValue.Set(reflect.New(value.Elem().Type()))
+func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
+	if self.hasRequest {
+		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr)
 	}
+	return nil
+}
+
+func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
+	if self.hasResponse {
+		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr)
+	}
+	return nil
+}
+
+func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType reflect.Type, fieldNum int, isPtr bool) interface{} {
+
+	newValue := handlerValue.Elem().Field(fieldNum)
+
+	// Only if the value is a pointer. Values will be zero initialized automatically.
+	if isPtr {
+		newValue.Set(reflect.New(valueType.Elem()))
+	}
+
+	return newValue.Addr().Interface()
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {

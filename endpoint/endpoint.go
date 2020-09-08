@@ -2,8 +2,11 @@ package endpoint
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
+
+	"spiderweb/errors"
 )
 
 const (
@@ -43,7 +46,7 @@ func NewEndpoint(config *Config, handler Handler) *Endpoint {
 func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte) {
 	defer func() {
 		if err := recover(); err != nil {
-			ctx.Error("panic: %+v", err)
+			ctx.Error("panic: %+v", errors.New("ERROR", fmt.Sprintf("%+v", err)))
 			httpStatus, responseBody = self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, ErrorPanic)
 		}
 	}()
@@ -53,12 +56,12 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		return self.config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
-	handler := self.handlerData.newHandler().(Handler)
+	handlerAlloc := self.handlerData.allocateHandler()
 
 	// Handle Request
 	{
-		var requestBodyBytes []byte
-		if requestBodyBytes, err = getRequestBody(ctx); err != nil {
+		requestBodyBytes, err := readRequestBody(ctx)
+		if err != nil {
 			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
@@ -70,19 +73,19 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			}
 		}
 
-		if err := self.setHandlerRequestBody(ctx, handler, requestBodyBytes); err != nil {
+		if err := self.setHandlerRequestBody(ctx, handlerAlloc.requestBody, requestBodyBytes); err != nil {
 			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 	}
 
 	// Run the endpoint handler.
-	if httpStatus, err = handler.Handle(ctx); err != nil {
+	if httpStatus, err = handlerAlloc.handler.Handle(ctx); err != nil {
 		return self.config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
 	// Handle Response
 	{
-		if responseBody, err = self.getHandlerResponseBody(ctx, handler); err != nil {
+		if responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody); err != nil {
 			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
@@ -98,11 +101,10 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	return httpStatus, responseBody
 }
 
-func (self *Endpoint) setHandlerRequestBody(ctx *Context, handler Handler, requestBodyBytes []byte) error {
-	value := newStructFromHandler(handler, self.handlerData.isStructPtr, self.handlerData.requestFieldNum)
-	if value != nil {
+func (self *Endpoint) setHandlerRequestBody(ctx *Context, requestBody interface{}, requestBodyBytes []byte) error {
+	if requestBody != nil {
 		if mimeHandler, exists := self.config.MimeTypeHandlers[self.handlerData.requestMimeType]; exists {
-			err := mimeHandler.Unmarshal(requestBodyBytes, &value)
+			err := mimeHandler.Unmarshal(requestBodyBytes, &requestBody)
 			if err != nil {
 				return ErrorRequestBodyUnmarshalFailure
 			}
@@ -115,11 +117,10 @@ func (self *Endpoint) setHandlerRequestBody(ctx *Context, handler Handler, reque
 	return nil
 }
 
-func (self *Endpoint) getHandlerResponseBody(ctx *Context, handler Handler) ([]byte, error) {
-	value := newStructFromHandler(handler, self.handlerData.isStructPtr, self.handlerData.responseFieldNum)
-	if value != nil {
+func (self *Endpoint) getHandlerResponseBody(ctx *Context, responseBody interface{}) ([]byte, error) {
+	if responseBody != nil {
 		if mimeHandler, exists := self.config.MimeTypeHandlers[self.handlerData.responseMimeType]; exists {
-			responseBodyBytes, err := mimeHandler.Marshal(value)
+			responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 			if err != nil {
 				ctx.Error("failed to marshal response: %v", err)
 				return nil, ErrorResponseBodyMarshalFailure
@@ -136,7 +137,8 @@ func (self *Endpoint) getHandlerResponseBody(ctx *Context, handler Handler) ([]b
 	return nil, ErrorResponseBodyMissing
 }
 
-func getRequestBody(ctx *Context) ([]byte, error) {
+// readRequestBody into a byte array.
+func readRequestBody(ctx *Context) ([]byte, error) {
 	request := ctx.Request()
 
 	var bodyBytes []byte
@@ -145,6 +147,7 @@ func getRequestBody(ctx *Context) ([]byte, error) {
 		bodyBytes = make([]byte, 0, request.ContentLength)
 	}
 
+	// Note: This uses less memory and is more efficient than ioutil.ReadAll().
 	buffer := bytes.NewBuffer(bodyBytes)
 	if _, err := io.Copy(buffer, request.Body); err != nil {
 		ctx.Error("failed to read request: %v", err)
