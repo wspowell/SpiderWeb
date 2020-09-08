@@ -5,6 +5,8 @@ import (
 )
 
 type RequestValidator interface {
+	// ValidateRequest and return validation failures.
+	// Errors returned are passed straight through to the ErrorHandler.
 	ValidateRequest(ctx *Context, requestBodyBytes []byte) (int, error)
 }
 
@@ -15,6 +17,8 @@ func (self RequestValidation) ValidateRequest(ctx *Context, requestBodyBytes []b
 }
 
 type ResponseValidator interface {
+	// ValidateRequest and return validation failures.
+	// Errors returned are passed straight through to the ErrorHandler.
 	ValidateResponse(ctx *Context, httpStatus int, responseBodyBytes []byte) (int, error)
 }
 

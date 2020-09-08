@@ -1,43 +1,53 @@
 package endpoint
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 )
-
-type MimeType string
 
 const (
-	MimeTypeJson = MimeType("application/json")
+	structTagMimeType = "mime"
+
+	structTagMimeTypeJson = "json"
 )
 
-func (self MimeType) String() string {
-	return string(self)
+type Marshaler func(v interface{}) ([]byte, error)
+type Unmarshaler func(data []byte, v interface{}) error
+
+// registerKnownMimeTypes but only if they do not already exist.
+// Allows for handler overrides.
+func registerKnownMimeTypes(mimeType map[string]MimeTypeHandler) {
+	if _, exists := mimeType[structTagMimeTypeJson]; !exists {
+		mimeType[structTagMimeTypeJson] = jsonHandler()
+	}
 }
 
-func Marshal(mimeType MimeType, obj interface{}) ([]byte, error) {
-	switch mimeType {
-	case MimeTypeJson:
-		return json.Marshal(obj)
-	}
-
-	return nil, fmt.Errorf("unknown MIME type: %v", mimeType.String())
+type MimeTypeHandler struct {
+	Marshal   Marshaler
+	Unmarshal Unmarshaler
 }
 
-func Unmarshal(mimeType MimeType, data []byte, obj interface{}) error {
-	switch mimeType {
-	case MimeTypeJson:
-		return json.Unmarshal(data, obj)
+func jsonHandler() MimeTypeHandler {
+	return MimeTypeHandler{
+		Marshal:   jsonMarshal,
+		Unmarshal: jsonUnmarshal,
 	}
-
-	return fmt.Errorf("unknown MIME type: %v", mimeType.String())
 }
 
-func AsMimeType(mimeTypeString string) (MimeType, bool) {
-	switch mimeType := MimeType(mimeTypeString); mimeType {
-	case MimeTypeJson:
-		return mimeType, true
-	default:
-		return MimeTypeJson, false
+func jsonMarshal(value interface{}) ([]byte, error) {
+	buffer := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(buffer)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
 	}
+
+	return buffer.Bytes(), nil
+}
+
+func jsonUnmarshal(data []byte, value interface{}) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(value); err != nil {
+		return err
+	}
+	return nil
 }

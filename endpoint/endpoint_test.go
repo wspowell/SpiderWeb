@@ -12,54 +12,39 @@ import (
 	"spiderweb/logging"
 )
 
-type myError struct {
-	Code    string
-	Message string
-}
-
-func newMyError(code string, message string) error {
-	return myError{
-		Code:    code,
-		Message: message,
-	}
-}
-
-func (self myError) Error() string {
-	return self.Message
-}
-
-type myErrorResponse struct {
-	Code         string `json:"code"`
+type errorResponse struct {
 	InternalCode string `json:"internal_code"`
 	Message      string `json:"message"`
 }
 
-func (self myErrorResponse) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
-	var errorBytes []byte
-	var responseErr error
+type myErrorHandler struct{}
 
-	var myErr myError
-	if errors.As(err, &myErr) {
-		errorBytes, responseErr = json.Marshal(myErrorResponse{
-			Code:         myErr.Code,
-			InternalCode: errors.InternalCode(err),
-			Message:      myErr.Message,
-		})
-	} else {
-		errorBytes, responseErr = json.Marshal(myErrorResponse{
-			Code:         "INTERNAL_ERROR",
-			InternalCode: errors.InternalCode(err),
-			Message:      err.Error(),
-		})
-	}
+func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
 
-	if responseErr != nil {
-		// Provide a valid default for responding.
-		httpStatus = http.StatusInternalServerError
-		errorBytes = []byte(`{"code":"INTERNAL_ERROR","internal_code":"SW0000","message":"internal server error"}`)
-	}
+	responseBodyBytes, _ := json.Marshal(errorResponse{
+		InternalCode: errors.InternalCode(err),
+		Message:      err.Error(),
+	})
 
-	return httpStatus, errorBytes
+	return httpStatus, responseBodyBytes
+}
+
+type myAuther struct{}
+
+func (self myAuther) Auth(request *http.Request) (int, error) {
+	return http.StatusOK, nil
+}
+
+type myRequestValidator struct{}
+
+func (self myRequestValidator) ValidateRequest(ctx *Context, requestBodyBytes []byte) (int, error) {
+	return http.StatusOK, nil
+}
+
+type myResponseValidator struct{}
+
+func (self myResponseValidator) ValidateResponse(ctx *Context, httpStatus int, responseBodyBytes []byte) (int, error) {
+	return http.StatusOK, nil
 }
 
 type myRequestBodyModel struct {
@@ -75,8 +60,8 @@ type myResponseBodyModel struct {
 
 type myEndpoint struct {
 	Test         string
-	RequestBody  *myRequestBodyModel  `spiderweb:"request,json,validate"`
-	ResponseBody *myResponseBodyModel `spiderweb:"response,json,validate"`
+	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
+	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
 }
 
 func (self *myEndpoint) Handle(ctx *Context) (int, error) {
@@ -94,6 +79,26 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 	return http.StatusOK, nil
 }
 
+func createTestEndpoint() *Endpoint {
+	config := &Config{
+		ErrorHandler:      myErrorHandler{},
+		Auther:            myAuther{},
+		RequestValidator:  myRequestValidator{},
+		ResponseValidator: myResponseValidator{},
+		MimeTypeHandlers: map[string]MimeTypeHandler{
+			"test": MimeTypeHandler{
+				Marshal: func(v interface{}) ([]byte, error) {
+					return json.Marshal(v)
+				},
+				Unmarshal: func(data []byte, v interface{}) error {
+					return json.Unmarshal(data, v)
+				},
+			},
+		},
+	}
+	return NewEndpoint(config, &myEndpoint{})
+}
+
 func Test_Endpoint_Default_Success(t *testing.T) {
 	logConfig := logging.NewConfig(logging.LevelDebug, map[string]interface{}{})
 
@@ -101,7 +106,7 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 
 	ctx := NewContext(req, logging.NewLogger(logConfig))
 
-	endpoint := NewEndpoint(&myEndpoint{})
+	endpoint := createTestEndpoint()
 	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
 
 	if http.StatusOK != httpStatus {
@@ -131,7 +136,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 
 	ctx := NewContext(req, logging.NewLogger(logConfig))
 
-	endpoint := NewEndpoint(&myEndpoint{})
+	endpoint := createTestEndpoint()
 	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
 
 	if http.StatusUnprocessableEntity != httpStatus {
@@ -140,7 +145,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 
 	fmt.Println(string(responseBodyBytes))
 
-	var responseBody ErrorResponse
+	var responseBody errorResponse
 	if err := json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
 		t.Errorf("failed to unmarshal test response: %v", err)
 	}

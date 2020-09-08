@@ -16,7 +16,7 @@ type Context struct {
 
 func NewContext(request *http.Request, logger logging.Loggerer) *Context {
 	return &Context{
-		Context:  local.NewLocalized(request.Context()),
+		Context:  local.NewLocalized(),
 		Loggerer: logger,
 		request:  request,
 	}

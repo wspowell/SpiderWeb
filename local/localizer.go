@@ -82,7 +82,7 @@ func NewLocalized() *Localized {
 	}
 }
 
-func WithContext(context context.Context) *Localized {
+func FromContext(context context.Context) *Localized {
 	return &Localized{
 		contextualized: contextualized{context},
 		locals:         map[interface{}]interface{}{},
