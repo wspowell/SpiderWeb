@@ -71,8 +71,6 @@ func (self *framework) setupEndpoints() {
 }
 
 func (self *framework) listenForever() {
-	self.router.GET("/", Index)
-
 	for key, list := range self.router.List() {
 		self.logger.Debug("%v", key)
 		for _, item := range list {
@@ -135,19 +133,3 @@ func wrapFasthttpHandler(endpointRunner *endpointBuilder) fasthttp.RequestHandle
 		fasthttpCtx.SetBody(responseBody)
 	}
 }
-
-func Index(ctx *fasthttp.RequestCtx) {
-	ctx.WriteString("Welcome!")
-}
-
-func Hello(ctx *fasthttp.RequestCtx) {
-	fmt.Fprintf(ctx, "Hello, %s!\n", ctx.UserValue("name"))
-}
-
-// func main() {
-// 	r := router.New()
-// 	r.GET("/", Index)
-// 	r.GET("/hello/{name}", Hello)
-
-// 	log.Fatal(fasthttp.ListenAndServe(":8080", r.Handler))
-// }

@@ -14,6 +14,7 @@ type handlerAllocation struct {
 }
 
 // handlerTypeData cached so that reflection is optimized.
+// TODO: Remove unused fields.
 type handlerTypeData struct {
 	structValue       reflect.Value
 	requestBodyValue  reflect.Value
