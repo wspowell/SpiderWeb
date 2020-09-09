@@ -1,29 +1,31 @@
 package endpoint
 
 import (
-	"net/http"
-
 	"spiderweb/local"
 	"spiderweb/logging"
+
+	"github.com/valyala/fasthttp"
 )
 
+var _ local.Context = (*Context)(nil)
+
 type Context struct {
-	local.Context
+	*local.Localized
 	logging.Loggerer
 
-	request *http.Request
+	requestCtx *fasthttp.RequestCtx
 }
 
-func NewContext(request *http.Request, logger logging.Loggerer) *Context {
+func NewContext(requestCtx *fasthttp.RequestCtx, logger logging.Loggerer) *Context {
 	return &Context{
-		Context:  local.NewLocalized(),
-		Loggerer: logger,
-		request:  request,
+		Localized:  local.FromContext(requestCtx),
+		Loggerer:   logger,
+		requestCtx: requestCtx,
 	}
 }
 
-func (self *Context) Request() *http.Request {
-	return self.request
+func (self *Context) Request() *fasthttp.Request {
+	return &self.requestCtx.Request
 }
 
 type Handler interface {

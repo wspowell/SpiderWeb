@@ -29,7 +29,7 @@ type Configurer interface {
 	Level() Level
 	GlobalTags() map[string]interface{}
 	Out() io.Writer
-	Copy() Configurer
+	Clone() Configurer
 }
 
 type Config struct {
@@ -56,7 +56,7 @@ func (self *Config) Out() io.Writer {
 	return os.Stdout
 }
 
-func (self *Config) Copy() Configurer {
+func (self *Config) Clone() Configurer {
 	return &Config{
 		level:      self.level,
 		globalTags: copyTags(self.globalTags),

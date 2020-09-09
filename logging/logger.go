@@ -48,7 +48,7 @@ func NewLogger(config Configurer) *Logger {
 }
 
 func (self *Logger) LogConfig() Configurer {
-	return self.config.Copy()
+	return self.config.Clone()
 }
 
 func (self *Logger) Tag(name string, value interface{}) {

@@ -9,6 +9,8 @@ const (
 	structTagMimeType = "mime"
 
 	structTagMimeTypeJson = "json"
+
+	mimeTypeJson = "application/json; charset=utf-8"
 )
 
 type Marshaler func(v interface{}) ([]byte, error)
@@ -16,19 +18,21 @@ type Unmarshaler func(data []byte, v interface{}) error
 
 // registerKnownMimeTypes but only if they do not already exist.
 // Allows for handler overrides.
-func registerKnownMimeTypes(mimeType map[string]MimeTypeHandler) {
-	if _, exists := mimeType[structTagMimeTypeJson]; !exists {
-		mimeType[structTagMimeTypeJson] = jsonHandler()
+func registerKnownMimeTypes(mimeTypes map[string]MimeTypeHandler) {
+	if _, exists := mimeTypes[structTagMimeTypeJson]; !exists {
+		mimeTypes[structTagMimeTypeJson] = jsonHandler()
 	}
 }
 
 type MimeTypeHandler struct {
+	MimeType  string
 	Marshal   Marshaler
 	Unmarshal Unmarshaler
 }
 
 func jsonHandler() MimeTypeHandler {
 	return MimeTypeHandler{
+		MimeType:  mimeTypeJson,
 		Marshal:   jsonMarshal,
 		Unmarshal: jsonUnmarshal,
 	}

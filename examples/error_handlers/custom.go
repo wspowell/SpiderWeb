@@ -37,6 +37,14 @@ func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpSta
 	var errorBytes []byte
 	var responseErr error
 
+	if endpoint.HasFrameworkError(err) {
+		err = ErrorWithCodes{
+			Code:         "INTERNAL_ERROR",
+			InternalCode: "APP0000",
+			Message:      "internal server error",
+		}
+	}
+
 	var myErr ErrorWithCodes
 	if errors.As(err, &myErr) {
 		errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{

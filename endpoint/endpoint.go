@@ -1,12 +1,11 @@
 package endpoint
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 
 	"spiderweb/errors"
+	"spiderweb/logging"
 )
 
 const (
@@ -19,6 +18,7 @@ const (
 )
 
 type Config struct {
+	LogConfig         logging.Configurer
 	ErrorHandler      ErrorHandler
 	Auther            Auther
 	RequestValidator  RequestValidator
@@ -26,19 +26,43 @@ type Config struct {
 	MimeTypeHandlers  map[string]MimeTypeHandler
 }
 
+// Clone the Config.
+// This is necessary because MimeTypeHandlers is a map and there a reference.
+func (self Config) Clone() Config {
+	return Config{
+		LogConfig:         self.LogConfig.Clone(),
+		ErrorHandler:      self.ErrorHandler,
+		Auther:            self.Auther,
+		RequestValidator:  self.RequestValidator,
+		ResponseValidator: self.ResponseValidator,
+		MimeTypeHandlers:  self.copyMimeTypeHandlers(),
+	}
+}
+
+// copyMimeTypeHandlers to get a new instance of the map. This solves issues where
+// other objects might mistakenly alter the original map through its copied reference.
+func (self Config) copyMimeTypeHandlers() map[string]MimeTypeHandler {
+	copy := make(map[string]MimeTypeHandler, len(self.MimeTypeHandlers))
+
+	for mimeType, handler := range self.MimeTypeHandlers {
+		copy[mimeType] = handler
+	}
+
+	return copy
+}
+
 type Endpoint struct {
-	config      *Config
+	Config      Config
 	handlerData handlerTypeData
 }
 
-func NewEndpoint(config *Config, handler Handler) *Endpoint {
-
+func NewEndpoint(config Config, handler Handler) *Endpoint {
 	registerKnownMimeTypes(config.MimeTypeHandlers)
 
 	handlerData := newHandlerTypeData(handler)
 
 	return &Endpoint{
-		config:      config,
+		Config:      config,
 		handlerData: handlerData,
 	}
 }
@@ -47,53 +71,50 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	defer func() {
 		if err := recover(); err != nil {
 			ctx.Error("panic: %+v", errors.New("ERROR", fmt.Sprintf("%+v", err)))
-			httpStatus, responseBody = self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, ErrorPanic)
+			httpStatus, responseBody = self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, ErrorPanic)
 		}
 	}()
 
 	var err error
-	if httpStatus, err = self.config.Auther.Auth(ctx.Request()); err != nil {
-		return self.config.ErrorHandler.HandleError(ctx, httpStatus, err)
+	if httpStatus, err = self.Config.Auther.Auth(ctx.Request()); err != nil {
+		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
 	handlerAlloc := self.handlerData.allocateHandler()
 
 	// Handle Request
 	{
-		requestBodyBytes, err := readRequestBody(ctx)
-		if err != nil {
-			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
-		}
+		requestBodyBytes := ctx.Request().Body()
 
 		if self.handlerData.shouldValidateRequest {
-			if httpStatus, validationFailure := self.config.RequestValidator.ValidateRequest(ctx, requestBodyBytes); err != nil {
+			if httpStatus, validationFailure := self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes); err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
-				return self.config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
+				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
 			}
 		}
 
 		if err := self.setHandlerRequestBody(ctx, handlerAlloc.requestBody, requestBodyBytes); err != nil {
-			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
+			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 	}
 
 	// Run the endpoint handler.
 	if httpStatus, err = handlerAlloc.handler.Handle(ctx); err != nil {
-		return self.config.ErrorHandler.HandleError(ctx, httpStatus, err)
+		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
 	// Handle Response
 	{
 		if responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody); err != nil {
-			return self.config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
+			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
 		if self.handlerData.shouldValidateResponse {
-			if httpStatus, validationFailure := self.config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody); err != nil {
+			if httpStatus, validationFailure := self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody); err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
-				return self.config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
+				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
 			}
 		}
 	}
@@ -103,9 +124,11 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 func (self *Endpoint) setHandlerRequestBody(ctx *Context, requestBody interface{}, requestBodyBytes []byte) error {
 	if requestBody != nil {
-		if mimeHandler, exists := self.config.MimeTypeHandlers[self.handlerData.requestMimeType]; exists {
+		if mimeHandler, exists := self.Config.MimeTypeHandlers[self.handlerData.requestMimeType]; exists {
+			ctx.requestCtx.SetContentType(mimeHandler.MimeType)
 			err := mimeHandler.Unmarshal(requestBodyBytes, &requestBody)
 			if err != nil {
+				ctx.Error("failed to unmarshal request body: %v", err)
 				return ErrorRequestBodyUnmarshalFailure
 			}
 			return nil
@@ -119,7 +142,7 @@ func (self *Endpoint) setHandlerRequestBody(ctx *Context, requestBody interface{
 
 func (self *Endpoint) getHandlerResponseBody(ctx *Context, responseBody interface{}) ([]byte, error) {
 	if responseBody != nil {
-		if mimeHandler, exists := self.config.MimeTypeHandlers[self.handlerData.responseMimeType]; exists {
+		if mimeHandler, exists := self.Config.MimeTypeHandlers[self.handlerData.responseMimeType]; exists {
 			responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 			if err != nil {
 				ctx.Error("failed to marshal response: %v", err)
@@ -135,24 +158,4 @@ func (self *Endpoint) getHandlerResponseBody(ctx *Context, responseBody interfac
 	}
 
 	return nil, ErrorResponseBodyMissing
-}
-
-// readRequestBody into a byte array.
-func readRequestBody(ctx *Context) ([]byte, error) {
-	request := ctx.Request()
-
-	var bodyBytes []byte
-	if request.ContentLength > 0 {
-		// Take advantage of the request content length, if available.
-		bodyBytes = make([]byte, 0, request.ContentLength)
-	}
-
-	// Note: This uses less memory and is more efficient than ioutil.ReadAll().
-	buffer := bytes.NewBuffer(bodyBytes)
-	if _, err := io.Copy(buffer, request.Body); err != nil {
-		ctx.Error("failed to read request: %v", err)
-		return nil, ErrorRequestBodyReadFailure
-	}
-
-	return buffer.Bytes(), nil
 }

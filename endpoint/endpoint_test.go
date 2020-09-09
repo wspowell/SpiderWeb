@@ -1,15 +1,15 @@
 package endpoint
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"spiderweb/errors"
 	"spiderweb/logging"
+
+	"github.com/valyala/fasthttp"
 )
 
 type errorResponse struct {
@@ -36,7 +36,7 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 
 type myAuther struct{}
 
-func (self myAuther) Auth(request *http.Request) (int, error) {
+func (self myAuther) Auth(request *fasthttp.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
@@ -85,7 +85,8 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 }
 
 func createTestEndpoint() *Endpoint {
-	config := &Config{
+	config := Config{
+		LogConfig:         logging.NewConfig(logging.LevelFatal, map[string]interface{}{}),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
@@ -101,17 +102,28 @@ func createTestEndpoint() *Endpoint {
 			},
 		},
 	}
-	return NewEndpoint(config, &myEndpoint{})
+	return NewEndpoint(config.Clone(), &myEndpoint{})
+}
+
+func newTestContext() *Context {
+	var req fasthttp.Request
+
+	//req.Header.SetMethod(method)
+	req.Header.SetRequestURI("/")
+	req.Header.Set(fasthttp.HeaderHost, "localhost")
+	req.Header.Set(fasthttp.HeaderUserAgent, "")
+	req.SetBody([]byte(`{"my_string": "hello", "my_int": 5}`))
+
+	requestCtx := fasthttp.RequestCtx{}
+	requestCtx.Init(&req, nil, nil)
+
+	logConfig := logging.NewConfig(logging.LevelFatal, map[string]interface{}{})
+	return NewContext(&requestCtx, logging.NewLogger(logConfig))
 }
 
 func Test_Endpoint_Default_Success(t *testing.T) {
-	logConfig := logging.NewConfig(logging.LevelDebug, map[string]interface{}{})
-
-	req := httptest.NewRequest(http.MethodGet, "/", bytes.NewBuffer([]byte(`{"my_string": "hello", "my_int": 5}`)))
-
-	ctx := NewContext(req, logging.NewLogger(logConfig))
-
 	endpoint := createTestEndpoint()
+	ctx := newTestContext()
 	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
 
 	if http.StatusOK != httpStatus {
@@ -135,13 +147,9 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 }
 
 func Test_Endpoint_Default_Error(t *testing.T) {
-	logConfig := logging.NewConfig(logging.LevelDebug, map[string]interface{}{})
-
-	req := httptest.NewRequest(http.MethodGet, "/", bytes.NewBuffer([]byte(`{"my_string": "hello", "my_int": 5, "fail": true}`)))
-
-	ctx := NewContext(req, logging.NewLogger(logConfig))
-
 	endpoint := createTestEndpoint()
+	ctx := newTestContext()
+	ctx.Request().SetBody([]byte(`{"my_string": "hello", "my_int": 5, "fail": true}`))
 	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
 
 	if http.StatusUnprocessableEntity != httpStatus {

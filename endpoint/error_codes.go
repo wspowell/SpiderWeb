@@ -16,7 +16,7 @@ var (
 
 	ErrorRequestUnknownMimeType      = wrapFrameworkError("unknown request MIME type")
 	ErrorRequestBodyReadFailure      = wrapFrameworkError("request body read failure")
-	ErrorRequestBodyUnmarshalFailure = wrapFrameworkError("request body unmarhsal failure")
+	ErrorRequestBodyUnmarshalFailure = wrapFrameworkError("request body unmarshal failure")
 	ErrorRequestValidationError      = wrapFrameworkError("request validation error")
 
 	ErrorResponseBodyMarshalFailure = wrapFrameworkError("response body marshal failure")
@@ -26,7 +26,7 @@ var (
 )
 
 func wrapFrameworkError(message string) error {
-	return fmt.Errorf("%s: %w", message, FrameworkError)
+	return fmt.Errorf("%w: %s", FrameworkError, message)
 }
 
 func HasFrameworkError(err error) bool {
