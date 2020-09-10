@@ -13,6 +13,11 @@ type handlerAllocation struct {
 	responseBody interface{}
 }
 
+type resourceTypeData struct {
+	resourceType     string
+	resourceFieldNum int
+}
+
 // handlerTypeData cached so that reflection is optimized.
 // TODO: Remove unused fields.
 type handlerTypeData struct {
@@ -38,6 +43,8 @@ type handlerTypeData struct {
 
 	requestMimeType  string
 	responseMimeType string
+
+	resources map[string]resourceTypeData
 }
 
 func newHandlerTypeData(handler interface{}) handlerTypeData {
@@ -57,6 +64,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var responseMimeType string
 	var hasRequest bool
 	var hasResponse bool
+	resources := map[string]resourceTypeData{}
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -74,12 +82,27 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 
 			// Detect mime type.
 			var mimeType string
-			for i := 1; i < len(tagValueParts); i++ {
-				tagValuePart := tagValueParts[i]
+			for n := 1; n < len(tagValueParts); n++ {
+				tagValuePart := tagValueParts[n]
 
 				if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
 					mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
 					mimeType = mimeTagValue[1]
+					break
+				}
+			}
+
+			// Detect resources.
+			for n := 0; n < len(tagValueParts); n++ {
+				tagValuePart := tagValueParts[n]
+
+				if strings.HasPrefix(tagValuePart, structTagResource+"=") {
+					resourceTagValue := strings.SplitN(tagValuePart, "=", 2)
+					resourceType := resourceTagValue[1]
+					resources[resourceType] = resourceTypeData{
+						resourceType:     resourceType,
+						resourceFieldNum: i,
+					}
 					break
 				}
 			}
@@ -123,11 +146,13 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		responseMimeType:       responseMimeType,
 		hasRequest:             hasRequest,
 		hasResponse:            hasResponse,
+		resources:              resources,
 	}
 }
 
-func (self handlerTypeData) allocateHandler() handlerAllocation {
+func (self handlerTypeData) allocateHandler(resources map[string]ResourceFunc) handlerAllocation {
 	handlerValue := self.newHandlerValue()
+	self.setResources(handlerValue, resources)
 	return handlerAllocation{
 		handler:      handlerValue.Interface().(Handler),
 		requestBody:  self.newRequestBody(handlerValue),
@@ -167,6 +192,17 @@ func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType refl
 	}
 
 	return newValue.Addr().Interface()
+}
+
+func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]ResourceFunc) {
+	for resourceType, resourceFn := range resources {
+		if resourceData, exists := self.resources[resourceType]; exists {
+			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)
+			if resourceValue.CanSet() {
+				resourceValue.Set(reflect.ValueOf(resourceFn()))
+			}
+		}
+	}
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {

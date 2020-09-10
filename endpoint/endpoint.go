@@ -25,6 +25,7 @@ type Config struct {
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
 	MimeTypeHandlers  map[string]MimeTypeHandler
+	Resources         map[string]ResourceFunc
 	Timeout           time.Duration
 }
 
@@ -38,6 +39,7 @@ func (self Config) Clone() Config {
 		RequestValidator:  self.RequestValidator,
 		ResponseValidator: self.ResponseValidator,
 		MimeTypeHandlers:  self.copyMimeTypeHandlers(),
+		Resources:         self.copyResourceFuncs(),
 		Timeout:           self.Timeout,
 	}
 }
@@ -49,6 +51,16 @@ func (self Config) copyMimeTypeHandlers() map[string]MimeTypeHandler {
 
 	for mimeType, handler := range self.MimeTypeHandlers {
 		copy[mimeType] = handler
+	}
+
+	return copy
+}
+
+func (self Config) copyResourceFuncs() map[string]ResourceFunc {
+	copy := make(map[string]ResourceFunc, len(self.Resources))
+
+	for resourceType, fn := range self.Resources {
+		copy[resourceType] = fn
 	}
 
 	return copy
@@ -88,7 +100,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
-	handlerAlloc := self.handlerData.allocateHandler()
+	handlerAlloc := self.handlerData.allocateHandler(self.Config.Resources)
 
 	// Handle Request
 	{

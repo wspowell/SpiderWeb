@@ -21,7 +21,6 @@ type errorResponse struct {
 type myErrorHandler struct{}
 
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
-
 	if HasFrameworkError(err) {
 		ctx.Error("internal error: %v", err)
 		err = errors.New("AP0000", "internal server error")
@@ -53,6 +52,15 @@ func (self myResponseValidator) ValidateResponse(ctx *Context, httpStatus int, r
 	return http.StatusOK, nil
 }
 
+// Fake database client to test setting resources.
+type myDbClient struct {
+	conn string
+}
+
+func (self *myDbClient) Conn() string {
+	return self.conn
+}
+
 type myRequestBodyModel struct {
 	MyString   string `json:"my_string"`
 	MyInt      int    `json:"my_int"`
@@ -66,6 +74,7 @@ type myResponseBodyModel struct {
 
 type myEndpoint struct {
 	Test         string
+	MyDatabase   *myDbClient          `spiderweb:"resource=db"`
 	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
 	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
 }
@@ -77,6 +86,14 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
 	}
 
+	if self.MyDatabase == nil {
+		return http.StatusInternalServerError, errors.New("APP1111", "database not set")
+	}
+
+	if self.MyDatabase.Conn() != "myconnection" {
+		return http.StatusInternalServerError, errors.New("APP1111", "database connection error")
+	}
+
 	self.ResponseBody = &myResponseBodyModel{
 		MyString: self.RequestBody.MyString,
 		MyInt:    self.RequestBody.MyInt,
@@ -86,8 +103,12 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 }
 
 func createTestEndpoint() *Endpoint {
+	dbClient := myDbClient{
+		conn: "myconnection",
+	}
+
 	config := Config{
-		LogConfig:         logging.NewConfig(logging.LevelFatal, map[string]interface{}{}),
+		LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
@@ -102,7 +123,13 @@ func createTestEndpoint() *Endpoint {
 				},
 			},
 		},
+		Resources: map[string]ResourceFunc{
+			"db": func() interface{} {
+				return &dbClient
+			},
+		},
 	}
+
 	return NewEndpoint(config.Clone(), &myEndpoint{})
 }
 
@@ -125,6 +152,7 @@ func newTestContext() *Context {
 func Test_Endpoint_Default_Success(t *testing.T) {
 	endpoint := createTestEndpoint()
 	ctx := newTestContext()
+
 	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
 
 	if http.StatusOK != httpStatus {
