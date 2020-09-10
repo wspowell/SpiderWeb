@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"spiderweb/errors"
 	"spiderweb/logging"
@@ -118,7 +119,7 @@ func newTestContext() *Context {
 	requestCtx.Init(&req, nil, nil)
 
 	logConfig := logging.NewConfig(logging.LevelFatal, map[string]interface{}{})
-	return NewContext(&requestCtx, logging.NewLogger(logConfig))
+	return NewContext(&requestCtx, logging.NewLogger(logConfig), 30*time.Second)
 }
 
 func Test_Endpoint_Default_Success(t *testing.T) {

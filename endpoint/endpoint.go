@@ -3,6 +3,7 @@ package endpoint
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"spiderweb/errors"
 	"spiderweb/logging"
@@ -24,6 +25,7 @@ type Config struct {
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
 	MimeTypeHandlers  map[string]MimeTypeHandler
+	Timeout           time.Duration
 }
 
 // Clone the Config.
@@ -36,6 +38,7 @@ func (self Config) Clone() Config {
 		RequestValidator:  self.RequestValidator,
 		ResponseValidator: self.ResponseValidator,
 		MimeTypeHandlers:  self.copyMimeTypeHandlers(),
+		Timeout:           self.Timeout,
 	}
 }
 
@@ -76,6 +79,11 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	}()
 
 	var err error
+
+	if !ctx.ShouldContinue() {
+		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
+	}
+
 	if httpStatus, err = self.Config.Auther.Auth(ctx.Request()); err != nil {
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
@@ -84,6 +92,10 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 	// Handle Request
 	{
+		if !ctx.ShouldContinue() {
+			return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
+		}
+
 		requestBodyBytes := ctx.Request().Body()
 
 		if self.handlerData.shouldValidateRequest {
@@ -99,6 +111,10 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}
 
+	if !ctx.ShouldContinue() {
+		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
+	}
+
 	// Run the endpoint handler.
 	if httpStatus, err = handlerAlloc.handler.Handle(ctx); err != nil {
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
@@ -106,6 +122,10 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 	// Handle Response
 	{
+		if !ctx.ShouldContinue() {
+			return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
+		}
+
 		if responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody); err != nil {
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}

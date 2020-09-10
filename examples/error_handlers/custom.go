@@ -38,33 +38,36 @@ func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpSta
 	var responseErr error
 
 	if endpoint.HasFrameworkError(err) {
-		err = ErrorWithCodes{
-			Code:         "INTERNAL_ERROR",
-			InternalCode: "APP0000",
-			Message:      "internal server error",
+		if errors.Is(err, endpoint.ErrorRequestTimeout) {
+			return httpStatus, nil
+		} else {
+			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
+				Code:         "INTERNAL_ERROR",
+				InternalCode: "APP0000",
+				Message:      "internal server error",
+			})
+		}
+	} else {
+		var myErr ErrorWithCodes
+		if errors.As(err, &myErr) {
+			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
+				Code:         myErr.Code,
+				InternalCode: errors.InternalCode(err),
+				Message:      myErr.Message,
+			})
+		} else {
+			// Catch anything not using ErrorWithCodes.
+			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
+				Code:         "INTERNAL_ERROR",
+				InternalCode: errors.InternalCode(err),
+				Message:      err.Error(),
+			})
 		}
 	}
-
-	var myErr ErrorWithCodes
-	if errors.As(err, &myErr) {
-		errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-			Code:         myErr.Code,
-			InternalCode: errors.InternalCode(err),
-			Message:      myErr.Message,
-		})
-	} else {
-		// Catch anything not using ErrorWithCodes.
-		errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-			Code:         "INTERNAL_ERROR",
-			InternalCode: errors.InternalCode(err),
-			Message:      err.Error(),
-		})
-	}
-
 	if responseErr != nil {
 		// Provide a valid default for responding.
 		httpStatus = http.StatusInternalServerError
-		errorBytes = []byte(`{"code":"INTERNAL_ERROR","internal_code":"SW0000","message":"internal server error"}`)
+		errorBytes = []byte(`{"code":"INTERNAL_ERROR","internal_code":"APP0001","message":"internal server error"}`)
 	}
 
 	return httpStatus, errorBytes

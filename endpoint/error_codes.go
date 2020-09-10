@@ -14,6 +14,7 @@ var (
 
 	ErrorPanic = wrapFrameworkError("internal server error")
 
+	ErrorRequestTimeout              = wrapFrameworkError("request timeout")
 	ErrorRequestUnknownMimeType      = wrapFrameworkError("unknown request MIME type")
 	ErrorRequestBodyReadFailure      = wrapFrameworkError("request body read failure")
 	ErrorRequestBodyUnmarshalFailure = wrapFrameworkError("request body unmarshal failure")

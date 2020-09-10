@@ -2,6 +2,8 @@ package spiderweb
 
 import (
 	"fmt"
+	"net/http"
+	"time"
 
 	"spiderweb/endpoint"
 	"spiderweb/logging"
@@ -13,6 +15,8 @@ import (
 // Config top level options.
 // These options can be altered per endpoint, if desired.
 type Config struct {
+	// EndpointConfig is the base config and is passed to all endpoints.
+	// All configuration options can be altered per endpoint  at setup time.
 	EndpointConfig endpoint.Config
 	ServerHost     string
 	ServerPort     int
@@ -123,13 +127,23 @@ func (self *endpointBuilder) WithMimeType(mimeType string, handler endpoint.Mime
 	return self
 }
 
+func (self *endpointBuilder) WithTimeout(timeout time.Duration, errorMessage string) *endpointBuilder {
+	self.builder.Config.Timeout = timeout
+	return self
+}
+
 func wrapFasthttpHandler(endpointRunner *endpointBuilder) fasthttp.RequestHandler {
-	return func(fasthttpCtx *fasthttp.RequestCtx) {
+	// Wrapping the handler in a timeout will force a timeout response.
+	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
+	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
 		logger := logging.NewLogger(endpointRunner.builder.Config.LogConfig)
-		ctx := endpoint.NewContext(fasthttpCtx, logger)
+		logger.Tag("request_id", fasthttpCtx.ID())
+
+		// Note: The endpoint context must receive the same timeout as the handler or this will cause unexpected behavior.
+		ctx := endpoint.NewContext(fasthttpCtx, logger, endpointRunner.builder.Config.Timeout)
 		httpStatus, responseBody := endpointRunner.builder.Execute(ctx)
 
 		fasthttpCtx.SetStatusCode(httpStatus)
 		fasthttpCtx.SetBody(responseBody)
-	}
+	}, endpointRunner.builder.Config.Timeout, "", http.StatusRequestTimeout)
 }

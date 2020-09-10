@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"spiderweb"
 	"spiderweb/endpoint"
@@ -20,6 +21,7 @@ func main() {
 			MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
 			RequestValidator:  validators.NoopRequest{},
 			ResponseValidator: validators.NoopResponse{},
+			Timeout:           30 * time.Second,
 		},
 		ServerHost: "localhost",
 		ServerPort: 8080,
@@ -27,7 +29,7 @@ func main() {
 
 	router := spiderweb.New(endpointConfig)
 
-	router.Handle(http.MethodPost, "/resource", &postResource{})
+	router.Handle(http.MethodPost, "/resources", &postResource{})
 
 	router.Run()
 }
