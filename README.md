@@ -32,7 +32,7 @@ TODO example
 
 ## Error Handling
 
-When an enpoint is not successful, it must return an error. In keeping with standard Golang patterns, handlers return an HTTP status code with an optional `error`. Using the Golang `error` interface, handlers can return any type of custom error and be able to format error responses in any format the developer chooses. 
+When an endpoint is not successful, it must return an error. In keeping with standard Golang patterns, handlers return an HTTP status code with an optional `error`. Using the Golang `error` interface, handlers can return any type of custom error and be able to format error responses in any format the developer chooses. 
 
 ```
 TODO example
@@ -44,9 +44,9 @@ Being able to monitor your endpoints is crucial to operational health, but is of
 
 ## Context
 
-Golang `context.Context` is a feature that is easily abused. A `context.Context` should only be used for immutable data and are meant to be passed between API boundaries (and therefore must be thread safe). However, it is extremely tempting (and easy) to violate this contract and use it as a generic varialbe store for values used throughout an endpoints lifetime. 
+Golang `context.Context` is a feature that is easily abused. A `context.Context` should only be used for immutable data and are meant to be passed between API boundaries (and therefore must be thread safe). However, it is extremely tempting (and easy) to violate this contract and use it as a generic variable store for values used throughout an endpoints lifetime. 
 
-From these conflicting use cases arises Spiderweb's `local.Context`. A `local.Context` is both a `context.Context` and a varible store. The difference is that `local.Context` provides behavior to localize data to the endpoint. Localized data is not immutable and must never be sent across API boundaries (and therefore not thread safe). If the context needs to be sent to a goroutine, simply pass the underlying `context.Context` by using `Context()`.
+From these conflicting use cases arises Spiderweb's `local.Context`. A `local.Context` is both a `context.Context` and a variable store. The difference is that `local.Context` provides behavior to localize data to the endpoint. Localized data is not immutable and must never be sent across API boundaries (and therefore not thread safe). If the context needs to be sent to a goroutine, simply pass the underlying `context.Context` by using `Context()`.
 
 Spiderweb endpoints take advantage of this behavior to provide local data such as profiling traces and logging.
 ```
