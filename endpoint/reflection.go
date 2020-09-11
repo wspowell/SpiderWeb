@@ -150,6 +150,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	}
 }
 
+// TODO: Try using sync.Pool here.
 func (self handlerTypeData) allocateHandler(resources map[string]ResourceFunc) handlerAllocation {
 	handlerValue := self.newHandlerValue()
 	self.setResources(handlerValue, resources)

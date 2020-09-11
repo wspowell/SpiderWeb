@@ -7,6 +7,7 @@ import (
 type Loggerer interface {
 	LogConfig() Configurer
 	Tag(name string, value interface{})
+	Printf(format string, v ...interface{})
 	Debug(format string, v ...interface{})
 	Info(format string, v ...interface{})
 	Warn(format string, v ...interface{})
@@ -53,6 +54,10 @@ func (self *Logger) LogConfig() Configurer {
 
 func (self *Logger) Tag(name string, value interface{}) {
 	self.tags[name] = value
+}
+
+func (self *Logger) Printf(format string, v ...interface{}) {
+	self.logger.WithFields(self.tags).Printf(format, v...)
 }
 
 func (self *Logger) Debug(format string, v ...interface{}) {

@@ -22,8 +22,8 @@ type Context struct {
 }
 
 // TODO: It would be really nice if *fasthttp.RequestCtx could be replaced with an interface.
-func NewContext(requestCtx *fasthttp.RequestCtx, logger logging.Loggerer, timeout time.Duration) *Context {
-	ctx := local.NewLocalized()
+func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, logger logging.Loggerer, timeout time.Duration) *Context {
+	ctx := local.FromContext(serverContext)
 	cancel := local.WithTimeout(ctx, timeout)
 
 	return &Context{
