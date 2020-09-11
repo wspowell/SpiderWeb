@@ -100,7 +100,12 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
-	handlerAlloc := self.handlerData.allocateHandler(self.Config.Resources)
+	handlerAlloc := self.handlerData.allocateHandler()
+
+	self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources)
+	if err = self.handlerData.setPathParameters(handlerAlloc.handlerValue, ctx.requestCtx); err != nil {
+		return self.Config.ErrorHandler.HandleError(ctx, http.StatusBadRequest, err)
+	}
 
 	// Handle Request
 	{

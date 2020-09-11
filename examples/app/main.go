@@ -29,7 +29,8 @@ func main() {
 
 	router := spiderweb.New(endpointConfig)
 
-	router.Handle(http.MethodPost, "/resources", &postResource{})
+	router.Handle(http.MethodPost, "/resources/", &postResource{})
+	router.Handle(http.MethodGet, "/resources/{id}", &getResource{})
 
 	router.Run()
 }

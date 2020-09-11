@@ -74,10 +74,12 @@ type myResponseBodyModel struct {
 }
 
 type myEndpoint struct {
-	Test         string
-	MyDatabase   *myDbClient          `spiderweb:"resource=db"`
-	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
-	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	Test          string
+	MyStringParam string               `spiderweb:"path=id"`
+	MyIntParam    int                  `spiderweb:"path=num"`
+	MyDatabase    *myDbClient          `spiderweb:"resource=db"`
+	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
+	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
 }
 
 func (self *myEndpoint) Handle(ctx *Context) (int, error) {
@@ -85,6 +87,14 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
+	}
+
+	if self.MyStringParam != "myid" {
+		return http.StatusInternalServerError, errors.New("APP1111", "string path param not set")
+	}
+
+	if self.MyIntParam != 5 {
+		return http.StatusInternalServerError, errors.New("APP1111", "int path param not set")
 	}
 
 	if self.MyDatabase == nil {
@@ -138,7 +148,7 @@ func newTestContext() *Context {
 	var req fasthttp.Request
 
 	//req.Header.SetMethod(method)
-	req.Header.SetRequestURI("/")
+	req.Header.SetRequestURI("/resources/myid")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set(fasthttp.HeaderUserAgent, "")
 	req.SetBody([]byte(`{"my_string": "hello", "my_int": 5}`))
@@ -146,7 +156,10 @@ func newTestContext() *Context {
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
-	logConfig := logging.NewConfig(logging.LevelFatal, map[string]interface{}{})
+	requestCtx.SetUserValue("id", "myid")
+	requestCtx.SetUserValue("num", "5")
+
+	logConfig := logging.NewConfig(logging.LevelInfo, map[string]interface{}{})
 	return NewContext(context.Background(), &requestCtx, logging.NewLogger(logConfig), 30*time.Second)
 }
 

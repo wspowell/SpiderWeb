@@ -131,6 +131,7 @@ func (self *framework) wrapFasthttpHandler(endpointRunner *endpointBuilder) fast
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
 		logger := logging.NewLogger(endpointRunner.builder.Config.LogConfig)
 		logger.Tag("request_id", fasthttpCtx.ID())
+		logger.Tag("route", endpointRunner.httpMethod+" "+endpointRunner.path)
 
 		// Note: The endpoint context must receive the same timeout as the handler or this will cause unexpected behavior.
 		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointRunner.builder.Config.Timeout)

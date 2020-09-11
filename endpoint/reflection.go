@@ -2,12 +2,20 @@ package endpoint
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
+
+	"github.com/valyala/fasthttp"
 )
 
 // This file contains all the reflection that is not nice to look at.
 
+const (
+	structTagPath = "path"
+)
+
 type handlerAllocation struct {
+	handlerValue reflect.Value
 	handler      Handler
 	requestBody  interface{}
 	responseBody interface{}
@@ -44,7 +52,8 @@ type handlerTypeData struct {
 	requestMimeType  string
 	responseMimeType string
 
-	resources map[string]resourceTypeData
+	resources      map[string]resourceTypeData
+	pathParameters map[string]int
 }
 
 func newHandlerTypeData(handler interface{}) handlerTypeData {
@@ -65,6 +74,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var hasRequest bool
 	var hasResponse bool
 	resources := map[string]resourceTypeData{}
+	pathParameters := map[string]int{}
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -103,6 +113,18 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 						resourceType:     resourceType,
 						resourceFieldNum: i,
 					}
+					break
+				}
+			}
+
+			// Detect path.
+			for n := 0; n < len(tagValueParts); n++ {
+				tagValuePart := tagValueParts[n]
+
+				if strings.HasPrefix(tagValuePart, structTagPath+"=") {
+					pathTagValue := strings.SplitN(tagValuePart, "=", 2)
+					pathVariable := pathTagValue[1]
+					pathParameters[pathVariable] = i
 					break
 				}
 			}
@@ -147,14 +169,15 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		hasRequest:             hasRequest,
 		hasResponse:            hasResponse,
 		resources:              resources,
+		pathParameters:         pathParameters,
 	}
 }
 
-// TODO: Try using sync.Pool here.
-func (self handlerTypeData) allocateHandler(resources map[string]ResourceFunc) handlerAllocation {
+func (self handlerTypeData) allocateHandler() *handlerAllocation {
 	handlerValue := self.newHandlerValue()
-	self.setResources(handlerValue, resources)
-	return handlerAllocation{
+
+	return &handlerAllocation{
+		handlerValue: handlerValue,
 		handler:      handlerValue.Interface().(Handler),
 		requestBody:  self.newRequestBody(handlerValue),
 		responseBody: self.newResponseBody(handlerValue),
@@ -204,6 +227,32 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 			}
 		}
 	}
+}
+
+func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) error {
+	for param, fieldNum := range self.pathParameters {
+		if value, ok := requestCtx.UserValue(param).(string); ok {
+			parameterValue := handlerValue.Elem().Field(fieldNum)
+			if parameterValue.CanSet() {
+				val := reflect.ValueOf(value)
+				if val.Type().AssignableTo(parameterValue.Type()) {
+					parameterValue.Set(val)
+				} else {
+					if intVal, err := strconv.Atoi(value); err == nil {
+						val = reflect.ValueOf(intVal)
+						if val.Type().AssignableTo(parameterValue.Type()) {
+							parameterValue.Set(val)
+						} else {
+							return ErrorRequestPathParameterInvalidType
+						}
+					} else {
+						return ErrorRequestPathParameterInvalidType
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {

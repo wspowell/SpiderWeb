@@ -40,6 +40,12 @@ func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpSta
 	if endpoint.HasFrameworkError(err) {
 		if errors.Is(err, endpoint.ErrorRequestTimeout) {
 			return httpStatus, nil
+		} else if httpStatus == http.StatusBadRequest {
+			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
+				Code:         "BAD_REQUEST",
+				InternalCode: "APP0002",
+				Message:      "bad request",
+			})
 		} else {
 			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
 				Code:         "INTERNAL_ERROR",
