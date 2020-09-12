@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"net/http"
@@ -13,24 +13,24 @@ import (
 )
 
 func main() {
-	endpointConfig := spiderweb.Config{
-		EndpointConfig: endpoint.Config{
-			Auther:            auth.Noop{},
-			ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
-			LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
-			MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
-			RequestValidator:  validators.NoopRequest{},
-			ResponseValidator: validators.NoopResponse{},
-			Timeout:           30 * time.Second,
-		},
-		ServerHost: "localhost",
-		ServerPort: 8080,
-	}
+	server := SetupServer()
+	server.Listen()
+}
 
-	router := spiderweb.New(endpointConfig)
+func SetupServer() spiderweb.Server {
 
-	router.Handle(http.MethodPost, "/resources/", &postResource{})
-	router.Handle(http.MethodGet, "/resources/{id}", &getResource{})
+	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
+		Auther:            auth.Noop{},
+		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
+		LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
+		RequestValidator:  validators.NoopRequest{},
+		ResponseValidator: validators.NoopResponse{},
+		Timeout:           30 * time.Second,
+	})
 
-	router.Run()
+	serverConfig.Handle(http.MethodPost, "/resources", &postResource{})
+	serverConfig.Handle(http.MethodGet, "/resources/{id}", &getResource{})
+
+	return spiderweb.NewServer(serverConfig)
 }

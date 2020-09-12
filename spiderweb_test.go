@@ -45,21 +45,19 @@ func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
-func Test_Default_Endpoint_Config(t *testing.T) {
-	endpointConfig := spiderweb.Config{
-		EndpointConfig: endpoint.Config{
-			Auther:            auth.Noop{},
-			ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
-			LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
-			MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
-			RequestValidator:  validators.NoopRequest{},
-			ResponseValidator: validators.NoopResponse{},
-		},
-		ServerHost: "localhost",
-		ServerPort: 8080,
-	}
+func Test_Default_Server_Config(t *testing.T) {
+	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
+		Auther:            auth.Noop{},
+		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
+		LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
+		RequestValidator:  validators.NoopRequest{},
+		ResponseValidator: validators.NoopResponse{},
+	})
 
-	router := spiderweb.New(endpointConfig)
+	serverConfig.Handle(http.MethodGet, "/", &myEndpoint{})
 
-	router.Handle(http.MethodGet, "/", &myEndpoint{})
+	spiderweb.NewServer(serverConfig)
+
+	// TODO: Add some checks.
 }

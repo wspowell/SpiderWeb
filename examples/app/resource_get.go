@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"net/http"
@@ -20,9 +20,9 @@ func (self *getResource) Handle(ctx *endpoint.Context) (int, error) {
 	ctx.Info("resource id: %v", self.ResourceId)
 
 	self.ResponseBody = &myResponseBodyModel{
-		MyString: "s",
-		MyInt:    4,
+		MyString: "test",
+		MyInt:    self.ResourceId,
 	}
 
-	return http.StatusCreated, nil
+	return http.StatusOK, nil
 }

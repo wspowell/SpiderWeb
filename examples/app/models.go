@@ -1,4 +1,4 @@
-package main
+package app
 
 type myRequestBodyModel struct {
 	MyString   string `json:"my_string"`

@@ -18,20 +18,77 @@ import (
 
 // Config top level options.
 // These options can be altered per endpoint, if desired.
-type Config struct {
+type ServerConfig struct {
 	// EndpointConfig is the base config and is passed to all endpoints.
 	// All configuration options can be altered per endpoint  at setup time.
-	EndpointConfig endpoint.Config
-	ServerHost     string
-	ServerPort     int
+	endpointConfig   endpoint.Config
+	host             string
+	port             int
+	endpointBuilders []*endpointBuilder
 }
 
-// Clone Config since endpoint.Config also Clones.
-func (self Config) Clone() Config {
-	return Config{
-		EndpointConfig: self.EndpointConfig.Clone(),
-		ServerHost:     self.ServerHost,
-		ServerPort:     self.ServerPort,
+func NewServerConfig(host string, port int, endpointConfig endpoint.Config) *ServerConfig {
+	return &ServerConfig{
+		endpointConfig:   endpointConfig,
+		host:             host,
+		port:             port,
+		endpointBuilders: []*endpointBuilder{},
+	}
+}
+
+func (self *ServerConfig) Handle(httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
+	builder := newEndpointBuilder(self, httpMethod, path, handler)
+	self.endpointBuilders = append(self.endpointBuilders, builder)
+
+	return builder
+}
+
+type Server struct {
+	serverConfig *ServerConfig
+
+	logger *logging.Logger
+	server *fasthttp.Server
+	router *router.Router
+
+	serverContext    context.Context
+	shutdownComplete <-chan bool
+}
+
+func NewServer(serverConfig *ServerConfig) Server {
+	logger := logging.NewLogger(serverConfig.endpointConfig.LogConfig)
+
+	httpServer := &fasthttp.Server{}
+	httpServer.Logger = logger
+	httpServer.ReadTimeout = time.Duration(serverConfig.endpointConfig.Timeout) * time.Second
+	httpServer.WriteTimeout = time.Duration(serverConfig.endpointConfig.Timeout) * time.Second
+
+	serverContext, shutdownComplete := serverContext(httpServer)
+
+	router := router.New()
+
+	server := Server{
+		serverConfig: serverConfig,
+
+		logger: logger,
+		server: httpServer,
+		router: router,
+
+		serverContext:    serverContext,
+		shutdownComplete: shutdownComplete,
+	}
+
+	server.finalizeEndpoints()
+
+	return server
+}
+
+func (self Server) finalizeEndpoints() {
+	for _, builder := range self.serverConfig.endpointBuilders {
+		httpMethod := builder.httpMethod
+		path := builder.path
+		handler := wrapFasthttpHandler(self.serverContext, builder)
+
+		self.router.Handle(httpMethod, path, handler)
 	}
 }
 
@@ -66,83 +123,17 @@ func serverContext(server *fasthttp.Server) (context.Context, <-chan bool) {
 	return ctx, shutdownComplete
 }
 
-type framework struct {
-	config Config
-	logger *logging.Logger
-	server *fasthttp.Server
-	router *router.Router
-
-	serverContext    context.Context
-	shutdownComplete <-chan bool
-
-	endpointBuilders []*endpointBuilder
+// Execute one request.
+func (self Server) Execute(fasthttpCtx *fasthttp.RequestCtx) (int, []byte) {
+	self.router.Handler(fasthttpCtx)
+	return fasthttpCtx.Response.StatusCode(), fasthttpCtx.Response.Body()
 }
 
-func New(config Config) *framework {
-	logger := logging.NewLogger(config.EndpointConfig.LogConfig)
-
-	server := &fasthttp.Server{}
-	server.Logger = logger
-	server.ReadTimeout = time.Duration(config.EndpointConfig.Timeout) * time.Second
-	server.WriteTimeout = time.Duration(config.EndpointConfig.Timeout) * time.Second
-
-	serverContext, shutdownComplete := serverContext(server)
-
-	return &framework{
-		config:           config,
-		logger:           logger,
-		server:           server,
-		router:           router.New(),
-		serverContext:    serverContext,
-		shutdownComplete: shutdownComplete,
-	}
-}
-
-func (self *framework) Handle(httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
-	builder := &endpointBuilder{
-		httpMethod: httpMethod,
-		path:       path,
-		builder:    endpoint.NewEndpoint(self.config.EndpointConfig.Clone(), handler),
-	}
-
-	self.endpointBuilders = append(self.endpointBuilders, builder)
-
-	return builder
-}
-
-func (self *framework) Run() {
-	self.setupEndpoints()
+func (self Server) Listen() {
 	self.listenForever()
 }
 
-func (self *framework) setupEndpoints() {
-	for _, endpointBuilder := range self.endpointBuilders {
-		httpMethod := endpointBuilder.httpMethod
-		path := endpointBuilder.path
-		handler := self.wrapFasthttpHandler(endpointBuilder)
-
-		self.router.Handle(httpMethod, path, handler)
-	}
-}
-
-func (self *framework) wrapFasthttpHandler(endpointRunner *endpointBuilder) fasthttp.RequestHandler {
-	// Wrapping the handler in a timeout will force a timeout response.
-	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
-	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
-		logger := logging.NewLogger(endpointRunner.builder.Config.LogConfig)
-		logger.Tag("request_id", fasthttpCtx.ID())
-		logger.Tag("route", endpointRunner.httpMethod+" "+endpointRunner.path)
-
-		// Note: The endpoint context must receive the same timeout as the handler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointRunner.builder.Config.Timeout)
-		httpStatus, responseBody := endpointRunner.builder.Execute(ctx)
-
-		fasthttpCtx.SetStatusCode(httpStatus)
-		fasthttpCtx.SetBody(responseBody)
-	}, endpointRunner.builder.Config.Timeout, "", http.StatusRequestTimeout)
-}
-
-func (self *framework) listenForever() {
+func (self *Server) listenForever() {
 	for key, list := range self.router.List() {
 		self.logger.Debug("%v", key)
 		for _, item := range list {
@@ -154,7 +145,7 @@ func (self *framework) listenForever() {
 
 	self.server.Handler = self.router.Handler
 
-	listenAddress := fmt.Sprintf("%s:%d", self.config.ServerHost, self.config.ServerPort)
+	listenAddress := fmt.Sprintf("%s:%d", self.serverConfig.host, self.serverConfig.port)
 	if err := self.server.ListenAndServe(listenAddress); err != nil {
 		self.logger.Fatal("server failed: %v", err)
 	}
@@ -166,44 +157,63 @@ func (self *framework) listenForever() {
 	self.logger.Info("server stopped")
 }
 
-type endpointBuilder struct {
-	httpMethod string
-	path       string
-	builder    *endpoint.Endpoint
+func wrapFasthttpHandler(serverContext context.Context, builder *endpointBuilder) fasthttp.RequestHandler {
+	// Wrapping the handler in a timeout will force a timeout response.
+	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
+	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
+		logger := logging.NewLogger(builder.routeEndpoint.Config.LogConfig)
+		logger.Tag("request_id", fasthttpCtx.ID())
+		logger.Tag("route", builder.httpMethod+" "+builder.path)
+
+		// Note: The endpoint context must receive the same timeout as the handler or this will cause unexpected behavior.
+		ctx := endpoint.NewContext(serverContext, fasthttpCtx, logger, builder.routeEndpoint.Config.Timeout)
+		httpStatus, responseBody := builder.routeEndpoint.Execute(ctx)
+
+		fasthttpCtx.SetStatusCode(httpStatus)
+		fasthttpCtx.SetBody(responseBody)
+	}, builder.routeEndpoint.Config.Timeout, "", http.StatusRequestTimeout)
 }
 
-func newEndpointBuilder(config Config, handler endpoint.Handler) *endpointBuilder {
+type endpointBuilder struct {
+	httpMethod    string
+	path          string
+	routeEndpoint *endpoint.Endpoint
+}
+
+func newEndpointBuilder(serverConfig *ServerConfig, httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
 	return &endpointBuilder{
-		builder: endpoint.NewEndpoint(config.EndpointConfig.Clone(), handler),
+		httpMethod:    httpMethod,
+		path:          path,
+		routeEndpoint: endpoint.NewEndpoint(serverConfig.endpointConfig.Clone(), handler),
 	}
 }
 
 func (self *endpointBuilder) WithErrorHandling(errorHandler endpoint.ErrorHandler) *endpointBuilder {
-	self.builder.Config.ErrorHandler = errorHandler
+	self.routeEndpoint.Config.ErrorHandler = errorHandler
 	return self
 }
 
 func (self *endpointBuilder) WithAuth(auther endpoint.Auther) *endpointBuilder {
-	self.builder.Config.Auther = auther
+	self.routeEndpoint.Config.Auther = auther
 	return self
 }
 
 func (self *endpointBuilder) WithRequestValidation(requestValidator endpoint.RequestValidator) *endpointBuilder {
-	self.builder.Config.RequestValidator = requestValidator
+	self.routeEndpoint.Config.RequestValidator = requestValidator
 	return self
 }
 
 func (self *endpointBuilder) WithResponseValidation(responseValidator endpoint.ResponseValidator) *endpointBuilder {
-	self.builder.Config.ResponseValidator = responseValidator
+	self.routeEndpoint.Config.ResponseValidator = responseValidator
 	return self
 }
 
 func (self *endpointBuilder) WithMimeType(mimeType string, handler endpoint.MimeTypeHandler) *endpointBuilder {
-	self.builder.Config.MimeTypeHandlers[mimeType] = handler
+	self.routeEndpoint.Config.MimeTypeHandlers[mimeType] = handler
 	return self
 }
 
 func (self *endpointBuilder) WithTimeout(timeout time.Duration, errorMessage string) *endpointBuilder {
-	self.builder.Config.Timeout = timeout
+	self.routeEndpoint.Config.Timeout = timeout
 	return self
 }
