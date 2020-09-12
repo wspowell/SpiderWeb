@@ -14,12 +14,11 @@ var (
 
 	ErrorPanic = wrapFrameworkError("internal server error")
 
-	ErrorRequestTimeout                  = wrapFrameworkError("request timeout")
-	ErrorRequestPathParameterInvalidType = wrapFrameworkError("request parameter invalid type")
-	ErrorRequestUnknownMimeType          = wrapFrameworkError("unknown request MIME type")
-	ErrorRequestBodyReadFailure          = wrapFrameworkError("request body read failure")
-	ErrorRequestBodyUnmarshalFailure     = wrapFrameworkError("request body unmarshal failure")
-	ErrorRequestValidationError          = wrapFrameworkError("request validation error")
+	ErrorRequestTimeout              = wrapFrameworkError("request timeout")
+	ErrorRequestUnknownMimeType      = wrapFrameworkError("unknown request MIME type")
+	ErrorRequestBodyReadFailure      = wrapFrameworkError("request body read failure")
+	ErrorRequestBodyUnmarshalFailure = wrapFrameworkError("request body unmarshal failure")
+	ErrorRequestValidationError      = wrapFrameworkError("request validation error")
 
 	ErrorResponseBodyMarshalFailure = wrapFrameworkError("response body marshal failure")
 	ErrorResponseBodyMissing        = wrapFrameworkError("missing response body")

@@ -11,7 +11,8 @@ import (
 // This file contains all the reflection that is not nice to look at.
 
 const (
-	structTagPath = "path"
+	structTagPath  = "path"
+	structTagQuery = "query"
 )
 
 type handlerAllocation struct {
@@ -52,8 +53,9 @@ type handlerTypeData struct {
 	requestMimeType  string
 	responseMimeType string
 
-	resources      map[string]resourceTypeData
-	pathParameters map[string]int
+	resources       map[string]resourceTypeData
+	pathParameters  map[string]int
+	queryParameters map[string]int
 }
 
 func newHandlerTypeData(handler interface{}) handlerTypeData {
@@ -75,6 +77,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var hasResponse bool
 	resources := map[string]resourceTypeData{}
 	pathParameters := map[string]int{}
+	queryParameters := map[string]int{}
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -90,22 +93,19 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		if tagValue, exists := structField.Tag.Lookup(structTagKey); exists {
 			tagValueParts := strings.Split(tagValue, ",")
 
-			// Detect mime type.
 			var mimeType string
-			for n := 1; n < len(tagValueParts); n++ {
+
+			for n := 0; n < len(tagValueParts); n++ {
 				tagValuePart := tagValueParts[n]
 
+				// Detect mime type.
 				if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
 					mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
 					mimeType = mimeTagValue[1]
 					break
 				}
-			}
 
-			// Detect resources.
-			for n := 0; n < len(tagValueParts); n++ {
-				tagValuePart := tagValueParts[n]
-
+				// Detect resources.
 				if strings.HasPrefix(tagValuePart, structTagResource+"=") {
 					resourceTagValue := strings.SplitN(tagValuePart, "=", 2)
 					resourceType := resourceTagValue[1]
@@ -115,16 +115,20 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 					}
 					break
 				}
-			}
 
-			// Detect path.
-			for n := 0; n < len(tagValueParts); n++ {
-				tagValuePart := tagValueParts[n]
-
+				// Detect path.
 				if strings.HasPrefix(tagValuePart, structTagPath+"=") {
 					pathTagValue := strings.SplitN(tagValuePart, "=", 2)
 					pathVariable := pathTagValue[1]
 					pathParameters[pathVariable] = i
+					break
+				}
+
+				// Detect query
+				if strings.HasPrefix(tagValuePart, structTagQuery+"=") {
+					queryTagValue := strings.SplitN(tagValuePart, "=", 2)
+					queryVariable := queryTagValue[1]
+					queryParameters[queryVariable] = i
 					break
 				}
 			}
@@ -170,6 +174,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		hasResponse:            hasResponse,
 		resources:              resources,
 		pathParameters:         pathParameters,
+		queryParameters:        queryParameters,
 	}
 }
 
@@ -229,30 +234,70 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 	}
 }
 
-func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) error {
+func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) {
 	for param, fieldNum := range self.pathParameters {
-		if value, ok := requestCtx.UserValue(param).(string); ok {
-			parameterValue := handlerValue.Elem().Field(fieldNum)
-			if parameterValue.CanSet() {
-				val := reflect.ValueOf(value)
+
+		parameterValue := handlerValue.Elem().Field(fieldNum)
+
+		if !parameterValue.CanSet() {
+			continue
+		}
+
+		value, ok := requestCtx.UserValue(param).(string)
+		if !ok {
+			continue
+		}
+
+		switch parameterValue.Kind() {
+		case reflect.String:
+			parameterValue.Set(reflect.ValueOf(value))
+		case reflect.Int:
+			if intVal, err := strconv.Atoi(value); err == nil {
+				val := reflect.ValueOf(intVal)
 				if val.Type().AssignableTo(parameterValue.Type()) {
 					parameterValue.Set(val)
-				} else {
-					if intVal, err := strconv.Atoi(value); err == nil {
-						val = reflect.ValueOf(intVal)
-						if val.Type().AssignableTo(parameterValue.Type()) {
-							parameterValue.Set(val)
-						} else {
-							return ErrorRequestPathParameterInvalidType
-						}
-					} else {
-						return ErrorRequestPathParameterInvalidType
-					}
+				}
+			}
+		case reflect.Bool:
+			if boolVal, err := strconv.ParseBool(value); err == nil {
+				val := reflect.ValueOf(boolVal)
+				if val.Type().AssignableTo(parameterValue.Type()) {
+					parameterValue.Set(val)
 				}
 			}
 		}
 	}
-	return nil
+}
+
+func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) {
+	for query, fieldNum := range self.queryParameters {
+		queryValue := handlerValue.Elem().Field(fieldNum)
+
+		if !queryValue.CanSet() {
+			continue
+		}
+
+		queryBytes := requestCtx.URI().QueryArgs().Peek(query)
+
+		switch queryValue.Kind() {
+		case reflect.String:
+			queryValue.Set(reflect.ValueOf(string(queryBytes)))
+		case reflect.Int:
+			if intVal, err := strconv.Atoi(string(queryBytes)); err == nil {
+				val := reflect.ValueOf(intVal)
+				if val.Type().AssignableTo(queryValue.Type()) {
+					queryValue.Set(val)
+				}
+			}
+		case reflect.Bool:
+			if boolVal, err := strconv.ParseBool(string(queryBytes)); err == nil {
+				val := reflect.ValueOf(boolVal)
+				if val.Type().AssignableTo(queryValue.Type()) {
+					queryValue.Set(val)
+				}
+			}
+		}
+	}
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {

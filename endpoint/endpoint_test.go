@@ -75,8 +75,12 @@ type myResponseBodyModel struct {
 
 type myEndpoint struct {
 	Test          string
+	MyStringQuery string               `spiderweb:"query=id"`
+	MyIntQuery    int                  `spiderweb:"query=num"`
+	MyBoolQuery   bool                 `spiderweb:"query=flag"`
 	MyStringParam string               `spiderweb:"path=id"`
 	MyIntParam    int                  `spiderweb:"path=num"`
+	MyFlagParam   bool                 `spiderweb:"path=flag"`
 	MyDatabase    *myDbClient          `spiderweb:"resource=db"`
 	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
 	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
@@ -89,12 +93,28 @@ func (self *myEndpoint) Handle(ctx *Context) (int, error) {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
 	}
 
+	if self.MyStringQuery != "myid" {
+		return http.StatusInternalServerError, errors.New("APP1111", "string query param not set")
+	}
+
+	if self.MyIntQuery != 13 {
+		return http.StatusInternalServerError, errors.New("APP1111", "int query param not set")
+	}
+
+	if self.MyBoolQuery != true {
+		return http.StatusInternalServerError, errors.New("APP1111", "bool query param not set")
+	}
+
 	if self.MyStringParam != "myid" {
 		return http.StatusInternalServerError, errors.New("APP1111", "string path param not set")
 	}
 
 	if self.MyIntParam != 5 {
 		return http.StatusInternalServerError, errors.New("APP1111", "int path param not set")
+	}
+
+	if self.MyFlagParam != true {
+		return http.StatusInternalServerError, errors.New("APP1111", "bool path param not set")
 	}
 
 	if self.MyDatabase == nil {
@@ -148,7 +168,7 @@ func newTestContext() *Context {
 	var req fasthttp.Request
 
 	//req.Header.SetMethod(method)
-	req.Header.SetRequestURI("/resources/myid")
+	req.Header.SetRequestURI("/resources/myid?id=myid&num=13&flag=true")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set(fasthttp.HeaderUserAgent, "")
 	req.SetBody([]byte(`{"my_string": "hello", "my_int": 5}`))
@@ -158,6 +178,7 @@ func newTestContext() *Context {
 
 	requestCtx.SetUserValue("id", "myid")
 	requestCtx.SetUserValue("num", "5")
+	requestCtx.SetUserValue("flag", true)
 
 	logConfig := logging.NewConfig(logging.LevelInfo, map[string]interface{}{})
 	return NewContext(context.Background(), &requestCtx, logging.NewLogger(logConfig), 30*time.Second)
