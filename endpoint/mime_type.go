@@ -45,7 +45,16 @@ func jsonMarshal(value interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	return buffer.Bytes(), nil
+	jsonBytes := buffer.Bytes()
+
+	// Encoder appends a new line at the endpoint of the bytes.
+	// This is useful for streaming, but breaks responses.
+	// Trim it off.
+	if len(jsonBytes) > 0 {
+		jsonBytes = jsonBytes[:len(jsonBytes)-1]
+	}
+
+	return jsonBytes, nil
 }
 
 func jsonUnmarshal(data []byte, value interface{}) error {
