@@ -7,19 +7,19 @@ import (
 	"spiderweb/profiling"
 )
 
-type getResource struct {
+type GetResource struct {
 	Test         string
 	ResourceId   int                  `spiderweb:"path=id"`
-	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=json,validate"`
 }
 
-func (self *getResource) Handle(ctx *endpoint.Context) (int, error) {
-	defer profiling.Profile(ctx, "getResource").Finish()
-	ctx.Debug("handling getResource")
+func (self *GetResource) Handle(ctx *endpoint.Context) (int, error) {
+	defer profiling.Profile(ctx, "GetResource").Finish()
+	ctx.Debug("handling GetResource")
 
 	ctx.Info("resource id: %v", self.ResourceId)
 
-	self.ResponseBody = &myResponseBodyModel{
+	self.ResponseBody = &MyResponseBodyModel{
 		MyString: "test",
 		MyInt:    self.ResourceId,
 	}

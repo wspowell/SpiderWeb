@@ -7,7 +7,7 @@ import (
 	"spiderweb/examples/app"
 )
 
-func Test_EndpointTest(t *testing.T) {
+func Test_RouteTest(t *testing.T) {
 	server := app.SetupServer()
 	TestRequest(t, server, GivenRequest(http.MethodPost, "/resources").
 		WithRequestBody([]byte(`{"my_string": "hello","my_int": 5}`)).

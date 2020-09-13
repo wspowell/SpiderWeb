@@ -11,15 +11,15 @@ import (
 	"spiderweb/profiling"
 )
 
-type postResource struct {
+type PostResource struct {
 	Test         string
-	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=json,validate"`
-	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	RequestBody  *MyRequestBodyModel  `spiderweb:"request,mime=json,validate"`
+	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=json,validate"`
 }
 
-func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
-	defer profiling.Profile(ctx, "postResource").Finish()
-	ctx.Debug("handling postResource")
+func (self *PostResource) Handle(ctx *endpoint.Context) (int, error) {
+	defer profiling.Profile(ctx, "PostResource").Finish()
+	ctx.Debug("handling PostResource")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
@@ -27,7 +27,7 @@ func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
 
 	saveResource(ctx)
 
-	self.ResponseBody = &myResponseBodyModel{
+	self.ResponseBody = &MyResponseBodyModel{
 		MyString: self.RequestBody.MyString,
 		MyInt:    self.RequestBody.MyInt,
 	}

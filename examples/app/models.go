@@ -1,12 +1,12 @@
 package app
 
-type myRequestBodyModel struct {
+type MyRequestBodyModel struct {
 	MyString   string `json:"my_string"`
 	MyInt      int    `json:"my_int"`
 	ShouldFail bool   `json:"fail"`
 }
 
-type myResponseBodyModel struct {
+type MyResponseBodyModel struct {
 	MyString string `json:"output_string"`
 	MyInt    int    `json:"output_int"`
 }

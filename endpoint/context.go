@@ -50,3 +50,13 @@ func (self *Context) ShouldContinue() bool {
 
 	return !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }
+
+func NewTestContext() *Context {
+	serverContext := context.Background()
+	logger := logging.NewLogger(logging.NewConfig(logging.LevelInfo, map[string]interface{}{"test": true}))
+
+	requestCtx := fasthttp.RequestCtx{}
+	requestCtx.Init(&fasthttp.Request{}, nil, nil)
+
+	return NewContext(serverContext, &requestCtx, logger, 30*time.Second)
+}
