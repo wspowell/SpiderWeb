@@ -65,6 +65,7 @@ func NewServer(serverConfig *ServerConfig) Server {
 	serverContext, shutdownComplete := serverContext(httpServer)
 
 	router := router.New()
+	router.SaveMatchedRoutePath = true
 
 	server := Server{
 		serverConfig: serverConfig,

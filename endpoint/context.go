@@ -8,6 +8,7 @@ import (
 	"spiderweb/local"
 	"spiderweb/logging"
 
+	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
 )
 
@@ -19,6 +20,9 @@ type Context struct {
 
 	cancel     context.CancelFunc
 	requestCtx *fasthttp.RequestCtx
+
+	HttpMethod  string
+	MatchedPath string
 }
 
 // TODO: It would be really nice if *fasthttp.RequestCtx could be replaced with an interface.
@@ -26,11 +30,16 @@ func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, 
 	ctx := local.FromContext(serverContext)
 	cancel := local.WithTimeout(ctx, timeout)
 
+	var matchedPath string
+	matchedPath, _ = requestCtx.UserValue(router.MatchedRoutePathParam).(string)
+
 	return &Context{
-		Localized:  ctx,
-		cancel:     cancel,
-		Loggerer:   logger,
-		requestCtx: requestCtx,
+		Localized:   ctx,
+		cancel:      cancel,
+		Loggerer:    logger,
+		requestCtx:  requestCtx,
+		HttpMethod:  string(requestCtx.Method()),
+		MatchedPath: matchedPath,
 	}
 }
 
