@@ -190,7 +190,6 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 func (self *Endpoint) setHandlerRequestBody(ctx *Context, requestBody interface{}, requestBodyBytes []byte) error {
 	if requestBody != nil {
 		if mimeHandler, exists := self.Config.MimeTypeHandlers[self.handlerData.requestMimeType]; exists {
-			ctx.requestCtx.SetContentType(mimeHandler.MimeType)
 			err := mimeHandler.Unmarshal(requestBodyBytes, &requestBody)
 			if err != nil {
 				ctx.Error("failed to unmarshal request body: %v", err)
@@ -208,6 +207,7 @@ func (self *Endpoint) setHandlerRequestBody(ctx *Context, requestBody interface{
 func (self *Endpoint) getHandlerResponseBody(ctx *Context, responseBody interface{}) ([]byte, error) {
 	if responseBody != nil {
 		if mimeHandler, exists := self.Config.MimeTypeHandlers[self.handlerData.responseMimeType]; exists {
+			ctx.requestCtx.SetContentType(mimeHandler.MimeType)
 			responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 			if err != nil {
 				ctx.Error("failed to marshal response: %v", err)
