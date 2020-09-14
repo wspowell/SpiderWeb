@@ -11,10 +11,14 @@ type contextKey struct{}
 
 var activeTimerKey = contextKey{}
 
+// Finisher interface for profiling timers.
 type Finisher interface {
+	// Finish the timer.
 	Finish()
 }
 
+// Profile a given span.
+// Must call Finish() on the returned timer.
 func Profile(ctx local.Context, name string) Finisher {
 	return newTiming(ctx, name)
 }

@@ -13,14 +13,6 @@ import (
 )
 
 func SetupServer() spiderweb.Server {
-	/*
-		logger := logging.NewLogger(logging.NewConfig(logging.LevelDebug, map[string]interface{}{}))
-		swaggerValidator, err := swagger.NewValidator(swaggerSpec())
-		if err != nil {
-			logger.Fatal("failed to load swagger spec: %v\n", err)
-		}
-	*/
-
 	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
 		Auther:            auth.Noop{},
 		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},

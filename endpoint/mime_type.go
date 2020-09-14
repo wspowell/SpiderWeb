@@ -24,6 +24,8 @@ func registerKnownMimeTypes(mimeTypes map[string]MimeTypeHandler) {
 	}
 }
 
+// MimeTypeHandler defines how a mime type is used.
+// This is used by the "mime" struct tag option.
 type MimeTypeHandler struct {
 	MimeType  string
 	Marshal   Marshaler

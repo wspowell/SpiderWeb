@@ -14,6 +14,7 @@ import (
 
 var _ local.Context = (*Context)(nil)
 
+// Context defines local endpoint data.
 type Context struct {
 	*local.Localized
 	logging.Loggerer
@@ -25,7 +26,8 @@ type Context struct {
 	MatchedPath string
 }
 
-// TODO: It would be really nice if *fasthttp.RequestCtx could be replaced with an interface.
+// NewContext creates a new endpoint context. The server creates this and passes it to the endpoint handler.
+// TODO: It would be really nice if *fasthttp.RequestCtx could be replaced with an interface. Not sure if this is possible.
 func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, logger logging.Loggerer, timeout time.Duration) *Context {
 	ctx := local.FromContext(serverContext)
 	cancel := local.WithTimeout(ctx, timeout)
@@ -43,6 +45,7 @@ func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, 
 	}
 }
 
+// Request returns the current request.
 func (self *Context) Request() *fasthttp.Request {
 	return &self.requestCtx.Request
 }
@@ -60,6 +63,7 @@ func (self *Context) ShouldContinue() bool {
 	return !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }
 
+// NewTestContext is an endpoint context setup for testing.
 func NewTestContext() *Context {
 	serverContext := context.Background()
 	logger := logging.NewLogger(logging.NewConfig(logging.LevelInfo, map[string]interface{}{"test": true}))

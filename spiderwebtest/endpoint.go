@@ -8,6 +8,7 @@ import (
 	"spiderweb/endpoint"
 )
 
+// TestEndpoint for business logic.
 func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handler, expectedHttpStatus int, expectedError error) {
 	endpointContext := endpoint.NewTestContext()
 

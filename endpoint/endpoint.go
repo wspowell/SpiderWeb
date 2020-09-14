@@ -7,6 +7,7 @@ import (
 
 	"spiderweb/errors"
 	"spiderweb/logging"
+	"spiderweb/profiling"
 )
 
 const (
@@ -18,6 +19,8 @@ const (
 	structTagOptionValidate = "validate"
 )
 
+// Config defines the behavior of an endpoint.
+// Endpoint behavior is interface driven and can be completely modified by an application.
 type Config struct {
 	LogConfig         logging.Configurer
 	ErrorHandler      ErrorHandler
@@ -66,11 +69,14 @@ func (self Config) copyResourceFuncs() map[string]ResourceFunc {
 	return copy
 }
 
+// Endpoint defines the behavior of a given handler.
 type Endpoint struct {
 	Config      Config
 	handlerData handlerTypeData
 }
 
+// Create a new endpoint that will run the given handler.
+// This will be created by the Server during normal operations.
 func NewEndpoint(config Config, handler Handler) *Endpoint {
 	registerKnownMimeTypes(config.MimeTypeHandlers)
 
@@ -82,6 +88,7 @@ func NewEndpoint(config Config, handler Handler) *Endpoint {
 	}
 }
 
+// Execute the endpoint and run the endpoint handler.
 func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -90,21 +97,28 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}()
 
+	defer profiling.Profile(ctx, ctx.HttpMethod+" "+ctx.MatchedPath).Finish()
+
 	var err error
 
 	if !ctx.ShouldContinue() {
 		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
-	if httpStatus, err = self.Config.Auther.Auth(ctx.Request()); err != nil {
+	authTimer := profiling.Profile(ctx, "Auth")
+	httpStatus, err = self.Config.Auther.Auth(ctx.Request())
+	authTimer.Finish()
+	if err != nil {
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
+	allocateTimer := profiling.Profile(ctx, "Allocate")
 	handlerAlloc := self.handlerData.allocateHandler()
 
 	self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources)
 	self.handlerData.setPathParameters(handlerAlloc.handlerValue, ctx.requestCtx)
 	self.handlerData.setQueryParameters(handlerAlloc.handlerValue, ctx.requestCtx)
+	allocateTimer.Finish()
 
 	// Handle Request
 	{
@@ -115,14 +129,20 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		requestBodyBytes := ctx.Request().Body()
 
 		if self.handlerData.shouldValidateRequest {
-			if httpStatus, validationFailure := self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes); err != nil {
+			validateTimer := profiling.Profile(ctx, "ValidateRequest")
+			httpStatus, validationFailure := self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
+			validateTimer.Finish()
+			if err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
 				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
 			}
 		}
 
-		if err := self.setHandlerRequestBody(ctx, handlerAlloc.requestBody, requestBodyBytes); err != nil {
+		populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
+		err := self.setHandlerRequestBody(ctx, handlerAlloc.requestBody, requestBodyBytes)
+		populateRequestTimer.Finish()
+		if err != nil {
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 	}
@@ -132,7 +152,10 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	}
 
 	// Run the endpoint handler.
-	if httpStatus, err = handlerAlloc.handler.Handle(ctx); err != nil {
+	handleTimer := profiling.Profile(ctx, "Handle")
+	httpStatus, err = handlerAlloc.handler.Handle(ctx)
+	handleTimer.Finish()
+	if err != nil {
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
@@ -142,12 +165,18 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
-		if responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody); err != nil {
+		populateResponseTimer := profiling.Profile(ctx, "MarshalResponseBody")
+		responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody)
+		populateResponseTimer.Finish()
+		if err != nil {
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
 		if self.handlerData.shouldValidateResponse {
-			if httpStatus, validationFailure := self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody); err != nil {
+			validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
+			httpStatus, validationFailure := self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
+			validateResponseTimer.Finish()
+			if err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
 				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)

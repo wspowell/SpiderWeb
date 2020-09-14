@@ -26,12 +26,14 @@ type internalError struct {
 	err error
 }
 
+// New error. This should be called when the application creates a brand new error.
+// If an error has been received from an external function, use Wrap().
 func New(internalCode string, format string, values ...interface{}) error {
 	return newInternalError(internalCode, pkgerrors.New(fmt.Sprintf(format, values...)))
 }
 
-// Wrap an error as a standard internal error.
-// internalCode should be a unique code to allow developers to easily identify the source of an issue.
+// Wrap an existing error.
+// "internalCode" should be a unique code to allow developers to easily identify the source of an issue.
 func Wrap(internalCode string, err error) error {
 	return newInternalError(internalCode, fmt.Errorf("%w", err))
 }
@@ -44,7 +46,7 @@ func newInternalError(internalCode string, err error) internalError {
 		err = fmt.Errorf(emptyErrorMessage)
 	}
 
-	// Error is already a internal error.
+	// Error is already an internalError.
 	// Simply append the current internal code and error to the stacks and return it.
 	var previousInternalError internalError
 	if ok := pkgerrors.As(err, &previousInternalError); ok {
@@ -68,7 +70,8 @@ func (self internalError) Error() string {
 }
 
 // Format the internal error for different situations.
-//   * TODO: finish
+//   * %+v - Print stack trace
+//   * %v  - Print error with internal code
 func (self internalError) Format(s fmt.State, verb rune) {
 	// Determine what to prepend to the error string, if anything.
 	switch verb {
@@ -91,7 +94,7 @@ func (self internalError) Unwrap() error {
 	return self.err
 }
 
-// InternalCode indicating the origin of the error.
+// InternalCode returns the internal code string of the error origin.
 func InternalCode(err error) string {
 	var asInternalError internalError
 	if ok := pkgerrors.As(err, &asInternalError); ok {
@@ -102,10 +105,14 @@ func InternalCode(err error) string {
 	return ""
 }
 
+// Is err a type of target error.
+// See: errors.Is()
 func Is(err, target error) bool {
 	return goerrors.Is(err, target)
 }
 
+// As converts the target to that type from the error stack.
+// See: errors.As()
 func As(err error, target interface{}) bool {
 	return goerrors.As(err, target)
 }

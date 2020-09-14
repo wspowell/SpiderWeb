@@ -56,6 +56,8 @@ func (self *contextualized) setContext(context context.Context) {
 //   wrapped by developers to allow for direct access of endpoint local data.
 // Not thread safe.
 type Localizer interface {
+	// Localize a key/value pair to the current context scope.
+	// Not thread safe.
 	Localize(key interface{}, value interface{})
 }
 
@@ -83,6 +85,7 @@ func NewLocalized() *Localized {
 	}
 }
 
+// FromContext created a new Localized context using the given parent context.
 func FromContext(context context.Context) *Localized {
 	return &Localized{
 		contextualized: contextualized{context},
@@ -90,6 +93,9 @@ func FromContext(context context.Context) *Localized {
 	}
 }
 
+// Value returns the value stored at key in the context.
+// First check local values, then checks stored context.
+// Returns nil if key does not exist.
 func (self *Localized) Value(key interface{}) interface{} {
 	if localValue, exists := self.locals[key]; exists {
 		return localValue
@@ -102,12 +108,16 @@ func (self *Localized) Localize(key interface{}, value interface{}) {
 	self.locals[key] = value
 }
 
+// WithValue creates a new context with the given value.
+// See: context.WithValue()
 func WithValue(parent Context, key interface{}, value interface{}) {
 	childContext := context.WithValue(parent.Context(), key, value)
 
 	parent.setContext(childContext)
 }
 
+// WithCancel creates a new context that can be cancelled.
+// See: context.WithCancel()
 func WithCancel(parent Context) context.CancelFunc {
 	childContext, cancel := context.WithCancel(parent.Context())
 
@@ -116,6 +126,8 @@ func WithCancel(parent Context) context.CancelFunc {
 	return cancel
 }
 
+// WithDeadline creates a new context that has a deadline.
+// See: context.WithDeadline()
 func WithDeadline(parent Context, deadline time.Time) context.CancelFunc {
 	childContext, cancel := context.WithDeadline(parent.Context(), deadline)
 
@@ -124,6 +136,8 @@ func WithDeadline(parent Context, deadline time.Time) context.CancelFunc {
 	return cancel
 }
 
+// WithTimeout creates a new context that has a timeout.
+// See: context.WithTimeout()
 func WithTimeout(parent Context, timeout time.Duration) context.CancelFunc {
 	childContext, cancel := context.WithTimeout(parent.Context(), timeout)
 

@@ -9,6 +9,7 @@ import (
 )
 
 // This file contains all the reflection that is not nice to look at.
+// Hidden deep down in this file so we can act like it does not exist.
 
 const (
 	structTagPath  = "path"

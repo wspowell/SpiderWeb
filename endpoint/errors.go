@@ -30,6 +30,7 @@ func wrapFrameworkError(message string) error {
 	return fmt.Errorf("%w: %s", FrameworkError, message)
 }
 
+// HasFrameworkError returns true if any error is returned from the spiderweb framework.
 func HasFrameworkError(err error) bool {
 	return errors.Is(err, FrameworkError)
 }

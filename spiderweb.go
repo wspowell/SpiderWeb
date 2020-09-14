@@ -16,17 +16,18 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// Config top level options.
+// ServerConfig top level options.
 // These options can be altered per endpoint, if desired.
 type ServerConfig struct {
 	// EndpointConfig is the base config and is passed to all endpoints.
-	// All configuration options can be altered per endpoint  at setup time.
+	// All configuration options can be altered per endpoint at setup time.
 	endpointConfig   endpoint.Config
 	host             string
 	port             int
 	endpointBuilders []*endpointBuilder
 }
 
+// NewServerConfig defines server and endpoint behavior.
 func NewServerConfig(host string, port int, endpointConfig endpoint.Config) *ServerConfig {
 	return &ServerConfig{
 		endpointConfig:   endpointConfig,
@@ -36,6 +37,8 @@ func NewServerConfig(host string, port int, endpointConfig endpoint.Config) *Ser
 	}
 }
 
+// Handle the given route to the provided endpoint handler.
+// This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
 func (self *ServerConfig) Handle(httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
 	builder := newEndpointBuilder(self, httpMethod, path, handler)
 	self.endpointBuilders = append(self.endpointBuilders, builder)
@@ -43,6 +46,7 @@ func (self *ServerConfig) Handle(httpMethod string, path string, handler endpoin
 	return builder
 }
 
+// Server listens for incoming requests and routes them to the registered endpoint handlers.
 type Server struct {
 	serverConfig *ServerConfig
 
@@ -54,6 +58,7 @@ type Server struct {
 	shutdownComplete <-chan bool
 }
 
+// NewServer sets up a new server.
 func NewServer(serverConfig *ServerConfig) Server {
 	logger := logging.NewLogger(serverConfig.endpointConfig.LogConfig)
 
@@ -125,11 +130,15 @@ func serverContext(server *fasthttp.Server) (context.Context, <-chan bool) {
 }
 
 // Execute one request.
+// Useful for testing.
 func (self Server) Execute(fasthttpCtx *fasthttp.RequestCtx) (int, []byte) {
 	self.router.Handler(fasthttpCtx)
 	return fasthttpCtx.Response.StatusCode(), fasthttpCtx.Response.Body()
 }
 
+// Listen for incoming requests.
+// This is a blocking call. It will not return until after the server as received a shutdown
+//   signal and has drained all running requests.
 func (self Server) Listen() {
 	self.listenForever()
 }
@@ -189,31 +198,37 @@ func newEndpointBuilder(serverConfig *ServerConfig, httpMethod string, path stri
 	}
 }
 
+// WithErrorHandling overrides the root ErrorHandler for this endpoint.
 func (self *endpointBuilder) WithErrorHandling(errorHandler endpoint.ErrorHandler) *endpointBuilder {
 	self.routeEndpoint.Config.ErrorHandler = errorHandler
 	return self
 }
 
+// WithAuth overrides the root Auth for this endpoint.
 func (self *endpointBuilder) WithAuth(auther endpoint.Auther) *endpointBuilder {
 	self.routeEndpoint.Config.Auther = auther
 	return self
 }
 
+// WithRequestValidation overrides the root RequestValidation for this endpoint.
 func (self *endpointBuilder) WithRequestValidation(requestValidator endpoint.RequestValidator) *endpointBuilder {
 	self.routeEndpoint.Config.RequestValidator = requestValidator
 	return self
 }
 
+// WithResponseValidation overrides the root ResponseValidation for this endpoint.
 func (self *endpointBuilder) WithResponseValidation(responseValidator endpoint.ResponseValidator) *endpointBuilder {
 	self.routeEndpoint.Config.ResponseValidator = responseValidator
 	return self
 }
 
+// WithMimeType overrides the root MimeTypeHandler for the mime type for this endpoint.
 func (self *endpointBuilder) WithMimeType(mimeType string, handler endpoint.MimeTypeHandler) *endpointBuilder {
 	self.routeEndpoint.Config.MimeTypeHandlers[mimeType] = handler
 	return self
 }
 
+// WithTimeout overrides the root Timeout for this endpoint.
 func (self *endpointBuilder) WithTimeout(timeout time.Duration, errorMessage string) *endpointBuilder {
 	self.routeEndpoint.Config.Timeout = timeout
 	return self
