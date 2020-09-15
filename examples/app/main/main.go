@@ -1,7 +1,7 @@
 package main
 
 import (
-	"spiderweb/examples/app"
+	"github.com/wspowell/spiderweb/examples/app"
 )
 
 func main() {

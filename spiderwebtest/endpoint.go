@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/endpoint"
 )
 
 // TestEndpoint for business logic.

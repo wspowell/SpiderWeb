@@ -3,8 +3,8 @@ package app
 import (
 	"net/http"
 
-	"spiderweb/endpoint"
-	"spiderweb/profiling"
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/profiling"
 )
 
 type GetResource struct {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"spiderweb/errors"
+	"github.com/wspowell/spiderweb/errors"
 
 	"github.com/valyala/fasthttp"
 )

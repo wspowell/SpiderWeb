@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"spiderweb"
+	"github.com/wspowell/spiderweb"
 
 	"github.com/valyala/fasthttp"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"spiderweb/local"
+	"github.com/wspowell/spiderweb/local"
 )
 
 func checkContext(t *testing.T, ctx context.Context) {

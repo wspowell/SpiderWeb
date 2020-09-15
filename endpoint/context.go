@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"spiderweb/errors"
-	"spiderweb/local"
-	"spiderweb/logging"
+	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/spiderweb/logging"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"

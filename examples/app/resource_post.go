@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"spiderweb/endpoint"
-	"spiderweb/errors"
-	"spiderweb/local"
-	"spiderweb/profiling"
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/spiderweb/profiling"
 )
 
 type PostResource struct {

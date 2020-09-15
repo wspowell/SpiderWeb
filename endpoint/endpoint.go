@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"spiderweb/errors"
-	"spiderweb/logging"
-	"spiderweb/profiling"
+	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/spiderweb/logging"
+	"github.com/wspowell/spiderweb/profiling"
 )
 
 const (

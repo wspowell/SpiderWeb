@@ -194,7 +194,7 @@ Endpoints can be tested in two ways. They can be tested for business logic when 
 
 HTTP Request/Response Tests
 ```
-import "spiderweb/spiderwebtest"
+import "github.com/wspowell/spiderweb/spiderwebtest"
 ...
 
 func Test_RouteTest(t *testing.T) {
@@ -217,7 +217,7 @@ func Test_RouteTest(t *testing.T) {
 Endpoint Unit Tests
 When unit testing an endpoint, simply provide a populated endpoint struct (input) and an expected end state (output). No need to worry about the rest of the middleware stack or mocking requests. The entire focus should be on testing business logic.
 ```
-import "spiderweb/spiderwebtest"
+import "github.com/wspowell/spiderweb/spiderwebtest"
 ...
 
 func Test_EndpointTest(t *testing.T) {

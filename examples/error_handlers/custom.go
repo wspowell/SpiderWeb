@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"spiderweb/endpoint"
-	"spiderweb/errors"
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/errors"
 )
 
 type ErrorWithCodes struct {

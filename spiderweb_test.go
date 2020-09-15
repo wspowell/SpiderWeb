@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"testing"
 
-	"spiderweb"
-	"spiderweb/endpoint"
-	"spiderweb/errors"
-	"spiderweb/examples/auth"
-	"spiderweb/examples/error_handlers"
-	"spiderweb/examples/validators"
-	"spiderweb/logging"
+	"github.com/wspowell/spiderweb"
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/spiderweb/examples/auth"
+	"github.com/wspowell/spiderweb/examples/error_handlers"
+	"github.com/wspowell/spiderweb/examples/validators"
+	"github.com/wspowell/spiderweb/logging"
 )
 
 type myRequestBodyModel struct {

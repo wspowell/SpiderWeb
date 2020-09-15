@@ -3,8 +3,8 @@ package profiling
 import (
 	"time"
 
-	"spiderweb/local"
-	"spiderweb/logging"
+	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/spiderweb/logging"
 )
 
 type contextKey struct{}

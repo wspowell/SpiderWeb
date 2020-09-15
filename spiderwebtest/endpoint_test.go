@@ -3,7 +3,7 @@ package spiderwebtest
 import (
 	"testing"
 
-	"spiderweb/examples/app"
+	"github.com/wspowell/spiderweb/examples/app"
 )
 
 func Test_EndpointTest(t *testing.T) {

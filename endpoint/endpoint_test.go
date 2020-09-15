@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"spiderweb/errors"
-	"spiderweb/logging"
+	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/spiderweb/logging"
 
 	"github.com/valyala/fasthttp"
 )
@@ -178,7 +178,7 @@ func newTestContext() *Context {
 
 	requestCtx.SetUserValue("id", "myid")
 	requestCtx.SetUserValue("num", "5")
-	requestCtx.SetUserValue("flag", true)
+	requestCtx.SetUserValue("flag", "true")
 
 	logConfig := logging.NewConfig(logging.LevelInfo, map[string]interface{}{})
 	return NewContext(context.Background(), &requestCtx, logging.NewLogger(logConfig), 30*time.Second)

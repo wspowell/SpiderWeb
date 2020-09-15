@@ -3,7 +3,7 @@ package validators
 import (
 	"net/http"
 
-	"spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/endpoint"
 )
 
 type NoopRequest struct {

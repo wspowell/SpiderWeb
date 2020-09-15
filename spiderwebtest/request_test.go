@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"spiderweb/examples/app"
+	"github.com/wspowell/spiderweb/examples/app"
 )
 
 func Test_RouteTest(t *testing.T) {

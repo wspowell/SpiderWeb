@@ -1,10 +1,10 @@
 package profiling
 
 import (
-	"context"
-	"spiderweb/local"
 	"testing"
 	"time"
+
+	"github.com/wspowell/spiderweb/local"
 )
 
 func Test_trace(t *testing.T) {
@@ -12,7 +12,7 @@ func Test_trace(t *testing.T) {
 }
 
 func runProcess() {
-	ctx := local.NewLocalized(context.Background())
+	ctx := local.NewLocalized()
 	defer Profile(ctx, "runProcesses").Finish()
 
 	timer := Profile(ctx, "manualDoOne")
