@@ -181,6 +181,10 @@ func wrapFasthttpHandler(serverContext context.Context, builder *endpointBuilder
 
 		fasthttpCtx.SetStatusCode(httpStatus)
 		fasthttpCtx.SetBody(responseBody)
+
+		// Set the Connection header to "close".
+		// Closes the connection after this function returns.
+		fasthttpCtx.Response.SetConnectionClose()
 	}, builder.routeEndpoint.Config.Timeout, "", http.StatusRequestTimeout)
 }
 
