@@ -37,7 +37,10 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 
 type myAuther struct{}
 
-func (self myAuther) Auth(request *fasthttp.Request) (int, error) {
+func (self myAuther) Auth(ctx *Context, headers map[string][]byte) (int, error) {
+	for key, value := range headers {
+		ctx.Info("%v:%v", key, string(value))
+	}
 	return http.StatusOK, nil
 }
 
@@ -171,6 +174,7 @@ func newTestContext() *Context {
 	req.Header.SetRequestURI("/resources/myid?id=myid&num=13&flag=true")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set(fasthttp.HeaderUserAgent, "")
+	req.Header.Set("Authorization", "auth-token")
 	req.SetBody([]byte(`{"my_string": "hello", "my_int": 5}`))
 
 	requestCtx := fasthttp.RequestCtx{}
