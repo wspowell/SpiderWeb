@@ -21,6 +21,10 @@ type errorResponse struct {
 
 type myErrorHandler struct{}
 
+func (self myErrorHandler) MimeType() string {
+	return MimeTypeJson
+}
+
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
 	if HasFrameworkError(err) {
 		ctx.Error("internal error: %v", err)

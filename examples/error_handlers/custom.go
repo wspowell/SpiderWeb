@@ -33,6 +33,10 @@ type ErrorJsonWithCodeResponse struct {
 	Message      string `json:"message"`
 }
 
+func (self ErrorJsonWithCodeResponse) MimeType() string {
+	return endpoint.MimeTypeJson
+}
+
 func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, []byte) {
 	var errorBytes []byte
 	var responseErr error

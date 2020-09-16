@@ -10,7 +10,7 @@ const (
 
 	structTagMimeTypeJson = "json"
 
-	mimeTypeJson = "application/json; charset=utf-8"
+	MimeTypeJson = "application/json; charset=utf-8"
 )
 
 type Marshaler func(v interface{}) ([]byte, error)
@@ -34,7 +34,7 @@ type MimeTypeHandler struct {
 
 func jsonHandler() MimeTypeHandler {
 	return MimeTypeHandler{
-		MimeType:  mimeTypeJson,
+		MimeType:  MimeTypeJson,
 		Marshal:   jsonMarshal,
 		Unmarshal: jsonUnmarshal,
 	}

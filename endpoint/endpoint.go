@@ -93,6 +93,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	defer func() {
 		if err := recover(); err != nil {
 			ctx.Error("panic: %+v", errors.New("ERROR", fmt.Sprintf("%+v", err)))
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			httpStatus, responseBody = self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, ErrorPanic)
 		}
 	}()
@@ -102,20 +103,30 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	var err error
 
 	if !ctx.ShouldContinue() {
+		ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
-	authTimer := profiling.Profile(ctx, "Auth")
+	// Authentication
+	{
+		authTimer := profiling.Profile(ctx, "Auth")
 
-	headers := make(map[string][]byte, ctx.Request().Header.Len())
-	ctx.Request().Header.VisitAll(func(key []byte, value []byte) {
-		headers[string(key)] = value
-	})
+		headers := make(map[string][]byte, ctx.Request().Header.Len())
+		ctx.Request().Header.VisitAll(func(key []byte, value []byte) {
+			headers[string(key)] = value
+		})
 
-	httpStatus, err = self.Config.Auther.Auth(ctx, headers)
-	authTimer.Finish()
-	if err != nil {
-		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
+		httpStatus, err = self.Config.Auther.Auth(ctx, headers)
+		authTimer.Finish()
+		if err != nil {
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
+			return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
+		}
+	}
+
+	if !ctx.ShouldContinue() {
+		ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
+		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
 	allocateTimer := profiling.Profile(ctx, "Allocate")
@@ -129,6 +140,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	// Handle Request
 	{
 		if !ctx.ShouldContinue() {
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
@@ -141,6 +153,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			if err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
+				ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
 			}
 		}
@@ -149,11 +162,13 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		err := self.setHandlerRequestBody(ctx, handlerAlloc.requestBody, requestBodyBytes)
 		populateRequestTimer.Finish()
 		if err != nil {
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 	}
 
 	if !ctx.ShouldContinue() {
+		ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 		return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
@@ -162,12 +177,14 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	httpStatus, err = handlerAlloc.handler.Handle(ctx)
 	handleTimer.Finish()
 	if err != nil {
+		ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 		return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	}
 
 	// Handle Response
 	{
 		if !ctx.ShouldContinue() {
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
@@ -175,6 +192,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		responseBody, err = self.getHandlerResponseBody(ctx, handlerAlloc.responseBody)
 		populateResponseTimer.Finish()
 		if err != nil {
+			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
@@ -185,6 +203,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			if err != nil {
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
+				ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, validationFailure)
 			}
 		}
@@ -228,5 +247,6 @@ func (self *Endpoint) getHandlerResponseBody(ctx *Context, responseBody interfac
 		return nil, ErrorResponseUnknownMimeType
 	}
 
-	return nil, ErrorResponseBodyMissing
+	// No response body.
+	return nil, nil
 }
