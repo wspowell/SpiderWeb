@@ -2,11 +2,36 @@ package spiderwebtest
 
 import (
 	"fmt"
+	"os"
 	"reflect"
+	"runtime/debug"
 	"testing"
 
 	"github.com/wspowell/spiderweb/endpoint"
+
+	"github.com/google/gofuzz"
 )
+
+func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
+	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
+		return
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatalf("%+v\nhandler: %+v\n%+v", err, handler, string(debug.Stack()))
+		}
+	}()
+
+	// The endpoint is never handed a struct with nil values so set nil chance to 0.
+	f := fuzz.New().NilChance(0)
+
+	endpointContext := endpoint.NewTestContext()
+	for i := 0; i < 100; i++ {
+		f.Fuzz(handler)
+		handler.Handle(endpointContext)
+	}
+}
 
 // TestEndpoint for business logic.
 func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handler, expectedHttpStatus int, expectedError error) {
@@ -25,6 +50,8 @@ func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handle
 	if !reflect.DeepEqual(expected, input) {
 		t.Errorf("expected endpoint state does not equal actual:\n\texpected: \n%+v\n\tactual: \n%+v", deepPrintStruct(expected, 0), deepPrintStruct(input, 0))
 	}
+
+	handlerFuzzTest(t, input)
 }
 
 func deepPrintStruct(v interface{}, indentLevel int) string {

@@ -2,10 +2,13 @@ package spiderwebtest
 
 import (
 	"bytes"
+	"os"
+	"runtime/debug"
 	"testing"
 
 	"github.com/wspowell/spiderweb"
 
+	"github.com/google/gofuzz"
 	"github.com/valyala/fasthttp"
 )
 
@@ -74,5 +77,38 @@ func TestRequest(t *testing.T, server spiderweb.Server, testCase *requestTestCas
 
 	if !bytes.Equal(copyRequestTestCase.responseBody, actualResponseBody) {
 		t.Errorf("expected request body '%v', but got '%v'", string(copyRequestTestCase.responseBody), string(actualResponseBody))
+	}
+
+	requestFuzzTest(t, server, testCase.httpMethod, testCase.path)
+}
+
+func requestFuzzTest(t *testing.T, server spiderweb.Server, httpMethod string, path string) {
+	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
+		return
+	}
+
+	var requestBody []byte
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatalf("%+v\route: %v %v\nrequest body: %+v\n%+v", err, httpMethod, path, string(requestBody), string(debug.Stack()))
+		}
+	}()
+
+	f := fuzz.New()
+
+	for i := 0; i < 100; i++ {
+		f.Fuzz(&requestBody)
+
+		var req fasthttp.Request
+
+		req.Header.SetMethod(httpMethod)
+		req.Header.SetRequestURI(path)
+		req.Header.Set(fasthttp.HeaderHost, "localhost")
+		req.SetBody(requestBody)
+
+		requestCtx := fasthttp.RequestCtx{}
+		requestCtx.Init(&req, nil, nil)
+
+		server.Execute(&requestCtx)
 	}
 }
