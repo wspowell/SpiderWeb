@@ -1,6 +1,5 @@
 package endpoint
 
-/*
 import (
 	"net/http"
 	"testing"
@@ -17,9 +16,11 @@ func (self *testEndpointReqPtrResVal) Handle(ctx *Context) (int, error) {
 }
 
 func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
+	t.Parallel()
+
 	typeData := newHandlerTypeData(&testEndpointReqPtrResVal{})
 
-	handlerAlloc := typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqPtrResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -39,7 +40,7 @@ func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
 		handler.ResponseBody.MyInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqPtrResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -69,9 +70,11 @@ func (self *testEndpointNoReqResVal) Handle(ctx *Context) (int, error) {
 }
 
 func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
+	t.Parallel()
+
 	typeData := newHandlerTypeData(&testEndpointNoReqResVal{})
 
-	handlerAlloc := typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointNoReqResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -86,7 +89,7 @@ func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
 		handler.ResponseBody.MyInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointNoReqResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -112,9 +115,11 @@ func (self *testEndpointReqValResPtr) Handle(ctx *Context) (int, error) {
 }
 
 func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
+	t.Parallel()
+
 	typeData := newHandlerTypeData(&testEndpointReqValResPtr{})
 
-	handlerAlloc := typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqValResPtr); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -129,7 +134,7 @@ func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 		handler.ResponseBody.MyInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(map[string]ResourceFunc{})
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqValResPtr); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
@@ -144,4 +149,3 @@ func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 		handler.ResponseBody.MyInt = 5
 	}
 }
-*/

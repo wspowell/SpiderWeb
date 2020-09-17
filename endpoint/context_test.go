@@ -11,6 +11,8 @@ import (
 )
 
 func Test_Context_DeadlineExceeded(t *testing.T) {
+	t.Parallel()
+
 	var req fasthttp.Request
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
@@ -33,6 +35,8 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 }
 
 func Test_Context_Canceled(t *testing.T) {
+	t.Parallel()
+
 	var req fasthttp.Request
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)

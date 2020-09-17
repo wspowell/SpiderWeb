@@ -193,6 +193,8 @@ func newTestContext() *Context {
 }
 
 func Test_Endpoint_Default_Success(t *testing.T) {
+	t.Parallel()
+
 	endpoint := createTestEndpoint()
 	ctx := newTestContext()
 
@@ -219,6 +221,8 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 }
 
 func Test_Endpoint_Default_Error(t *testing.T) {
+	t.Parallel()
+
 	endpoint := createTestEndpoint()
 	ctx := newTestContext()
 	ctx.Request().SetBody([]byte(`{"my_string": "hello", "my_int": 5, "fail": true}`))

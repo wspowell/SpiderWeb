@@ -7,6 +7,7 @@ import (
 )
 
 func Test_EndpointTest(t *testing.T) {
+	t.Parallel()
 
 	// Request should not be altered.
 	requestBody := &app.MyRequestBodyModel{

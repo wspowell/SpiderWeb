@@ -36,6 +36,8 @@ func checkLocal(t *testing.T, ctx local.Context) {
 }
 
 func Test_NewLocalized(t *testing.T) {
+	t.Parallel()
+
 	localCtx := local.NewLocalized()
 
 	local.WithValue(localCtx, "immutable", "immutableValue")
@@ -49,6 +51,8 @@ func Test_NewLocalized(t *testing.T) {
 }
 
 func Test_FromContext(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.WithValue(context.Background(), "immutable", "immutableValue")
 	ctx = context.WithValue(ctx, "duplicatedKey", "immutableValue")
 

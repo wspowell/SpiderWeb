@@ -8,6 +8,8 @@ import (
 )
 
 func Test_trace(t *testing.T) {
+	t.Parallel()
+
 	runProcess()
 }
 
