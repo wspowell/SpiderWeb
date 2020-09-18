@@ -56,6 +56,8 @@ func (self *contextualized) setContext(context context.Context) {
 //   wrapped by developers to allow for direct access of endpoint local data.
 // Not thread safe.
 type Localizer interface {
+	noCopier
+
 	// Localize a key/value pair to the current context scope.
 	// Not thread safe.
 	Localize(key interface{}, value interface{})
@@ -72,24 +74,36 @@ type Context interface {
 var _ Context = (*Localized)(nil)
 
 type Localized struct {
+	noCopy //nolint:unused,structcheck
+
 	contextualized
 
 	// Store locals in a map that do not have a defined variable.
 	locals map[interface{}]interface{}
+
+	goroutineOrigin goroutineId
 }
 
 func NewLocalized() *Localized {
 	return &Localized{
-		contextualized: contextualized{context.Background()},
-		locals:         map[interface{}]interface{}{},
+		contextualized:  contextualized{context.Background()},
+		locals:          map[interface{}]interface{}{},
+		goroutineOrigin: curID(),
 	}
 }
 
 // FromContext created a new Localized context using the given parent context.
 func FromContext(context context.Context) *Localized {
+	// If the context is a contextualizer, then use its Contex() value instead.
+	// This prevents Localizer value from being copied across goroutines.
+	if ctx, ok := context.(contextualizer); ok {
+		context = ctx.Context()
+	}
+
 	return &Localized{
-		contextualized: contextualized{context},
-		locals:         map[interface{}]interface{}{},
+		contextualized:  contextualized{context},
+		locals:          map[interface{}]interface{}{},
+		goroutineOrigin: curID(),
 	}
 }
 
@@ -97,15 +111,23 @@ func FromContext(context context.Context) *Localized {
 // First check local values, then checks stored context.
 // Returns nil if key does not exist.
 func (self *Localized) Value(key interface{}) interface{} {
+	self.threadSafetyCheck()
 	if localValue, exists := self.locals[key]; exists {
 		return localValue
 	}
-
 	return self.context.Value(key)
 }
 
 func (self *Localized) Localize(key interface{}, value interface{}) {
+	self.threadSafetyCheck()
 	self.locals[key] = value
+}
+
+func (self *Localized) threadSafetyCheck() {
+	if !self.goroutineOrigin.isSameGoroutine() {
+		// Panic instead of error because what are you doing developer???
+		panic("local context used outside original goroutine")
+	}
 }
 
 // WithValue creates a new context with the given value.

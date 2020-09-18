@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/wspowell/spiderweb/local"
@@ -62,4 +63,42 @@ func Test_FromContext(t *testing.T) {
 
 	checkContext(t, localCtx.Context())
 	checkLocal(t, localCtx)
+}
+
+func Test_Context_ThreadSafety_Correct_Usage(t *testing.T) {
+	t.Parallel()
+
+	localCtx := local.NewLocalized()
+	localCtx.Localize("localKey", "localValue")
+
+	var paniced bool
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(ctx context.Context, wg *sync.WaitGroup) {
+		defer func() {
+			if err := recover(); err != nil {
+				paniced = true
+			}
+		}()
+		defer wg.Done()
+
+		golocalCtx := local.FromContext(ctx)
+		if golocalCtx.Value("localKey") == "localValue" {
+			t.Errorf("local value should not be copied")
+		}
+
+		golocalCtx.Localize("localKey", "goroutineValue")
+
+	}(localCtx, &wg)
+
+	wg.Wait()
+
+	if paniced {
+		t.Errorf("unexpected panic")
+	}
+
+	if localCtx.Value("localKey") != "localValue" {
+		t.Errorf("expected localKey == localValue")
+	}
 }
