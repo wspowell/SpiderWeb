@@ -12,7 +12,6 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 		for pb.Next() {
 			ctx := newTestContext()
 			endpointRunner.Execute(ctx)
-
 		}
 	})
 }

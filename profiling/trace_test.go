@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/local"
 )
 
 func Test_trace(t *testing.T) {

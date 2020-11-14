@@ -11,7 +11,9 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/valyala/fasthttp v1.16.0
+	github.com/wspowell/local v0.0.3
+	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
-	gotest.tools/gotestsum v0.5.3 // indirect
+	gotest.tools/gotestsum v0.6.0 // indirect
 )

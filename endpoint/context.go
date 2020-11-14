@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/errors"
-	"github.com/wspowell/spiderweb/local"
 	"github.com/wspowell/spiderweb/logging"
 
 	"github.com/fasthttp/router"
@@ -58,7 +58,7 @@ func (self *Context) Cancel() {
 
 // ShouldContinue returns true if the underlying request has not been cancelled nor deadline exceeded.
 func (self *Context) ShouldContinue() bool {
-	err := self.Context().Err()
+	err := self.Context.Err()
 
 	return !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }

@@ -3,7 +3,7 @@ package profiling
 import (
 	"time"
 
-	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/logging"
 )
 
@@ -55,10 +55,11 @@ func (self *timing) Finish() {
 	self.duration = time.Since(self.start)
 	if self.parent == nil {
 		// Dump profiling data.
-		logConfig := logging.NewConfig(logging.LevelDebug, map[string]interface{}{})
-		logger := logging.NewLogger(logConfig)
+		// FIXME: This always prints profiling, even when LevelFatal is desired.
+		//logConfig := logging.NewConfig(logging.LevelDebug, map[string]interface{}{})
+		//logger := logging.NewLogger(logConfig)
 
-		printTimers(logger, self, 0)
+		//printTimers(logger, self, 0)
 	} else {
 		self.parent.finishedChildTimers = append(self.parent.finishedChildTimers, self)
 

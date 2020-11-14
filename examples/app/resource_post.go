@@ -7,7 +7,7 @@ import (
 
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/errors"
-	"github.com/wspowell/spiderweb/local"
+	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/profiling"
 )
 

@@ -25,11 +25,11 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 		t.Errorf("ShouldContinue() should have returned false")
 	}
 
-	if errors.Is(ctx.Context().Err(), context.Canceled) {
+	if errors.Is(ctx.Context.Err(), context.Canceled) {
 		t.Errorf("context error should not be Canceled")
 	}
 
-	if !errors.Is(ctx.Context().Err(), context.DeadlineExceeded) {
+	if !errors.Is(ctx.Context.Err(), context.DeadlineExceeded) {
 		t.Errorf("context error should be DeadlineExceeded")
 	}
 }
@@ -49,11 +49,11 @@ func Test_Context_Canceled(t *testing.T) {
 		t.Errorf("ShouldContinue() should have returned false")
 	}
 
-	if !errors.Is(ctx.Context().Err(), context.Canceled) {
+	if !errors.Is(ctx.Context.Err(), context.Canceled) {
 		t.Errorf("context error should be Canceled")
 	}
 
-	if errors.Is(ctx.Context().Err(), context.DeadlineExceeded) {
+	if errors.Is(ctx.Context.Err(), context.DeadlineExceeded) {
 		t.Errorf("context error should not be DeadlineExceeded")
 	}
 }
