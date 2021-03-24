@@ -22,7 +22,7 @@ type errorResponse struct {
 type myErrorHandler struct{}
 
 func (self myErrorHandler) MimeType() string {
-	return MimeTypeJson
+	return mimeTypeJson
 }
 
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
@@ -89,8 +89,8 @@ type myEndpoint struct {
 	MyIntParam    int                  `spiderweb:"path=num"`
 	MyFlagParam   bool                 `spiderweb:"path=flag"`
 	MyDatabase    *myDbClient          `spiderweb:"resource=db"`
-	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=test,validate"`
-	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *myEndpoint) Handle(ctx *Context) (int, error) {
@@ -146,20 +146,13 @@ func createTestEndpoint() *Endpoint {
 	}
 
 	config := Config{
-		LogConfig:         logging.NewConfig(logging.LevelFatal, map[string]interface{}{}),
+		LogConfig:         logging.NewConfig(logging.LevelError, map[string]interface{}{}),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
 		ResponseValidator: myResponseValidator{},
 		MimeTypeHandlers: map[string]MimeTypeHandler{
-			"test": MimeTypeHandler{
-				Marshal: func(v interface{}) ([]byte, error) {
-					return json.Marshal(v)
-				},
-				Unmarshal: func(data []byte, v interface{}) error {
-					return json.Unmarshal(data, v)
-				},
-			},
+			"application/json": jsonHandler(),
 		},
 		Resources: map[string]ResourceFunc{
 			"db": func() interface{} {
@@ -179,6 +172,8 @@ func newTestContext() *Context {
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set(fasthttp.HeaderUserAgent, "")
 	req.Header.Set("Authorization", "auth-token")
+	req.Header.SetContentType("application/json")
+	req.Header.Set("Accept", "application/json")
 	req.SetBody([]byte(`{"my_string": "hello", "my_int": 5}`))
 
 	requestCtx := fasthttp.RequestCtx{}
@@ -188,7 +183,7 @@ func newTestContext() *Context {
 	requestCtx.SetUserValue("num", "5")
 	requestCtx.SetUserValue("flag", "true")
 
-	logConfig := logging.NewConfig(logging.LevelFatal, map[string]interface{}{})
+	logConfig := logging.NewConfig(logging.LevelError, map[string]interface{}{})
 	return NewContext(context.Background(), &requestCtx, logging.NewLogger(logConfig), 30*time.Second)
 }
 

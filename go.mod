@@ -1,19 +1,21 @@
 module github.com/wspowell/spiderweb
 
-go 1.15
+go 1.16
 
 require (
-	github.com/fasthttp/router v1.3.2
+	github.com/fasthttp/router v1.3.9
 	github.com/google/gofuzz v1.2.0
-	github.com/kr/text v0.2.0 // indirect
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/klauspost/compress v1.11.12 // indirect
+	github.com/onsi/ginkgo v1.8.0 // indirect
+	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.6.0
-	github.com/stretchr/testify v1.6.1 // indirect
-	github.com/valyala/fasthttp v1.16.0
+	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/valyala/fasthttp v1.22.0
 	github.com/wspowell/local v0.0.3
-	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
-	gotest.tools/gotestsum v0.6.0 // indirect
+	golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 // indirect
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
+	gotest.tools v2.1.0+incompatible // indirect
+	gotest.tools/gotestsum v1.6.2 // indirect
 )

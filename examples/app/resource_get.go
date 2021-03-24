@@ -10,7 +10,7 @@ import (
 type GetResource struct {
 	Test         string
 	ResourceId   int                  `spiderweb:"path=id"`
-	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *GetResource) Handle(ctx *endpoint.Context) (int, error) {

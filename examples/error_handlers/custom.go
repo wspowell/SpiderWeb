@@ -34,7 +34,7 @@ type ErrorJsonWithCodeResponse struct {
 }
 
 func (self ErrorJsonWithCodeResponse) MimeType() string {
-	return endpoint.MimeTypeJson
+	return "application/json"
 }
 
 func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, []byte) {

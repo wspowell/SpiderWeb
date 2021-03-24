@@ -8,17 +8,19 @@ import (
 
 	"github.com/wspowell/spiderweb"
 
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 	"github.com/valyala/fasthttp"
 )
 
 type requestTestCase struct {
-	httpMethod  string
-	path        string
-	requestBody []byte
+	httpMethod      string
+	path            string
+	requestMimeType string
+	requestBody     []byte
 
-	httpStatus   int
-	responseBody []byte
+	httpStatus       int
+	responseMimeType string
+	responseBody     []byte
 }
 
 // GivenRequest starts a request test case to be provided to TestRequest.
@@ -31,14 +33,16 @@ func GivenRequest(httpMethod string, path string) *requestTestCase {
 
 // WithRequestBody sets a request body for the request test case.
 // This is optional.
-func (self *requestTestCase) WithRequestBody(requestBody []byte) *requestTestCase {
+func (self *requestTestCase) WithRequestBody(mimeType string, requestBody []byte) *requestTestCase {
+	self.requestMimeType = mimeType
 	self.requestBody = requestBody
 	return self
 }
 
 // Expect the response to match the given status and body.
-func (self *requestTestCase) Expect(httpStatus int, responseBody []byte) *requestTestCase {
+func (self *requestTestCase) Expect(httpStatus int, mimeType string, responseBody []byte) *requestTestCase {
 	self.httpStatus = httpStatus
+	self.responseMimeType = mimeType
 	self.responseBody = responseBody
 	return self
 }
@@ -52,11 +56,13 @@ func TestRequest(t *testing.T, server spiderweb.Server, testCase *requestTestCas
 	copy(copyResponseBody, testCase.responseBody)
 
 	copyRequestTestCase := requestTestCase{
-		httpMethod:   testCase.httpMethod,
-		path:         testCase.path,
-		requestBody:  copyRequestBody,
-		httpStatus:   testCase.httpStatus,
-		responseBody: copyResponseBody,
+		httpMethod:       testCase.httpMethod,
+		path:             testCase.path,
+		requestMimeType:  testCase.requestMimeType,
+		requestBody:      copyRequestBody,
+		httpStatus:       testCase.httpStatus,
+		responseMimeType: testCase.responseMimeType,
+		responseBody:     copyResponseBody,
 	}
 
 	var req fasthttp.Request
@@ -64,6 +70,8 @@ func TestRequest(t *testing.T, server spiderweb.Server, testCase *requestTestCas
 	req.Header.SetMethod(copyRequestTestCase.httpMethod)
 	req.Header.SetRequestURI(copyRequestTestCase.path)
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
+	req.Header.Set("Content-Type", copyRequestTestCase.requestMimeType)
+	req.Header.Set("Accept", copyRequestTestCase.responseMimeType)
 	req.SetBody(copyRequestTestCase.requestBody)
 
 	requestCtx := fasthttp.RequestCtx{}

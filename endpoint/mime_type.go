@@ -8,19 +8,36 @@ import (
 const (
 	structTagMimeType = "mime"
 
-	structTagMimeTypeJson = "json"
+	mimeTypeJson = "application/json"
 
-	MimeTypeJson = "application/json; charset=utf-8"
+	mimeTypeSeparator = ";"
 )
 
 type Marshaler func(v interface{}) ([]byte, error)
 type Unmarshaler func(data []byte, v interface{}) error
 
+type MimeTypeHandlers map[string]MimeTypeHandler
+
+// Get the MIME type handler for the request content type as well as checking that it is supported by the endpoint.
+func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (MimeTypeHandler, bool) {
+	// Check if the MIME type handler exists at all.
+	if handler, exists := m[string(contentType)]; exists {
+		// Now check if the MIME type is in the given list of supported types.
+		for _, supportedMimeType := range supportedMimeTypes {
+			if _, exists := m[supportedMimeType]; exists {
+				return handler, true
+			}
+		}
+	}
+
+	return MimeTypeHandler{}, false
+}
+
 // registerKnownMimeTypes but only if they do not already exist.
 // Allows for handler overrides.
 func registerKnownMimeTypes(mimeTypes map[string]MimeTypeHandler) {
-	if _, exists := mimeTypes[structTagMimeTypeJson]; !exists {
-		mimeTypes[structTagMimeTypeJson] = jsonHandler()
+	if _, exists := mimeTypes[mimeTypeJson]; !exists {
+		mimeTypes[mimeTypeJson] = jsonHandler()
 	}
 }
 
@@ -34,7 +51,7 @@ type MimeTypeHandler struct {
 
 func jsonHandler() MimeTypeHandler {
 	return MimeTypeHandler{
-		MimeType:  MimeTypeJson,
+		MimeType:  mimeTypeJson,
 		Marshal:   jsonMarshal,
 		Unmarshal: jsonUnmarshal,
 	}

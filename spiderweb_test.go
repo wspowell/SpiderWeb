@@ -26,8 +26,8 @@ type myResponseBodyModel struct {
 
 type myEndpoint struct {
 	Test         string
-	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=json,validate"`
-	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	RequestBody  *myRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {

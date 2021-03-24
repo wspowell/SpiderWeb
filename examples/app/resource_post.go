@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/errors"
-	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type PostResource struct {
 	Test         string
-	RequestBody  *MyRequestBodyModel  `spiderweb:"request,mime=json,validate"`
-	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	RequestBody  *MyRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *PostResource) Handle(ctx *endpoint.Context) (int, error) {

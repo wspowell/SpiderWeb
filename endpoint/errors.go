@@ -15,15 +15,22 @@ var (
 	ErrorPanic = wrapFrameworkError("internal server error")
 
 	ErrorRequestTimeout              = wrapFrameworkError("request timeout")
-	ErrorRequestUnknownMimeType      = wrapFrameworkError("unknown request MIME type")
+	ErrorRequestUnsupportedMimeType  = wrapFrameworkError("unsupported request MIME type")
 	ErrorRequestBodyReadFailure      = wrapFrameworkError("request body read failure")
 	ErrorRequestBodyUnmarshalFailure = wrapFrameworkError("request body unmarshal failure")
 	ErrorRequestValidationError      = wrapFrameworkError("request validation error")
 
-	ErrorResponseBodyMarshalFailure = wrapFrameworkError("response body marshal failure")
-	ErrorResponseBodyMissing        = wrapFrameworkError("missing response body")
-	ErrorResponseBodyNull           = wrapFrameworkError("response body null")
-	ErrorResponseUnknownMimeType    = wrapFrameworkError("unknown response MIME type")
+	ErrorResponseBodyMarshalFailure  = wrapFrameworkError("response body marshal failure")
+	ErrorResponseBodyMissing         = wrapFrameworkError("missing response body")
+	ErrorResponseBodyNull            = wrapFrameworkError("response body null")
+	ErrorResponseUnsupportedMimeType = wrapFrameworkError("unsupported response MIME type")
+)
+
+const (
+	InternalCodeRequestMimeTypeMissing      = "SW1"
+	InternalCodeRequestMimeTypeUnsupported  = "SW2"
+	InternalCodeResponseMimeTypeUnsupported = "SW3"
+	InternalCodeResponseMimeTypeMissing     = "SW4"
 )
 
 func wrapFrameworkError(message string) error {

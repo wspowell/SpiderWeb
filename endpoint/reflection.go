@@ -51,8 +51,8 @@ type handlerTypeData struct {
 	shouldValidateRequest  bool
 	shouldValidateResponse bool
 
-	requestMimeType  string
-	responseMimeType string
+	requestMimeTypes  []string
+	responseMimeTypes []string
 
 	resources       map[string]resourceTypeData
 	pathParameters  map[string]int
@@ -72,10 +72,10 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var responseFieldNum int
 	var shouldValidateRequest bool
 	var shouldValidateResponse bool
-	var requestMimeType string
-	var responseMimeType string
 	var hasRequest bool
 	var hasResponse bool
+	requestMimeTypes := []string{}
+	responseMimeTypes := []string{}
 	resources := map[string]resourceTypeData{}
 	pathParameters := map[string]int{}
 	queryParameters := map[string]int{}
@@ -94,7 +94,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		if tagValue, exists := structField.Tag.Lookup(structTagKey); exists {
 			tagValueParts := strings.Split(tagValue, ",")
 
-			var mimeType string
+			mimeTypes := []string{}
 
 			for n := 0; n < len(tagValueParts); n++ {
 				tagValuePart := tagValueParts[n]
@@ -102,7 +102,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				// Detect mime type.
 				if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
 					mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
-					mimeType = mimeTagValue[1]
+					mimeTypes = strings.Split(mimeTagValue[1], mimeTypeSeparator)
 					break
 				}
 
@@ -140,7 +140,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				requestFieldNum = i
 				isRequestPtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateRequest = hasStructTagOption(tagValue, structTagOptionValidate)
-				requestMimeType = mimeType
+				requestMimeTypes = mimeTypes
 				hasRequest = structFieldValue.IsValid()
 				requestBodyType = structFieldValue.Type()
 			case structTagValueResponse:
@@ -148,7 +148,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				responseFieldNum = i
 				isResponsePtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateResponse = hasStructTagOption(tagValue, structTagOptionValidate)
-				responseMimeType = mimeType
+				responseMimeTypes = mimeTypes
 				hasResponse = structFieldValue.IsValid()
 				responseBodyType = structFieldValue.Type()
 			}
@@ -169,8 +169,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		responseFieldNum:       responseFieldNum,
 		shouldValidateRequest:  shouldValidateRequest,
 		shouldValidateResponse: shouldValidateResponse,
-		requestMimeType:        requestMimeType,
-		responseMimeType:       responseMimeType,
+		requestMimeTypes:       requestMimeTypes,
+		responseMimeTypes:      responseMimeTypes,
 		hasRequest:             hasRequest,
 		hasResponse:            hasResponse,
 		resources:              resources,
