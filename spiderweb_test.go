@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/errors"
 	"github.com/wspowell/spiderweb/examples/auth"
 	"github.com/wspowell/spiderweb/examples/error_handlers"
 	"github.com/wspowell/spiderweb/examples/validators"

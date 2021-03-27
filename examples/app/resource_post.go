@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wspowell/errors"
 	"github.com/wspowell/local"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/errors"
 	"github.com/wspowell/spiderweb/profiling"
 )
 

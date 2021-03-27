@@ -3,7 +3,7 @@ package endpoint
 import (
 	"fmt"
 
-	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/errors"
 )
 
 // All errors emitted by endpoint.

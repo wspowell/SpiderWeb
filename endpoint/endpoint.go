@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/logging"
 	"github.com/wspowell/spiderweb/profiling"
 )

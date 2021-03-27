@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/errors"
 )
 
 type ErrorWithCodes struct {
-	Code         string
-	InternalCode string
-	Message      string
+	Code    string
+	Message string
 }
 
 func NewErrorWithCodes(code string, message string) error {
@@ -46,38 +45,34 @@ func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpSta
 			return httpStatus, nil
 		} else if httpStatus == http.StatusBadRequest {
 			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
-				Code:         "BAD_REQUEST",
-				InternalCode: "APP0002",
-				Message:      "bad request",
+				Code:    "BAD_REQUEST",
+				Message: "bad request",
 			})
 		} else {
 			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
-				Code:         "INTERNAL_ERROR",
-				InternalCode: "APP0000",
-				Message:      "internal server error",
+				Code:    "INTERNAL_ERROR",
+				Message: "internal server error",
 			})
 		}
 	} else {
 		var myErr ErrorWithCodes
 		if errors.As(err, &myErr) {
 			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-				Code:         myErr.Code,
-				InternalCode: errors.InternalCode(err),
-				Message:      myErr.Message,
+				Code:    myErr.Code,
+				Message: myErr.Message,
 			})
 		} else {
 			// Catch anything not using ErrorWithCodes.
 			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-				Code:         "INTERNAL_ERROR",
-				InternalCode: errors.InternalCode(err),
-				Message:      err.Error(),
+				Code:    "INTERNAL_ERROR",
+				Message: err.Error(),
 			})
 		}
 	}
 	if responseErr != nil {
 		// Provide a valid default for responding.
 		httpStatus = http.StatusInternalServerError
-		errorBytes = []byte(`{"code":"INTERNAL_ERROR","internal_code":"APP0001","message":"internal server error"}`)
+		errorBytes = []byte(`{"code":"INTERNAL_ERROR","message":"internal server error"}`)
 	}
 
 	return httpStatus, errorBytes

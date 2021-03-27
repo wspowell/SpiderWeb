@@ -8,15 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wspowell/spiderweb/errors"
+	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/logging"
 
 	"github.com/valyala/fasthttp"
 )
 
 type errorResponse struct {
-	InternalCode string `json:"internal_code"`
-	Message      string `json:"message"`
+	Message string `json:"message"`
 }
 
 type myErrorHandler struct{}
@@ -26,14 +25,8 @@ func (self myErrorHandler) MimeType() string {
 }
 
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
-	if HasFrameworkError(err) {
-		ctx.Error("internal error: %v", err)
-		err = errors.New("AP0000", "internal server error")
-	}
-
 	responseBodyBytes, _ := json.Marshal(errorResponse{
-		InternalCode: errors.InternalCode(err),
-		Message:      err.Error(),
+		Message: fmt.Sprintf("%#v", err.Error()),
 	})
 
 	return httpStatus, responseBodyBytes
@@ -232,10 +225,6 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 	var responseBody errorResponse
 	if err := json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
 		t.Errorf("failed to unmarshal test response: %v", err)
-	}
-
-	if "APP1234" != responseBody.InternalCode {
-		t.Errorf("expected 'internal_code' to be %v, but got %v", "APP1234", responseBody.InternalCode)
 	}
 
 	if "invalid input" != responseBody.Message {
