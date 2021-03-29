@@ -7,8 +7,8 @@ import (
 
 type testEndpointReqPtrResVal struct {
 	Test         string
-	RequestBody  *myRequestBodyModel `spiderweb:"request,mime=json,validate"`
-	ResponseBody myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	RequestBody  *myRequestBodyModel `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *testEndpointReqPtrResVal) Handle(ctx *Context) (int, error) {
@@ -62,7 +62,7 @@ func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
 
 type testEndpointNoReqResVal struct {
 	Test         string
-	ResponseBody myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *testEndpointNoReqResVal) Handle(ctx *Context) (int, error) {
@@ -107,7 +107,7 @@ func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
 
 type testEndpointReqValResPtr struct {
 	Test         string
-	ResponseBody myResponseBodyModel `spiderweb:"response,mime=json,validate"`
+	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *testEndpointReqValResPtr) Handle(ctx *Context) (int, error) {
