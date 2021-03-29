@@ -8,6 +8,6 @@ import (
 
 type Noop struct{}
 
-func (self Noop) Auth(ctx *endpoint.Context, headers map[string][]byte) (int, error) {
+func (self Noop) Auth(ctx *endpoint.Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
 	return http.StatusOK, nil
 }

@@ -2,7 +2,6 @@ package endpoint
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -101,7 +100,7 @@ func NewEndpoint(config Config, handler Handler) *Endpoint {
 func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte) {
 	defer func() {
 		if err := recover(); err != nil {
-			ctx.Error("panic: %+v", errors.New("ERROR", fmt.Sprintf("%+v", err)))
+			ctx.Error("panic: %+v", errors.New("ERROR", "%+v", err))
 			ctx.requestCtx.SetContentType(self.Config.ErrorHandler.MimeType())
 			httpStatus, responseBody = self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, ErrorPanic)
 		}
@@ -160,7 +159,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			headers[string(key)] = value
 		})
 
-		httpStatus, err = self.Config.Auther.Auth(ctx, headers)
+		httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
 		authTimer.Finish()
 		if err != nil {
 			ctx.requestCtx.SetContentType(responseMimeType.MimeType)

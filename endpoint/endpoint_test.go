@@ -34,10 +34,11 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 
 type myAuther struct{}
 
-func (self myAuther) Auth(ctx *Context, headers map[string][]byte) (int, error) {
-	for key, value := range headers {
-		ctx.Info("%v:%v", key, string(value))
-	}
+func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
+	VisitAllHeaders(func(key, value []byte) {
+		ctx.Info("%v:%v", string(key), string(value))
+	})
+
 	return http.StatusOK, nil
 }
 
