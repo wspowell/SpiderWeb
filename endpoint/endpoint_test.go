@@ -26,7 +26,7 @@ func (self myErrorHandler) MimeType() string {
 
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
 	responseBodyBytes, _ := json.Marshal(errorResponse{
-		Message: fmt.Sprintf("%#v", err.Error()),
+		Message: fmt.Sprintf("%#v", err),
 	})
 
 	return httpStatus, responseBodyBytes
@@ -177,7 +177,7 @@ func newTestContext() *Context {
 	requestCtx.SetUserValue("flag", "true")
 
 	logConfig := logging.NewConfig(logging.LevelError, map[string]interface{}{})
-	return NewContext(context.Background(), &requestCtx, logging.NewLogger(logConfig), 30*time.Second)
+	return NewContext(context.Background(), &requestCtx, logging.NewLog(logConfig), 30*time.Second)
 }
 
 func Test_Endpoint_Default_Success(t *testing.T) {
@@ -227,7 +227,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 		t.Errorf("failed to unmarshal test response: %v", err)
 	}
 
-	if "invalid input" != responseBody.Message {
-		t.Errorf("expected 'message' to be %v, but got %v", "invalid input", responseBody.Message)
+	if "[APP1234] invalid input" != responseBody.Message {
+		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1234] invalid input", responseBody.Message)
 	}
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -12,11 +13,19 @@ import (
 	"github.com/wspowell/spiderweb/logging"
 )
 
+type NoopLogConfig struct {
+	*logging.Config
+}
+
+func (self *NoopLogConfig) Out() io.Writer {
+	return io.Discard
+}
+
 func SetupServer() spiderweb.Server {
 	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
 		Auther:            auth.Noop{},
 		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
-		LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		LogConfig:         &NoopLogConfig{logging.NewConfig(logging.LevelDebug, map[string]interface{}{})},
 		MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
 		RequestValidator:  validators.NoopRequest{},
 		ResponseValidator: validators.NoopResponse{},

@@ -67,7 +67,7 @@ func (self *timing) Finish() {
 	}
 }
 
-func printTimers(logger logging.Loggerer, timer *timing, paddingSize int) {
+func printTimers(logger logging.Logger, timer *timing, paddingSize int) {
 	var padding string
 	for i := 0; i < paddingSize; i++ {
 		padding += " "

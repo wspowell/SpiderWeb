@@ -31,7 +31,7 @@ var (
 // Config defines the behavior of an endpoint.
 // Endpoint behavior is interface driven and can be completely modified by an application.
 type Config struct {
-	LogConfig         logging.Configurer
+	LogConfig         logging.Configer
 	ErrorHandler      ErrorHandler
 	Auther            Auther
 	RequestValidator  RequestValidator
@@ -42,10 +42,10 @@ type Config struct {
 }
 
 // Clone the Config.
-// This is necessary because MimeTypeHandlers is a map and there a reference.
+// This is necessary because MimeTypeHandlers is a map and therefore a reference.
 func (self Config) Clone() Config {
 	return Config{
-		LogConfig:         self.LogConfig.Clone(),
+		LogConfig:         self.LogConfig,
 		ErrorHandler:      self.ErrorHandler,
 		Auther:            self.Auther,
 		RequestValidator:  self.RequestValidator,

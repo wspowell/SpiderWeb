@@ -50,7 +50,7 @@ func (self *ServerConfig) Handle(httpMethod string, path string, handler endpoin
 type Server struct {
 	serverConfig *ServerConfig
 
-	logger *logging.Logger
+	logger logging.Logger
 	server *fasthttp.Server
 	router *router.Router
 
@@ -60,7 +60,7 @@ type Server struct {
 
 // NewServer sets up a new server.
 func NewServer(serverConfig *ServerConfig) Server {
-	logger := logging.NewLogger(serverConfig.endpointConfig.LogConfig)
+	logger := logging.NewLog(serverConfig.endpointConfig.LogConfig)
 
 	httpServer := &fasthttp.Server{}
 	httpServer.Logger = logger
@@ -171,7 +171,7 @@ func wrapFasthttpHandler(serverContext context.Context, builder *endpointBuilder
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
-		logger := logging.NewLogger(builder.routeEndpoint.Config.LogConfig)
+		logger := logging.NewLog(builder.routeEndpoint.Config.LogConfig)
 		logger.Tag("request_id", fasthttpCtx.ID())
 		logger.Tag("route", builder.httpMethod+" "+builder.path)
 
