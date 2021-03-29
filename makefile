@@ -13,5 +13,5 @@ fuzz: FUZZ=true
 fuzz: test
 
 bench: build
-	go test  -bench=. -benchmem -count=1 -parallel 8 -cpu 8 -race ./spiderwebtest
-	go test  -bench=. -benchmem -count=1 -parallel 8 -cpu 8 -race -tags release ./spiderwebtest
+	go test -bench=. -benchmem -count=1 -parallel 8 -cpu 8 -race ./...
+	go test -bench=. -benchmem -count=1 -parallel 8 -cpu 8 -race -tags release ./...
