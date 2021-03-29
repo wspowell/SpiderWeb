@@ -154,11 +154,6 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	{
 		authTimer := profiling.Profile(ctx, "Auth")
 
-		headers := make(map[string][]byte, ctx.Request().Header.Len())
-		ctx.Request().Header.VisitAll(func(key []byte, value []byte) {
-			headers[string(key)] = value
-		})
-
 		httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
 		authTimer.Finish()
 		if err != nil {
