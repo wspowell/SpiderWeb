@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/wspowell/errors"
-	"github.com/wspowell/spiderweb/logging"
+	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/profiling"
 )
 

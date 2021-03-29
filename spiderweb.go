@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/logging"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/wspowell/errors"
-	"github.com/wspowell/spiderweb/logging"
+	"github.com/wspowell/logging"
 
 	"github.com/valyala/fasthttp"
 )

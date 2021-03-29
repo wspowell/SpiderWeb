@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/wspowell/local"
-	"github.com/wspowell/spiderweb/logging"
+	"github.com/wspowell/logging"
 )
 
 type contextKey struct{}

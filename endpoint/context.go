@@ -6,7 +6,7 @@ import (
 
 	"github.com/wspowell/errors"
 	"github.com/wspowell/local"
-	"github.com/wspowell/spiderweb/logging"
+	"github.com/wspowell/logging"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
