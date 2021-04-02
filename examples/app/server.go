@@ -21,21 +21,31 @@ func (self *NoopLogConfig) Out() io.Writer {
 	return io.Discard
 }
 
-func SetupServer() spiderweb.Server {
-	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
+func SetupServer() *spiderweb.Server {
+	serverConfig := &spiderweb.ServerConfig{
+		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	server := spiderweb.NewServer(serverConfig)
+
+	endpointConfig := &endpoint.Config{
 		Auther:            auth.Noop{},
 		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
 		LogConfig:         &NoopLogConfig{logging.NewConfig(logging.LevelDebug, map[string]interface{}{})},
-		MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
+		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  validators.NoopRequest{},
 		ResponseValidator: validators.NoopResponse{},
 		Timeout:           30 * time.Second,
-	})
+	}
 
-	serverConfig.Handle(http.MethodPost, "/resources", &PostResource{})
-	serverConfig.Handle(http.MethodGet, "/resources/{id}", &GetResource{})
+	server.Handle(endpointConfig, http.MethodPost, "/resources", &PostResource{})
+	server.Handle(endpointConfig, http.MethodGet, "/resources/{id}", &GetResource{})
 
-	return spiderweb.NewServer(serverConfig)
+	return server
 }
 
 func swaggerSpec() []byte {

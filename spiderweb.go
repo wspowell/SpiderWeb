@@ -19,31 +19,11 @@ import (
 // ServerConfig top level options.
 // These options can be altered per endpoint, if desired.
 type ServerConfig struct {
-	// EndpointConfig is the base config and is passed to all endpoints.
-	// All configuration options can be altered per endpoint at setup time.
-	endpointConfig   endpoint.Config
-	host             string
-	port             int
-	endpointBuilders []*endpointBuilder
-}
-
-// NewServerConfig defines server and endpoint behavior.
-func NewServerConfig(host string, port int, endpointConfig endpoint.Config) *ServerConfig {
-	return &ServerConfig{
-		endpointConfig:   endpointConfig,
-		host:             host,
-		port:             port,
-		endpointBuilders: []*endpointBuilder{},
-	}
-}
-
-// Handle the given route to the provided endpoint handler.
-// This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
-func (self *ServerConfig) Handle(httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
-	builder := newEndpointBuilder(self, httpMethod, path, handler)
-	self.endpointBuilders = append(self.endpointBuilders, builder)
-
-	return builder
+	Host         string
+	Port         int
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	LogConfig    logging.Configer
 }
 
 // Server listens for incoming requests and routes them to the registered endpoint handlers.
@@ -59,20 +39,20 @@ type Server struct {
 }
 
 // NewServer sets up a new server.
-func NewServer(serverConfig *ServerConfig) Server {
-	logger := logging.NewLog(serverConfig.endpointConfig.LogConfig)
+func NewServer(serverConfig *ServerConfig) *Server {
+	logger := logging.NewLog(serverConfig.LogConfig)
 
 	httpServer := &fasthttp.Server{}
 	httpServer.Logger = logger
-	httpServer.ReadTimeout = time.Duration(serverConfig.endpointConfig.Timeout) * time.Second
-	httpServer.WriteTimeout = time.Duration(serverConfig.endpointConfig.Timeout) * time.Second
+	httpServer.ReadTimeout = serverConfig.ReadTimeout
+	httpServer.WriteTimeout = serverConfig.WriteTimeout
 
-	serverContext, shutdownComplete := serverContext(httpServer)
+	serverContext, shutdownComplete := newServerContext(httpServer)
 
 	router := router.New()
 	router.SaveMatchedRoutePath = true
 
-	server := Server{
+	server := &Server{
 		serverConfig: serverConfig,
 
 		logger: logger,
@@ -83,25 +63,20 @@ func NewServer(serverConfig *ServerConfig) Server {
 		shutdownComplete: shutdownComplete,
 	}
 
-	server.finalizeEndpoints()
-
 	return server
 }
 
-func (self Server) finalizeEndpoints() {
-	for _, builder := range self.serverConfig.endpointBuilders {
-		httpMethod := builder.httpMethod
-		path := builder.path
-		handler := wrapFasthttpHandler(self.serverContext, builder)
-
-		self.router.Handle(httpMethod, path, handler)
-	}
+// Handle the given route to the provided endpoint handler.
+// This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
+func (self *Server) Handle(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) {
+	wrappedHandler := self.wrapFasthttpHandler(self.serverContext, endpointConfig, httpMethod, path, handler)
+	self.router.Handle(httpMethod, path, wrappedHandler)
 }
 
-// serverContext will be canceled when the process receives an interrupt.
+// newServerContext that will be canceled when the process receives an interrupt.
 // This should be propagated to all running requests and goroutines in
 // order to shutdown gracefully.
-func serverContext(server *fasthttp.Server) (context.Context, <-chan bool) {
+func newServerContext(server *fasthttp.Server) (context.Context, <-chan bool) {
 	shutdownComplete := make(chan bool, 1)
 	shutdown := make(chan os.Signal, 1)
 
@@ -155,7 +130,7 @@ func (self *Server) listenForever() {
 
 	self.server.Handler = self.router.Handler
 
-	listenAddress := fmt.Sprintf("%s:%d", self.serverConfig.host, self.serverConfig.port)
+	listenAddress := fmt.Sprintf("%s:%d", self.serverConfig.Host, self.serverConfig.Port)
 	if err := self.server.ListenAndServe(listenAddress); err != nil {
 		self.logger.Fatal("server failed: %v", err)
 	}
@@ -167,17 +142,24 @@ func (self *Server) listenForever() {
 	self.logger.Info("server stopped")
 }
 
-func wrapFasthttpHandler(serverContext context.Context, builder *endpointBuilder) fasthttp.RequestHandler {
+func (self *Server) wrapFasthttpHandler(serverContext context.Context, endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
-		logger := logging.NewLog(builder.routeEndpoint.Config.LogConfig)
+		// Every invocation of an endpoint is guaranteed to get its own logger instance.
+		var logger logging.Logger
+		if endpointConfig != nil {
+			logger = logging.NewLog(endpointConfig.LogConfig)
+		} else {
+			logger = logging.NewLog(self.serverConfig.LogConfig)
+		}
 		logger.Tag("request_id", fasthttpCtx.ID())
-		logger.Tag("route", builder.httpMethod+" "+builder.path)
+		logger.Tag("route", httpMethod+" "+path)
 
-		// Note: The endpoint context must receive the same timeout as the handler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(serverContext, fasthttpCtx, logger, builder.routeEndpoint.Config.Timeout)
-		httpStatus, responseBody := builder.routeEndpoint.Execute(ctx)
+		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
+		ctx := endpoint.NewContext(serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
+		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
 		fasthttpCtx.SetStatusCode(httpStatus)
 		fasthttpCtx.SetBody(responseBody)
@@ -185,55 +167,5 @@ func wrapFasthttpHandler(serverContext context.Context, builder *endpointBuilder
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
 		fasthttpCtx.Response.SetConnectionClose()
-	}, builder.routeEndpoint.Config.Timeout, "", http.StatusRequestTimeout)
-}
-
-type endpointBuilder struct {
-	httpMethod    string
-	path          string
-	routeEndpoint *endpoint.Endpoint
-}
-
-func newEndpointBuilder(serverConfig *ServerConfig, httpMethod string, path string, handler endpoint.Handler) *endpointBuilder {
-	return &endpointBuilder{
-		httpMethod:    httpMethod,
-		path:          path,
-		routeEndpoint: endpoint.NewEndpoint(serverConfig.endpointConfig.Clone(), handler),
-	}
-}
-
-// WithErrorHandling overrides the root ErrorHandler for this endpoint.
-func (self *endpointBuilder) WithErrorHandling(errorHandler endpoint.ErrorHandler) *endpointBuilder {
-	self.routeEndpoint.Config.ErrorHandler = errorHandler
-	return self
-}
-
-// WithAuth overrides the root Auth for this endpoint.
-func (self *endpointBuilder) WithAuth(auther endpoint.Auther) *endpointBuilder {
-	self.routeEndpoint.Config.Auther = auther
-	return self
-}
-
-// WithRequestValidation overrides the root RequestValidation for this endpoint.
-func (self *endpointBuilder) WithRequestValidation(requestValidator endpoint.RequestValidator) *endpointBuilder {
-	self.routeEndpoint.Config.RequestValidator = requestValidator
-	return self
-}
-
-// WithResponseValidation overrides the root ResponseValidation for this endpoint.
-func (self *endpointBuilder) WithResponseValidation(responseValidator endpoint.ResponseValidator) *endpointBuilder {
-	self.routeEndpoint.Config.ResponseValidator = responseValidator
-	return self
-}
-
-// WithMimeType overrides the root MimeTypeHandler for the mime type for this endpoint.
-func (self *endpointBuilder) WithMimeType(mimeType string, handler endpoint.MimeTypeHandler) *endpointBuilder {
-	self.routeEndpoint.Config.MimeTypeHandlers[mimeType] = handler
-	return self
-}
-
-// WithTimeout overrides the root Timeout for this endpoint.
-func (self *endpointBuilder) WithTimeout(timeout time.Duration, errorMessage string) *endpointBuilder {
-	self.routeEndpoint.Config.Timeout = timeout
-	return self
+	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
 }

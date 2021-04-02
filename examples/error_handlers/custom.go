@@ -2,7 +2,6 @@ package error_handlers
 
 import (
 	"encoding/json"
-	"net/http"
 
 	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/endpoint"
@@ -38,41 +37,19 @@ func (self ErrorJsonWithCodeResponse) MimeType() string {
 
 func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, []byte) {
 	var errorBytes []byte
-	var responseErr error
 
-	if endpoint.HasFrameworkError(err) {
-		if errors.Is(err, endpoint.ErrorRequestTimeout) {
-			return httpStatus, nil
-		} else if httpStatus == http.StatusBadRequest {
-			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
-				Code:    "BAD_REQUEST",
-				Message: "bad request",
-			})
-		} else {
-			errorBytes, responseErr = json.Marshal(ErrorWithCodes{
-				Code:    "INTERNAL_ERROR",
-				Message: "internal server error",
-			})
-		}
+	var myErr ErrorWithCodes
+	if errors.As(err, &myErr) {
+		errorBytes, _ = json.Marshal(ErrorJsonWithCodeResponse{
+			Code:    myErr.Code,
+			Message: myErr.Message,
+		})
 	} else {
-		var myErr ErrorWithCodes
-		if errors.As(err, &myErr) {
-			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-				Code:    myErr.Code,
-				Message: myErr.Message,
-			})
-		} else {
-			// Catch anything not using ErrorWithCodes.
-			errorBytes, responseErr = json.Marshal(ErrorJsonWithCodeResponse{
-				Code:    "INTERNAL_ERROR",
-				Message: err.Error(),
-			})
-		}
-	}
-	if responseErr != nil {
-		// Provide a valid default for responding.
-		httpStatus = http.StatusInternalServerError
-		errorBytes = []byte(`{"code":"INTERNAL_ERROR","message":"internal server error"}`)
+		// Catch anything not using ErrorWithCodes.
+		errorBytes, _ = json.Marshal(ErrorJsonWithCodeResponse{
+			Code:    "INTERNAL_ERROR",
+			Message: err.Error(),
+		})
 	}
 
 	return httpStatus, errorBytes

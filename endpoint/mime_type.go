@@ -8,7 +8,8 @@ import (
 const (
 	structTagMimeType = "mime"
 
-	mimeTypeJson = "application/json"
+	mimeTypeJson      = "application/json"
+	mimeTypeTextPlain = "text/plain"
 
 	mimeTypeSeparator = ";"
 )
@@ -17,6 +18,13 @@ type Marshaler func(v interface{}) ([]byte, error)
 type Unmarshaler func(data []byte, v interface{}) error
 
 type MimeTypeHandlers map[string]MimeTypeHandler
+
+func NewMimeTypeHandlers() MimeTypeHandlers {
+	// Set default handlers.
+	return MimeTypeHandlers{
+		mimeTypeJson: jsonHandler(),
+	}
+}
 
 // Get the MIME type handler for the request content type as well as checking that it is supported by the endpoint.
 func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (MimeTypeHandler, bool) {
@@ -31,14 +39,6 @@ func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (
 	}
 
 	return MimeTypeHandler{}, false
-}
-
-// registerKnownMimeTypes but only if they do not already exist.
-// Allows for handler overrides.
-func registerKnownMimeTypes(mimeTypes map[string]MimeTypeHandler) {
-	if _, exists := mimeTypes[mimeTypeJson]; !exists {
-		mimeTypes[mimeTypeJson] = jsonHandler()
-	}
 }
 
 // MimeTypeHandler defines how a mime type is used.

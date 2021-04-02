@@ -48,7 +48,7 @@ func (self *requestTestCase) Expect(httpStatus int, mimeType string, responseBod
 }
 
 // TestRequest for request/response roundtrip.
-func TestRequest(t *testing.T, server spiderweb.Server, testCase *requestTestCase) {
+func TestRequest(t *testing.T, server *spiderweb.Server, testCase *requestTestCase) {
 	copyRequestBody := make([]byte, len(testCase.requestBody))
 	copyResponseBody := make([]byte, len(testCase.responseBody))
 
@@ -90,7 +90,7 @@ func TestRequest(t *testing.T, server spiderweb.Server, testCase *requestTestCas
 	requestFuzzTest(t, server, testCase.httpMethod, testCase.path)
 }
 
-func requestFuzzTest(t *testing.T, server spiderweb.Server, httpMethod string, path string) {
+func requestFuzzTest(t *testing.T, server *spiderweb.Server, httpMethod string, path string) {
 	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
 		return
 	}

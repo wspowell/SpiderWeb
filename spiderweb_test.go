@@ -3,14 +3,12 @@ package spiderweb_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/wspowell/errors"
 	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/examples/auth"
-	"github.com/wspowell/spiderweb/examples/error_handlers"
-	"github.com/wspowell/spiderweb/examples/validators"
 )
 
 type myRequestBodyModel struct {
@@ -46,18 +44,17 @@ func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
 }
 
 func Test_Default_Server_Config(t *testing.T) {
-	serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
-		Auther:            auth.Noop{},
-		ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
-		LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
-		MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
-		RequestValidator:  validators.NoopRequest{},
-		ResponseValidator: validators.NoopResponse{},
-	})
+	serverConfig := &spiderweb.ServerConfig{
+		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
 
-	serverConfig.Handle(http.MethodGet, "/", &myEndpoint{})
+	server := spiderweb.NewServer(serverConfig)
 
-	spiderweb.NewServer(serverConfig)
+	server.Handle(&endpoint.Config{}, http.MethodGet, "/", &myEndpoint{})
 
 	// TODO: Add some checks.
 }

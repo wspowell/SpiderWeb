@@ -35,11 +35,12 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 type myAuther struct{}
 
 func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
+	var statusCode int
 	VisitAllHeaders(func(key, value []byte) {
 		ctx.Info("%v:%v", string(key), string(value))
 	})
 
-	return http.StatusOK, nil
+	return statusCode, nil
 }
 
 type myRequestValidator struct{}
@@ -139,7 +140,7 @@ func createTestEndpoint() *Endpoint {
 		conn: "myconnection",
 	}
 
-	config := Config{
+	config := &Config{
 		LogConfig:         logging.NewConfig(logging.LevelError, map[string]interface{}{}),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
@@ -155,7 +156,23 @@ func createTestEndpoint() *Endpoint {
 		},
 	}
 
-	return NewEndpoint(config.Clone(), &myEndpoint{})
+	return NewEndpoint(config, &myEndpoint{})
+}
+
+func createDefaultTestEndpoint() *Endpoint {
+	dbClient := myDbClient{
+		conn: "myconnection",
+	}
+
+	config := &Config{
+		Resources: map[string]ResourceFunc{
+			"db": func() interface{} {
+				return &dbClient
+			},
+		},
+	}
+
+	return NewEndpoint(config, &myEndpoint{})
 }
 
 func newTestContext() *Context {
@@ -181,7 +198,7 @@ func newTestContext() *Context {
 	return NewContext(context.Background(), &requestCtx, logging.NewLog(logConfig), 30*time.Second)
 }
 
-func Test_Endpoint_Default_Success(t *testing.T) {
+func Test_Endpoint_Success(t *testing.T) {
 	t.Parallel()
 
 	endpoint := createTestEndpoint()
@@ -209,7 +226,35 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 	}
 }
 
-func Test_Endpoint_Default_Error(t *testing.T) {
+func Test_Endpoint_Default_Success(t *testing.T) {
+	t.Parallel()
+
+	endpoint := createDefaultTestEndpoint()
+	ctx := newTestContext()
+
+	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+
+	if http.StatusOK != httpStatus {
+		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
+	}
+
+	fmt.Println(string(responseBodyBytes))
+
+	var responseBody myResponseBodyModel
+	if err := json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
+		t.Errorf("failed to unmarshal test response: %v", err)
+	}
+
+	if "hello" != responseBody.MyString {
+		t.Errorf("expected 'output_string' to be %v, but got %v", "hello", responseBody.MyString)
+	}
+
+	if 5 != responseBody.MyInt {
+		t.Errorf("expected 'output_int' to be %v, but got %v", 5, responseBody.MyInt)
+	}
+}
+
+func Test_Endpoint_Error(t *testing.T) {
 	t.Parallel()
 
 	endpoint := createTestEndpoint()
@@ -230,5 +275,23 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 
 	if "[APP1234] invalid input" != responseBody.Message {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1234] invalid input", responseBody.Message)
+	}
+}
+
+func Test_Endpoint_Default_Error(t *testing.T) {
+	t.Parallel()
+
+	endpoint := createDefaultTestEndpoint()
+	ctx := newTestContext()
+	ctx.Request().SetBody([]byte(`{"my_string": "hello", "my_int": 5, "fail": true}`))
+	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+
+	if http.StatusUnprocessableEntity != httpStatus {
+		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
+	}
+
+	// Default response is text/plain.
+	if "[APP1234] invalid input" != string(responseBodyBytes) {
+		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1234] invalid input", string(responseBodyBytes))
 	}
 }

@@ -29,6 +29,7 @@ var (
 
 // Config defines the behavior of an endpoint.
 // Endpoint behavior is interface driven and can be completely modified by an application.
+// The values in the config must never be modified by an endpoint.
 type Config struct {
 	LogConfig         logging.Configer
 	ErrorHandler      ErrorHandler
@@ -40,59 +41,48 @@ type Config struct {
 	Timeout           time.Duration
 }
 
-// Clone the Config.
-// This is necessary because MimeTypeHandlers is a map and therefore a reference.
-func (self Config) Clone() Config {
-	return Config{
-		LogConfig:         self.LogConfig,
-		ErrorHandler:      self.ErrorHandler,
-		Auther:            self.Auther,
-		RequestValidator:  self.RequestValidator,
-		ResponseValidator: self.ResponseValidator,
-		MimeTypeHandlers:  self.copyMimeTypeHandlers(),
-		Resources:         self.copyResourceFuncs(),
-		Timeout:           self.Timeout,
-	}
-}
-
-// copyMimeTypeHandlers to get a new instance of the map. This solves issues where
-// other objects might mistakenly alter the original map through its copied reference.
-func (self Config) copyMimeTypeHandlers() MimeTypeHandlers {
-	copy := make(MimeTypeHandlers, len(self.MimeTypeHandlers))
-
-	for mimeType, handler := range self.MimeTypeHandlers {
-		copy[mimeType] = handler
-	}
-
-	return copy
-}
-
-func (self Config) copyResourceFuncs() map[string]ResourceFunc {
-	copy := make(map[string]ResourceFunc, len(self.Resources))
-
-	for resourceType, fn := range self.Resources {
-		copy[resourceType] = fn
-	}
-
-	return copy
-}
-
 // Endpoint defines the behavior of a given handler.
 type Endpoint struct {
-	Config      Config
+	Config Config
+
 	handlerData handlerTypeData
 }
 
 // Create a new endpoint that will run the given handler.
 // This will be created by the Server during normal operations.
-func NewEndpoint(config Config, handler Handler) *Endpoint {
-	registerKnownMimeTypes(config.MimeTypeHandlers)
+func NewEndpoint(config *Config, handler Handler) *Endpoint {
+	configClone := Config{}
 
-	handlerData := newHandlerTypeData(handler)
+	// Set defaults, if not set.
+
+	if config.ErrorHandler == nil {
+		configClone.ErrorHandler = defaultErrorHandler{}
+	} else {
+		configClone.ErrorHandler = config.ErrorHandler
+	}
+
+	if config.MimeTypeHandlers == nil {
+		configClone.MimeTypeHandlers = NewMimeTypeHandlers()
+	} else {
+		configClone.MimeTypeHandlers = config.MimeTypeHandlers
+	}
+
+	if config.Resources == nil {
+		configClone.Resources = map[string]ResourceFunc{}
+	} else {
+		configClone.Resources = config.Resources
+	}
+
+	if config.Timeout == 0 {
+		configClone.Timeout = 30 * time.Second
+	} else {
+		configClone.Timeout = config.Timeout
+	}
 
 	return &Endpoint{
-		Config:      config,
-		handlerData: handlerData,
+		Config: configClone,
+
+		handlerData: newHandlerTypeData(handler),
 	}
 }
 
@@ -106,7 +96,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}()
 
-	defer profiling.Profile(ctx, ctx.HttpMethod+" "+ctx.MatchedPath).Finish()
+	defer profiling.Profile(ctx, string(ctx.HttpMethod)+" "+ctx.MatchedPath).Finish()
 
 	var err error
 
@@ -154,11 +144,13 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	{
 		authTimer := profiling.Profile(ctx, "Auth")
 
-		httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
-		authTimer.Finish()
-		if err != nil {
-			ctx.requestCtx.SetContentType(responseMimeType.MimeType)
-			return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
+		if self.Config.Auther != nil {
+			httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
+			authTimer.Finish()
+			if err != nil {
+				ctx.requestCtx.SetContentType(responseMimeType.MimeType)
+				return self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
+			}
 		}
 	}
 
@@ -184,7 +176,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 		requestBodyBytes := ctx.Request().Body()
 
-		if self.handlerData.shouldValidateRequest {
+		if self.Config.RequestValidator != nil && self.handlerData.shouldValidateRequest {
 			validateTimer := profiling.Profile(ctx, "ValidateRequest")
 			httpStatus, validationFailure := self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
 			validateTimer.Finish()
@@ -235,7 +227,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			return self.Config.ErrorHandler.HandleError(ctx, http.StatusInternalServerError, err)
 		}
 
-		if self.handlerData.shouldValidateResponse {
+		if self.Config.ResponseValidator != nil && self.handlerData.shouldValidateResponse {
 			validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
 			httpStatus, validationFailure := self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
 			validateResponseTimer.Finish()

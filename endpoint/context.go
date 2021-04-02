@@ -22,7 +22,7 @@ type Context struct {
 	cancel     context.CancelFunc
 	requestCtx *fasthttp.RequestCtx
 
-	HttpMethod  string
+	HttpMethod  []byte
 	MatchedPath string
 }
 
@@ -40,7 +40,7 @@ func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, 
 		cancel:      cancel,
 		Logger:      logger,
 		requestCtx:  requestCtx,
-		HttpMethod:  string(requestCtx.Method()),
+		HttpMethod:  requestCtx.Method(),
 		MatchedPath: matchedPath,
 	}
 }
