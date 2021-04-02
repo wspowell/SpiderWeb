@@ -42,8 +42,8 @@ type handlerTypeData struct {
 	isRequestPtr  bool
 	isResponsePtr bool
 
-	hasRequest  bool
-	hasResponse bool
+	hasRequestBody  bool
+	hasResponseBody bool
 
 	requestFieldNum  int
 	responseFieldNum int
@@ -72,8 +72,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	var responseFieldNum int
 	var shouldValidateRequest bool
 	var shouldValidateResponse bool
-	var hasRequest bool
-	var hasResponse bool
+	var hasRequestBody bool
+	var hasResponseBody bool
 	requestMimeTypes := []string{}
 	responseMimeTypes := []string{}
 	resources := map[string]resourceTypeData{}
@@ -141,7 +141,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				isRequestPtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateRequest = hasStructTagOption(tagValue, structTagOptionValidate)
 				requestMimeTypes = mimeTypes
-				hasRequest = structFieldValue.IsValid()
+				hasRequestBody = structFieldValue.IsValid()
 				requestBodyType = structFieldValue.Type()
 			case structTagValueResponse:
 				responseBodyValue = getFieldValue(structFieldValue)
@@ -149,7 +149,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				isResponsePtr = structFieldValue.Kind() == reflect.Ptr
 				shouldValidateResponse = hasStructTagOption(tagValue, structTagOptionValidate)
 				responseMimeTypes = mimeTypes
-				hasResponse = structFieldValue.IsValid()
+				hasResponseBody = structFieldValue.IsValid()
 				responseBodyType = structFieldValue.Type()
 			}
 
@@ -171,8 +171,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		shouldValidateResponse: shouldValidateResponse,
 		requestMimeTypes:       requestMimeTypes,
 		responseMimeTypes:      responseMimeTypes,
-		hasRequest:             hasRequest,
-		hasResponse:            hasResponse,
+		hasRequestBody:         hasRequestBody,
+		hasResponseBody:        hasResponseBody,
 		resources:              resources,
 		pathParameters:         pathParameters,
 		queryParameters:        queryParameters,
@@ -199,14 +199,14 @@ func (self handlerTypeData) newHandlerValue() reflect.Value {
 }
 
 func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
-	if self.hasRequest {
+	if self.hasRequestBody {
 		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr)
 	}
 	return nil
 }
 
 func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
-	if self.hasResponse {
+	if self.hasResponseBody {
 		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr)
 	}
 	return nil

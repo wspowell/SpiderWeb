@@ -1,8 +1,6 @@
 package error_handlers
 
 import (
-	"encoding/json"
-
 	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/endpoint"
 )
@@ -31,26 +29,18 @@ type ErrorJsonWithCodeResponse struct {
 	Message      string `json:"message"`
 }
 
-func (self ErrorJsonWithCodeResponse) MimeType() string {
-	return "application/json"
-}
-
-func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, []byte) {
-	var errorBytes []byte
-
+func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, interface{}) {
 	var myErr ErrorWithCodes
 	if errors.As(err, &myErr) {
-		errorBytes, _ = json.Marshal(ErrorJsonWithCodeResponse{
+		return httpStatus, ErrorJsonWithCodeResponse{
 			Code:    myErr.Code,
 			Message: myErr.Message,
-		})
-	} else {
-		// Catch anything not using ErrorWithCodes.
-		errorBytes, _ = json.Marshal(ErrorJsonWithCodeResponse{
-			Code:    "INTERNAL_ERROR",
-			Message: err.Error(),
-		})
+		}
 	}
 
-	return httpStatus, errorBytes
+	// Anything not using ErrorWithCodes.
+	return httpStatus, ErrorJsonWithCodeResponse{
+		Code:    "INTERNAL_ERROR",
+		Message: err.Error(),
+	}
 }
