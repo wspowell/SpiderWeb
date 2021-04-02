@@ -42,6 +42,8 @@ func SetupServer() *spiderweb.Server {
 		Timeout:           30 * time.Second,
 	}
 
+	server.HandleNotFound(endpointConfig, &NotFoundResource{})
+
 	server.Handle(endpointConfig, http.MethodPost, "/resources", &PostResource{})
 	server.Handle(endpointConfig, http.MethodGet, "/resources/{id}", &GetResource{})
 

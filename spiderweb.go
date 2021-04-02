@@ -66,10 +66,38 @@ func NewServer(serverConfig *ServerConfig) *Server {
 	return server
 }
 
+func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
+	requestHandler := fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
+		// Every invocation of an endpoint is guaranteed to get its own logger instance.
+		var logger logging.Logger
+		if endpointConfig != nil {
+			logger = logging.NewLog(endpointConfig.LogConfig)
+		} else {
+			logger = logging.NewLog(self.serverConfig.LogConfig)
+		}
+		logger.Tag("request_id", fasthttpCtx.ID())
+		logger.Tag("route", "NOT FOUND")
+
+		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
+		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
+		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+		httpStatus, responseBody := routeEndpoint.Execute(ctx)
+
+		fasthttpCtx.SetStatusCode(httpStatus)
+		fasthttpCtx.SetBody(responseBody)
+
+		// Set the Connection header to "close".
+		// Closes the connection after this function returns.
+		fasthttpCtx.Response.SetConnectionClose()
+	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
+
+	self.router.NotFound = requestHandler
+}
+
 // Handle the given route to the provided endpoint handler.
 // This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
 func (self *Server) Handle(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) {
-	wrappedHandler := self.wrapFasthttpHandler(self.serverContext, endpointConfig, httpMethod, path, handler)
+	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, httpMethod, path, handler)
 	self.router.Handle(httpMethod, path, wrappedHandler)
 }
 
@@ -142,7 +170,7 @@ func (self *Server) listenForever() {
 	self.logger.Info("server stopped")
 }
 
-func (self *Server) wrapFasthttpHandler(serverContext context.Context, endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
+func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
@@ -157,7 +185,7 @@ func (self *Server) wrapFasthttpHandler(serverContext context.Context, endpointC
 		logger.Tag("route", httpMethod+" "+path)
 
 		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
+		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
 		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
