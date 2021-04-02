@@ -26,4 +26,5 @@ const (
 	InternalCodeRequestMimeTypeUnsupported  = "SW2"
 	InternalCodeResponseMimeTypeUnsupported = "SW3"
 	InternalCodeResponseMimeTypeMissing     = "SW4"
+	InternalCodeErrorParseFailure           = "SW5"
 )

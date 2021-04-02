@@ -1,25 +1,24 @@
 package endpoint
 
 import (
-	"bytes"
 	"fmt"
 )
 
 type ErrorHandler interface {
-	MimeType() string
-	HandleError(ctx *Context, httpStatus int, err error) (int, []byte)
+
+	// FIXME: HandlerError only really converts an error into []byte. This function definition could be made simpler.
+	//        The error could be returned and then the internal endpoint code handles the marshaling.
+	HandleError(ctx *Context, httpStatus int, err error) (int, interface{})
 }
 
-type DefaultErrorResponse struct {
+type defaultErrorResponse struct {
 	Message string `json:"message"`
 }
 
 type defaultErrorHandler struct{}
 
-func (self defaultErrorHandler) MimeType() string {
-	return mimeTypeTextPlain
-}
-
-func (self defaultErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
-	return httpStatus, bytes.NewBufferString(fmt.Sprintf("%#v", err)).Bytes()
+func (self defaultErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, interface{}) {
+	return httpStatus, defaultErrorResponse{
+		Message: fmt.Sprintf("%#v", err),
+	}
 }

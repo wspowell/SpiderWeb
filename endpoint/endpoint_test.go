@@ -20,16 +20,10 @@ type errorResponse struct {
 
 type myErrorHandler struct{}
 
-func (self myErrorHandler) MimeType() string {
-	return mimeTypeJson
-}
-
-func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, []byte) {
-	responseBodyBytes, _ := json.Marshal(errorResponse{
+func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, interface{}) {
+	return httpStatus, errorResponse{
 		Message: fmt.Sprintf("%#v", err),
-	})
-
-	return httpStatus, responseBodyBytes
+	}
 }
 
 type myAuther struct{}
@@ -146,7 +140,7 @@ func createTestEndpoint() *Endpoint {
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
 		ResponseValidator: myResponseValidator{},
-		MimeTypeHandlers: map[string]MimeTypeHandler{
+		MimeTypeHandlers: map[string]*MimeTypeHandler{
 			"application/json": jsonHandler(),
 		},
 		Resources: map[string]ResourceFunc{
@@ -290,8 +284,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
 	}
 
-	// Default response is text/plain.
-	if "[APP1234] invalid input" != string(responseBodyBytes) {
+	if `{"message":"[APP1234] invalid input"}` != string(responseBodyBytes) {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1234] invalid input", string(responseBodyBytes))
 	}
 }

@@ -17,7 +17,7 @@ const (
 type Marshaler func(v interface{}) ([]byte, error)
 type Unmarshaler func(data []byte, v interface{}) error
 
-type MimeTypeHandlers map[string]MimeTypeHandler
+type MimeTypeHandlers map[string]*MimeTypeHandler
 
 func NewMimeTypeHandlers() MimeTypeHandlers {
 	// Set default handlers.
@@ -27,7 +27,7 @@ func NewMimeTypeHandlers() MimeTypeHandlers {
 }
 
 // Get the MIME type handler for the request content type as well as checking that it is supported by the endpoint.
-func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (MimeTypeHandler, bool) {
+func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (*MimeTypeHandler, bool) {
 	// Check if the MIME type handler exists at all.
 	if handler, exists := m[string(contentType)]; exists {
 		// Now check if the MIME type is in the given list of supported types.
@@ -38,7 +38,7 @@ func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (
 		}
 	}
 
-	return MimeTypeHandler{}, false
+	return nil, false
 }
 
 // MimeTypeHandler defines how a mime type is used.
@@ -49,8 +49,8 @@ type MimeTypeHandler struct {
 	Unmarshal Unmarshaler
 }
 
-func jsonHandler() MimeTypeHandler {
-	return MimeTypeHandler{
+func jsonHandler() *MimeTypeHandler {
+	return &MimeTypeHandler{
 		MimeType:  mimeTypeJson,
 		Marshal:   jsonMarshal,
 		Unmarshal: jsonUnmarshal,
