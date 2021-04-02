@@ -17,18 +17,28 @@ type requestTestCase struct {
 	path            string
 	requestMimeType string
 	requestBody     []byte
-
-	httpStatus       int
-	responseMimeType string
-	responseBody     []byte
+	headers         map[string]string
+	queryParams     map[string]string
 }
 
 // GivenRequest starts a request test case to be provided to TestRequest.
 func GivenRequest(httpMethod string, path string) *requestTestCase {
 	return &requestTestCase{
-		httpMethod: httpMethod,
-		path:       path,
+		httpMethod:  httpMethod,
+		path:        path,
+		headers:     map[string]string{},
+		queryParams: map[string]string{},
 	}
+}
+
+func (self *requestTestCase) WithHeader(header string, value string) *requestTestCase {
+	self.headers[header] = value
+	return self
+}
+
+func (self *requestTestCase) WithQueryParam(param string, value string) *requestTestCase {
+	self.queryParams[param] = value
+	return self
 }
 
 // WithRequestBody sets a request body for the request test case.
@@ -39,55 +49,113 @@ func (self *requestTestCase) WithRequestBody(mimeType string, requestBody []byte
 	return self
 }
 
-// Expect the response to match the given status and body.
-func (self *requestTestCase) Expect(httpStatus int, mimeType string, responseBody []byte) *requestTestCase {
-	self.httpStatus = httpStatus
+func (self *requestTestCase) ExpectResponse(httpStatus int) *responseTestCase {
+	return &responseTestCase{
+		request:    self,
+		httpStatus: httpStatus,
+		headers:    map[string]string{},
+	}
+}
+
+type responseTestCase struct {
+	request *requestTestCase
+
+	httpStatus       int
+	headers          map[string]string
+	responseMimeType string
+	responseBody     []byte
+	emptyBody        bool
+}
+
+func (self *responseTestCase) WithHeader(header string, value string) *responseTestCase {
+	self.headers[header] = value
+	return self
+}
+
+func (self *responseTestCase) WithEmptyBody() *responseTestCase {
+	self.emptyBody = true
+	return self
+}
+
+// Expect the response to match the given body.
+func (self *responseTestCase) WithResponseBody(mimeType string, responseBody []byte) *responseTestCase {
 	self.responseMimeType = mimeType
 	self.responseBody = responseBody
 	return self
 }
 
 // TestRequest for request/response roundtrip.
-func TestRequest(t *testing.T, server *spiderweb.Server, testCase *requestTestCase) {
-	copyRequestBody := make([]byte, len(testCase.requestBody))
-	copyResponseBody := make([]byte, len(testCase.responseBody))
+func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestCase) {
+	copyRequestBody := make([]byte, len(testCase.request.requestBody))
+	copy(copyRequestBody, testCase.request.requestBody)
 
-	copy(copyRequestBody, testCase.requestBody)
+	copyResponseBody := make([]byte, len(testCase.responseBody))
 	copy(copyResponseBody, testCase.responseBody)
 
-	copyRequestTestCase := requestTestCase{
-		httpMethod:       testCase.httpMethod,
-		path:             testCase.path,
-		requestMimeType:  testCase.requestMimeType,
-		requestBody:      copyRequestBody,
+	copyTestCase := responseTestCase{
+		request: &requestTestCase{
+			httpMethod:      testCase.request.httpMethod,
+			path:            testCase.request.path,
+			requestMimeType: testCase.request.requestMimeType,
+			requestBody:     copyRequestBody,
+			headers:         testCase.request.headers,
+			queryParams:     testCase.request.queryParams,
+		},
+
 		httpStatus:       testCase.httpStatus,
 		responseMimeType: testCase.responseMimeType,
 		responseBody:     copyResponseBody,
+		headers:          testCase.headers,
+		emptyBody:        testCase.emptyBody,
 	}
 
 	var req fasthttp.Request
 
-	req.Header.SetMethod(copyRequestTestCase.httpMethod)
-	req.Header.SetRequestURI(copyRequestTestCase.path)
+	req.Header.SetMethod(copyTestCase.request.httpMethod)
+	req.Header.SetRequestURI(copyTestCase.request.path)
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
-	req.Header.Set("Content-Type", copyRequestTestCase.requestMimeType)
-	req.Header.Set("Accept", copyRequestTestCase.responseMimeType)
-	req.SetBody(copyRequestTestCase.requestBody)
+	req.Header.Set("Content-Type", copyTestCase.request.requestMimeType)
+	req.Header.Set("Accept", copyTestCase.responseMimeType)
+
+	for header, value := range copyTestCase.request.headers {
+		req.Header.Set(header, value)
+	}
+
+	req.SetBody(copyTestCase.request.requestBody)
 
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
 	actualHttpStatus, actualResponseBody := server.Execute(&requestCtx)
 
-	if copyRequestTestCase.httpStatus != actualHttpStatus {
-		t.Errorf("expected http status %v, but got %v", copyRequestTestCase.httpStatus, actualHttpStatus)
+	for header, value := range copyTestCase.headers {
+		actualHeaderValue := requestCtx.Response.Header.Peek(header)
+		if !bytes.Equal(actualHeaderValue, []byte(value)) {
+			t.Errorf("expected header %v = %v , but got %v = %v", header, value, header, actualHeaderValue)
+		}
 	}
 
-	if !bytes.Equal(copyRequestTestCase.responseBody, actualResponseBody) {
-		t.Errorf("expected request body '%v', but got '%v'", string(copyRequestTestCase.responseBody), string(actualResponseBody))
+	if copyTestCase.httpStatus != actualHttpStatus {
+		t.Errorf("expected http status %v, but got %v", copyTestCase.httpStatus, actualHttpStatus)
 	}
 
-	requestFuzzTest(t, server, testCase.httpMethod, testCase.path)
+	if copyTestCase.emptyBody {
+		if !bytes.Equal(nil, actualResponseBody) {
+			t.Errorf("expected empty response body, but got '%v'", string(actualResponseBody))
+		}
+	} else {
+		if requestCtx.Response.Header.ContentType() == nil {
+			t.Errorf("response is missing header Content-Type")
+		} else if !bytes.Equal(requestCtx.Response.Header.ContentType(), []byte(copyTestCase.responseMimeType)) {
+			t.Errorf("expected response mime type '%v', but got '%v'", copyTestCase.responseMimeType, requestCtx.Response.Header.ContentType())
+		}
+
+		if !bytes.Equal(copyTestCase.responseBody, actualResponseBody) {
+			t.Errorf("expected response body '%v', but got '%v'", string(copyTestCase.responseBody), string(actualResponseBody))
+		}
+	}
+
+	requestFuzzTest(t, server, testCase.request.httpMethod, testCase.request.path)
 }
 
 func requestFuzzTest(t *testing.T, server *spiderweb.Server, httpMethod string, path string) {

@@ -14,12 +14,15 @@ func Test_RouteTest(t *testing.T) {
 
 	TestRequest(t, server, GivenRequest(http.MethodPost, "/not_found").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
-		Expect(http.StatusNotFound, "application/json", []byte(``)))
+		ExpectResponse(http.StatusNotFound).
+		WithEmptyBody())
 
 	TestRequest(t, server, GivenRequest(http.MethodPost, "/resources").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
-		Expect(http.StatusCreated, "application/json", []byte(`{"output_string":"hello","output_int":5}`)))
+		ExpectResponse(http.StatusCreated).
+		WithResponseBody("application/json", []byte(`{"output_string":"hello","output_int":5}`)))
 
 	TestRequest(t, server, GivenRequest(http.MethodGet, "/resources/34").
-		Expect(http.StatusOK, "application/json", []byte(`{"output_string":"test","output_int":34}`)))
+		ExpectResponse(http.StatusOK).
+		WithResponseBody("application/json", []byte(`{"output_string":"test","output_int":34}`)))
 }
