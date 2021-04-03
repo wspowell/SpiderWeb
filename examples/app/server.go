@@ -39,7 +39,10 @@ func SetupServer() *spiderweb.Server {
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  validators.NoopRequest{},
 		ResponseValidator: validators.NoopResponse{},
-		Timeout:           30 * time.Second,
+		Resources: map[string]interface{}{
+			"datastore": &Database{},
+		},
+		Timeout: 30 * time.Second,
 	}
 
 	server.HandleNotFound(endpointConfig, &NotFoundResource{})

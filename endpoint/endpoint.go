@@ -38,13 +38,13 @@ type Config struct {
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
 	MimeTypeHandlers  MimeTypeHandlers
-	Resources         map[string]ResourceFunc
+	Resources         map[string]interface{}
 	Timeout           time.Duration
 }
 
 // Endpoint defines the behavior of a given handler.
 type Endpoint struct {
-	Config Config
+	Config *Config
 
 	handlerData handlerTypeData
 }
@@ -52,7 +52,7 @@ type Endpoint struct {
 // Create a new endpoint that will run the given handler.
 // This will be created by the Server during normal operations.
 func NewEndpoint(config *Config, handler Handler) *Endpoint {
-	configClone := Config{}
+	configClone := &Config{}
 
 	// Set defaults, if not set.
 
@@ -69,7 +69,7 @@ func NewEndpoint(config *Config, handler Handler) *Endpoint {
 	}
 
 	if config.Resources == nil {
-		configClone.Resources = map[string]ResourceFunc{}
+		configClone.Resources = map[string]interface{}{}
 	} else {
 		configClone.Resources = config.Resources
 	}

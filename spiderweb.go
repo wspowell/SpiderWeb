@@ -34,6 +34,8 @@ type Server struct {
 	server *fasthttp.Server
 	router *router.Router
 
+	routes map[string]*endpoint.Endpoint
+
 	serverContext    context.Context
 	shutdownComplete <-chan bool
 }
@@ -58,6 +60,8 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		logger: logger,
 		server: httpServer,
 		router: router,
+
+		routes: map[string]*endpoint.Endpoint{},
 
 		serverContext:    serverContext,
 		shutdownComplete: shutdownComplete,
@@ -170,7 +174,14 @@ func (self *Server) listenForever() {
 	self.logger.Info("server stopped")
 }
 
+func (self *Server) Endpoint(httpMethod string, path string) *endpoint.Endpoint {
+	return self.routes[path+" "+httpMethod]
+}
+
 func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
+	routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+	self.routes[path+" "+httpMethod] = routeEndpoint
+
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
@@ -186,7 +197,6 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 
 		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
 		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
-		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
 		fasthttpCtx.SetStatusCode(httpStatus)

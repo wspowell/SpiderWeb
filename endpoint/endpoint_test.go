@@ -143,10 +143,8 @@ func createTestEndpoint() *Endpoint {
 		MimeTypeHandlers: map[string]*MimeTypeHandler{
 			"application/json": jsonHandler(),
 		},
-		Resources: map[string]ResourceFunc{
-			"db": func() interface{} {
-				return &dbClient
-			},
+		Resources: map[string]interface{}{
+			"db": &dbClient,
 		},
 	}
 
@@ -159,10 +157,8 @@ func createDefaultTestEndpoint() *Endpoint {
 	}
 
 	config := &Config{
-		Resources: map[string]ResourceFunc{
-			"db": func() interface{} {
-				return &dbClient
-			},
+		Resources: map[string]interface{}{
+			"db": &dbClient,
 		},
 	}
 
