@@ -4,13 +4,20 @@ import (
 	"bytes"
 	"os"
 	"runtime/debug"
+	"strings"
 	"testing"
 
 	"github.com/wspowell/spiderweb"
 
 	fuzz "github.com/google/gofuzz"
+	"github.com/stretchr/testify/mock"
+	_ "github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
 )
+
+type Mocker interface {
+	AssertExpectations(t mock.TestingT) bool
+}
 
 type requestTestCase struct {
 	httpMethod      string
@@ -19,15 +26,19 @@ type requestTestCase struct {
 	requestBody     []byte
 	headers         map[string]string
 	queryParams     map[string]string
+	pathParams      map[string]string
+	resourceMocks   map[string]Mocker
 }
 
 // GivenRequest starts a request test case to be provided to TestRequest.
 func GivenRequest(httpMethod string, path string) *requestTestCase {
 	return &requestTestCase{
-		httpMethod:  httpMethod,
-		path:        path,
-		headers:     map[string]string{},
-		queryParams: map[string]string{},
+		httpMethod:    httpMethod,
+		path:          path,
+		headers:       map[string]string{},
+		queryParams:   map[string]string{},
+		pathParams:    map[string]string{},
+		resourceMocks: map[string]Mocker{},
 	}
 }
 
@@ -41,11 +52,21 @@ func (self *requestTestCase) WithQueryParam(param string, value string) *request
 	return self
 }
 
+func (self *requestTestCase) WithPathParam(param string, value string) *requestTestCase {
+	self.pathParams[param] = value
+	return self
+}
+
 // WithRequestBody sets a request body for the request test case.
 // This is optional.
 func (self *requestTestCase) WithRequestBody(mimeType string, requestBody []byte) *requestTestCase {
 	self.requestMimeType = mimeType
 	self.requestBody = requestBody
+	return self
+}
+
+func (self *requestTestCase) WithResourceMock(resource string, mock Mocker) *requestTestCase {
+	self.resourceMocks[resource] = mock
 	return self
 }
 
@@ -100,6 +121,8 @@ func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestC
 			requestBody:     copyRequestBody,
 			headers:         testCase.request.headers,
 			queryParams:     testCase.request.queryParams,
+			pathParams:      testCase.request.pathParams,
+			resourceMocks:   testCase.request.resourceMocks,
 		},
 
 		httpStatus:       testCase.httpStatus,
@@ -109,10 +132,15 @@ func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestC
 		emptyBody:        testCase.emptyBody,
 	}
 
+	url := copyTestCase.request.path
+	for param, value := range copyTestCase.request.pathParams {
+		url = strings.Replace(url, "{"+param+"}", value, 1)
+	}
+
 	var req fasthttp.Request
 
 	req.Header.SetMethod(copyTestCase.request.httpMethod)
-	req.Header.SetRequestURI(copyTestCase.request.path)
+	req.Header.SetRequestURI(url)
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set("Content-Type", copyTestCase.request.requestMimeType)
 	req.Header.Set("Accept", copyTestCase.responseMimeType)
@@ -126,7 +154,29 @@ func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestC
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
+	// Setup mock calls.
+	endpoint := server.Endpoint(copyTestCase.request.httpMethod, copyTestCase.request.path)
+	originalResources := map[string]interface{}{}
+	if endpoint != nil {
+		for name, resource := range endpoint.Config.Resources {
+			originalResources[name] = resource
+			if mock, ok := copyTestCase.request.resourceMocks[name]; ok {
+				endpoint.Config.Resources[name] = mock
+			}
+		}
+	}
+
 	actualHttpStatus, actualResponseBody := server.Execute(&requestCtx)
+
+	if endpoint != nil {
+		// Put the resources back.
+		for name, originalResource := range originalResources {
+			if mock, ok := copyTestCase.request.resourceMocks[name]; ok {
+				mock.AssertExpectations(t)
+			}
+			endpoint.Config.Resources[name] = originalResource
+		}
+	}
 
 	for header, value := range copyTestCase.headers {
 		actualHeaderValue := requestCtx.Response.Header.Peek(header)

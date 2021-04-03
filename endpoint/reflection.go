@@ -12,8 +12,9 @@ import (
 // Hidden deep down in this file so we can act like it does not exist.
 
 const (
-	structTagPath  = "path"
-	structTagQuery = "query"
+	structTagPath     = "path"
+	structTagQuery    = "query"
+	structTagResource = "resource"
 )
 
 type handlerAllocation struct {
@@ -224,12 +225,12 @@ func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType refl
 	return newValue.Addr().Interface()
 }
 
-func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]ResourceFunc) {
-	for resourceType, resourceFn := range resources {
+func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) {
+	for resourceType, resource := range resources {
 		if resourceData, exists := self.resources[resourceType]; exists {
 			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)
 			if resourceValue.CanSet() {
-				resourceValue.Set(reflect.ValueOf(resourceFn()))
+				resourceValue.Set(reflect.ValueOf(resource))
 			}
 		}
 	}
