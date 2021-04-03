@@ -11,7 +11,6 @@ import (
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/mock"
-	_ "github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
 )
 
