@@ -232,6 +232,8 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}
 
+	ctx.Debug("success response: %d %s", httpStatus, responseBody)
+
 	return httpStatus, responseBody
 }
 
