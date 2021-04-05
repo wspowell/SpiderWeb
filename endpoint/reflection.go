@@ -250,24 +250,7 @@ func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, reques
 			continue
 		}
 
-		switch parameterValue.Kind() {
-		case reflect.String:
-			parameterValue.Set(reflect.ValueOf(value))
-		case reflect.Int:
-			if intVal, err := strconv.Atoi(value); err == nil {
-				val := reflect.ValueOf(intVal)
-				if val.Type().AssignableTo(parameterValue.Type()) {
-					parameterValue.Set(val)
-				}
-			}
-		case reflect.Bool:
-			if boolVal, err := strconv.ParseBool(value); err == nil {
-				val := reflect.ValueOf(boolVal)
-				if val.Type().AssignableTo(parameterValue.Type()) {
-					parameterValue.Set(val)
-				}
-			}
-		}
+		setValueFromString(parameterValue, value)
 	}
 }
 
@@ -281,22 +264,103 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 
 		queryBytes := requestCtx.URI().QueryArgs().Peek(query)
 
-		switch queryValue.Kind() {
-		case reflect.String:
-			queryValue.Set(reflect.ValueOf(string(queryBytes)))
-		case reflect.Int:
-			if intVal, err := strconv.Atoi(string(queryBytes)); err == nil {
-				val := reflect.ValueOf(intVal)
-				if val.Type().AssignableTo(queryValue.Type()) {
-					queryValue.Set(val)
-				}
+		setValueFromString(queryValue, string(queryBytes))
+	}
+}
+
+func setValueFromString(variable reflect.Value, value string) {
+	switch variable.Kind() {
+	case reflect.String:
+		variable.Set(reflect.ValueOf(value))
+	case reflect.Bool:
+		if parsedValue, err := strconv.ParseBool(value); err == nil {
+			val := reflect.ValueOf(parsedValue)
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
 			}
-		case reflect.Bool:
-			if boolVal, err := strconv.ParseBool(string(queryBytes)); err == nil {
-				val := reflect.ValueOf(boolVal)
-				if val.Type().AssignableTo(queryValue.Type()) {
-					queryValue.Set(val)
-				}
+		}
+	case reflect.Int:
+		if parsedValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			val := reflect.ValueOf(int(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Int8:
+		if parsedValue, err := strconv.ParseInt(value, 10, 8); err == nil {
+			val := reflect.ValueOf(int8(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Int16:
+		if parsedValue, err := strconv.ParseInt(value, 10, 16); err == nil {
+			val := reflect.ValueOf(int16(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Int32:
+		if parsedValue, err := strconv.ParseInt(value, 10, 32); err == nil {
+			val := reflect.ValueOf(int32(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Int64:
+		if parsedValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			val := reflect.ValueOf(int64(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Uint:
+		if parsedValue, err := strconv.ParseUint(value, 10, 64); err == nil {
+			val := reflect.ValueOf(uint(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Uint8:
+		if parsedValue, err := strconv.ParseUint(value, 10, 8); err == nil {
+			val := reflect.ValueOf(uint8(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Uint16:
+		if parsedValue, err := strconv.ParseUint(value, 10, 16); err == nil {
+			val := reflect.ValueOf(uint16(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Uint32:
+		if parsedValue, err := strconv.ParseUint(value, 10, 32); err == nil {
+			val := reflect.ValueOf(uint32(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Uint64:
+		if parsedValue, err := strconv.ParseUint(value, 10, 64); err == nil {
+			val := reflect.ValueOf(uint64(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Float32:
+		if parsedValue, err := strconv.ParseFloat(value, 32); err == nil {
+			val := reflect.ValueOf(float32(parsedValue))
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
+			}
+		}
+	case reflect.Float64:
+		if parsedValue, err := strconv.ParseFloat(value, 64); err == nil {
+			val := reflect.ValueOf(parsedValue)
+			if val.Type().AssignableTo(variable.Type()) {
+				variable.Set(val)
 			}
 		}
 	}
