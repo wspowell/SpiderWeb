@@ -58,6 +58,10 @@ func (self *myDbClient) Conn() string {
 	return self.conn
 }
 
+type Datastore interface {
+	Conn() string
+}
+
 type myRequestBodyModel struct {
 	MyString   string `json:"my_string"`
 	MyInt      int    `json:"my_int"`
@@ -77,7 +81,7 @@ type myEndpoint struct {
 	MyStringParam string               `spiderweb:"path=id"`
 	MyIntParam    int                  `spiderweb:"path=num"`
 	MyFlagParam   bool                 `spiderweb:"path=flag"`
-	MyDatabase    *myDbClient          `spiderweb:"resource=db"`
+	MyDatabase    Datastore            `spiderweb:"resource=db"`
 	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
 	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
