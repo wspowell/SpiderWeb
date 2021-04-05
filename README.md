@@ -18,6 +18,8 @@ The goals of Spiderweb:
     * Use of interfaces to prevent forcing opinionated code
     * Retain flexibility to allow for exceptions
 
+See spiderweb in action: https://github.com/wspowell/pmail
+
 # Design Discussion
 
 Most (if not all) HTTP frameworks provide handling incoming requests and routing HTTP requests to configured handler functions. However, so much effort and focus goes into this that once we have a handler, we are left with a generic function that gives an `*http.Request` and an `http.ResponseWriter` and is no better than what is provided by [net/http](https://golang.org/pkg/net/http/). The rest, as they say, is left up the developer as an exercise. But what is left is not trivial. Usually a developer wants (or really needs) authorization handling, logging, profiling, error handling, etc. Due to this, what ends up happening is that developers must create their own frameworks wrapped around their HTTP framework of choice. This leads to a lot of lost time and effort to coding something that every developer must do.
