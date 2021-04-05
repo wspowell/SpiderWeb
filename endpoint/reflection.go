@@ -230,6 +230,9 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 		if resourceData, exists := self.resources[resourceType]; exists {
 			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)
 			if resourceValue.CanSet() {
+				if resourceValue.Kind() != reflect.Interface {
+					panic("resource types must be an interface, not struct")
+				}
 				resourceValue.Set(reflect.ValueOf(resource))
 			}
 		}
