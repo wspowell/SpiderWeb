@@ -239,6 +239,12 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 	var responseBody []byte
 	var errStruct interface{}
 
+	if httpStatus >= 500 {
+		ctx.Error("%#v", err)
+	} else {
+		ctx.Debug("%#v", err)
+	}
+
 	if responseMimeType == nil {
 		ctx.requestCtx.SetContentType(mimeTypeTextPlain)
 		httpStatus, errStruct = self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
