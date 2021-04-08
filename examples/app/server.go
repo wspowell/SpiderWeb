@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/wspowell/logging"
-	"github.com/wspowell/spiderweb"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/examples/auth"
 	"github.com/wspowell/spiderweb/examples/error_handlers"
 	"github.com/wspowell/spiderweb/examples/validators"
+	"github.com/wspowell/spiderweb/server"
 )
 
 type NoopLogConfig struct {
@@ -21,8 +21,8 @@ func (self *NoopLogConfig) Out() io.Writer {
 	return io.Discard
 }
 
-func SetupServer() *spiderweb.Server {
-	serverConfig := &spiderweb.ServerConfig{
+func SetupServer() *server.Server {
+	serverConfig := &server.ServerConfig{
 		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
 		Host:         "localhost",
 		Port:         8080,
@@ -30,7 +30,7 @@ func SetupServer() *spiderweb.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	server := spiderweb.NewServer(serverConfig)
+	server := server.NewServer(serverConfig)
 
 	endpointConfig := &endpoint.Config{
 		Auther:            auth.Noop{},

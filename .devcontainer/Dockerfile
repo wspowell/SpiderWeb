@@ -20,4 +20,10 @@ RUN if [ "${INSTALL_NODE}" = "true" ]; then su vscode -c "umask 0002 && . /usr/l
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
 
 RUN apt update
-RUN apt install -y graphviz
+RUN apt install -y graphviz vim unzip make 
+
+RUN mkdir -p /temp && cd /temp
+RUN wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+RUN unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+RUN ./sam-installation/install
+RUN sam --version

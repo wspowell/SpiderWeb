@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wspowell/spiderweb"
+	"github.com/wspowell/spiderweb/server"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/mock"
@@ -105,7 +105,7 @@ func (self *responseTestCase) WithResponseBody(mimeType string, responseBody []b
 }
 
 // TestRequest for request/response roundtrip.
-func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestCase) {
+func TestRequest(t *testing.T, server *server.Server, testCase *responseTestCase) {
 	copyRequestBody := make([]byte, len(testCase.request.requestBody))
 	copy(copyRequestBody, testCase.request.requestBody)
 
@@ -207,7 +207,7 @@ func TestRequest(t *testing.T, server *spiderweb.Server, testCase *responseTestC
 	requestFuzzTest(t, server, testCase.request.httpMethod, testCase.request.path)
 }
 
-func requestFuzzTest(t *testing.T, server *spiderweb.Server, httpMethod string, path string) {
+func requestFuzzTest(t *testing.T, server *server.Server, httpMethod string, path string) {
 	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
 		return
 	}
