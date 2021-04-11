@@ -44,7 +44,7 @@ func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
 }
 
 func Test_Default_Server_Config(t *testing.T) {
-	serverConfig := &server.ServerConfig{
+	serverConfig := &server.Config{
 		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
 		Host:         "localhost",
 		Port:         8080,
@@ -52,7 +52,7 @@ func Test_Default_Server_Config(t *testing.T) {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	server := server.NewServer(serverConfig)
+	server := server.New(serverConfig)
 
 	server.Handle(&endpoint.Config{}, http.MethodGet, "/", &myEndpoint{})
 
