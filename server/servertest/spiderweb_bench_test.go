@@ -1,23 +1,22 @@
-package spiderwebtest
+package servertest
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/valyala/fasthttp"
-	"github.com/wspowell/spiderweb/examples/app"
 )
 
 func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 
-	server := app.SetupServer()
+	sample := routes()
 
 	b.ResetTimer()
 
 	var req fasthttp.Request
 
 	req.Header.SetMethod(http.MethodPost)
-	req.Header.SetRequestURI("/resources")
+	req.Header.SetRequestURI("/sample")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -27,7 +26,7 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 	requestCtx.Init(&req, nil, nil)
 
 	for i := 0; i < b.N; i++ {
-		httpStatus, _ := server.Execute(&requestCtx)
+		httpStatus, _ := sample.Execute(&requestCtx)
 		if httpStatus != http.StatusCreated {
 			panic("status not 201")
 		}
@@ -36,7 +35,7 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 
 func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 
-	server := app.SetupServer()
+	sample := routes()
 
 	b.ResetTimer()
 
@@ -44,7 +43,7 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 		var req fasthttp.Request
 
 		req.Header.SetMethod(http.MethodPost)
-		req.Header.SetRequestURI("/resources")
+		req.Header.SetRequestURI("/sample")
 		req.Header.Set(fasthttp.HeaderHost, "localhost")
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
@@ -54,7 +53,7 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 		requestCtx.Init(&req, nil, nil)
 
 		for pb.Next() {
-			httpStatus, _ := server.Execute(&requestCtx)
+			httpStatus, _ := sample.Execute(&requestCtx)
 			if httpStatus != http.StatusCreated {
 				panic("status not 201")
 			}
@@ -64,14 +63,14 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 
 func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
 
-	server := app.SetupServer()
+	sample := routes()
 
 	b.ResetTimer()
 
 	var req fasthttp.Request
 
 	req.Header.SetMethod(http.MethodGet)
-	req.Header.SetRequestURI("/resources/34")
+	req.Header.SetRequestURI("/sample/34")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -80,7 +79,7 @@ func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
 	requestCtx.Init(&req, nil, nil)
 
 	for i := 0; i < b.N; i++ {
-		httpStatus, _ := server.Execute(&requestCtx)
+		httpStatus, _ := sample.Execute(&requestCtx)
 		if httpStatus != http.StatusOK {
 			panic("status not 200")
 		}
@@ -89,7 +88,7 @@ func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
 
 func Benchmark_SpiderWeb_GET_throughput(b *testing.B) {
 
-	server := app.SetupServer()
+	sample := routes()
 
 	b.ResetTimer()
 
@@ -97,7 +96,7 @@ func Benchmark_SpiderWeb_GET_throughput(b *testing.B) {
 		var req fasthttp.Request
 
 		req.Header.SetMethod(http.MethodGet)
-		req.Header.SetRequestURI("/resources/34")
+		req.Header.SetRequestURI("/sample/34")
 		req.Header.Set(fasthttp.HeaderHost, "localhost")
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
@@ -106,7 +105,7 @@ func Benchmark_SpiderWeb_GET_throughput(b *testing.B) {
 		requestCtx.Init(&req, nil, nil)
 
 		for pb.Next() {
-			httpStatus, _ := server.Execute(&requestCtx)
+			httpStatus, _ := sample.Execute(&requestCtx)
 			if httpStatus != http.StatusOK {
 				panic("status not 200")
 			}

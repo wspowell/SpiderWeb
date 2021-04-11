@@ -1,4 +1,4 @@
-package spiderwebtest
+package servertest
 
 import (
 	"fmt"
@@ -7,9 +7,8 @@ import (
 	"runtime/debug"
 	"testing"
 
+	fuzz "github.com/google/gofuzz"
 	"github.com/wspowell/spiderweb/endpoint"
-
-	"github.com/google/gofuzz"
 )
 
 func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
