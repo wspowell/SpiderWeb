@@ -22,7 +22,7 @@ type Lambda struct {
 	routeEndpoint  *endpoint.Endpoint
 }
 
-func NewLambda(endpointConfig *endpoint.Config, handler endpoint.Handler) *Lambda {
+func New(endpointConfig *endpoint.Config, handler endpoint.Handler) *Lambda {
 	return &Lambda{
 		lambdaContext:  context.Background(),
 		endpointConfig: endpointConfig,
@@ -36,6 +36,7 @@ func (self *Lambda) Start() {
 	lambda.Start(wrappedHandler)
 }
 
+// FIXME: Should be able to execute a lambda, especially for testing.
 // func (self *Lambda) Execute() (int, []byte) {
 // 	self.router.Handler(fasthttpCtx)
 // 	return fasthttpCtx.Response.StatusCode(), fasthttpCtx.Response.Body()

@@ -16,9 +16,9 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// ServerConfig top level options.
+// Config top level options.
 // These options can be altered per endpoint, if desired.
-type ServerConfig struct {
+type Config struct {
 	Host         string
 	Port         int
 	ReadTimeout  time.Duration
@@ -28,7 +28,7 @@ type ServerConfig struct {
 
 // Server listens for incoming requests and routes them to the registered endpoint handlers.
 type Server struct {
-	serverConfig *ServerConfig
+	serverConfig *Config
 
 	logger logging.Logger
 	server *fasthttp.Server
@@ -41,7 +41,7 @@ type Server struct {
 }
 
 // NewServer sets up a new server.
-func NewServer(serverConfig *ServerConfig) *Server {
+func New(serverConfig *Config) *Server {
 	logger := logging.NewLog(serverConfig.LogConfig)
 
 	httpServer := &fasthttp.Server{}
