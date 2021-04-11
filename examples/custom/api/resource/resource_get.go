@@ -7,14 +7,14 @@ import (
 	"github.com/wspowell/spiderweb/profiling"
 )
 
-type GetResource struct {
+type getResource struct {
 	Test         string
 	Db           Datastore            `spiderweb:"resource=datastore"`
 	ResourceId   int                  `spiderweb:"path=id"`
 	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *GetResource) Handle(ctx *endpoint.Context) (int, error) {
+func (self *getResource) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "GetResource").Finish()
 	ctx.Debug("handling GetResource")
 

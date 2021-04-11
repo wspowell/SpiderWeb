@@ -11,13 +11,13 @@ import (
 	"github.com/wspowell/spiderweb/profiling"
 )
 
-type PostResource struct {
+type postResource struct {
 	Test         string
 	RequestBody  *MyRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
 	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *PostResource) Handle(ctx *endpoint.Context) (int, error) {
+func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "PostResource").Finish()
 	ctx.Debug("handling PostResource")
 

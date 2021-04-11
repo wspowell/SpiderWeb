@@ -8,6 +8,6 @@ import (
 )
 
 func Routes(custom *server.Server, config *endpoint.Config) {
-	custom.Handle(config, http.MethodPost, "/resources", &PostResource{})
-	custom.Handle(config, http.MethodGet, "/resources/{id}", &GetResource{})
+	custom.Handle(config, http.MethodPost, "/resources", &postResource{})
+	custom.Handle(config, http.MethodGet, "/resources/{id}", &getResource{})
 }
