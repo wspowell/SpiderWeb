@@ -12,7 +12,7 @@ import (
 
 func routes() *server.Server {
 	serverConfig := &server.Config{
-		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		LogConfig:    logging.NewConfig(logging.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,
@@ -29,7 +29,7 @@ func routes() *server.Server {
 func sampleRoutes(sample *server.Server) {
 	config := &endpoint.Config{
 		LogConfig: &noopLogConfig{
-			Config: logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+			Config: logging.NewConfig(logging.LevelDebug),
 		},
 		Resources: map[string]interface{}{
 			"datastore": &database{},

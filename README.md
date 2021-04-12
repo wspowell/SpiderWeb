@@ -34,7 +34,7 @@ A main endpoint configuration is given to the server. This configuration is then
 serverConfig := spiderweb.NewServerConfig("localhost", 8080, endpoint.Config{
     Auther:            auth.Noop{},
     ErrorHandler:      error_handlers.ErrorJsonWithCodeResponse{},
-    LogConfig:         logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+    LogConfig:         logging.NewConfig(logging.LevelDebug),
     MimeTypeHandlers:  map[string]endpoint.MimeTypeHandler{},
     RequestValidator:  validators.NoopRequest{},
     ResponseValidator: validators.NoopResponse{},
@@ -160,7 +160,7 @@ Spiderweb endpoints take advantage of this behavior to provide local data such a
 ctx := local.NewLocalized()
 
 // Create a new logger.
-loggerConfig := logger.NewConfig(logging.Debug, map[string]interface{}{})
+loggerConfig := logger.NewConfig(logging.Debug)
 logger := logging.NewLogger(loggerConfig)
 
 // Add immutable data
