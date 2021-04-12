@@ -87,6 +87,10 @@ func NewEndpoint(config *Config, handler Handler) *Endpoint {
 	}
 }
 
+func (self *Endpoint) Name() string {
+	return self.handlerData.structName
+}
+
 // Execute the endpoint and run the endpoint handler.
 func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte) {
 	var responseMimeType *MimeTypeHandler
@@ -100,6 +104,33 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 	defer profiling.Profile(ctx, string(ctx.HttpMethod)+" "+ctx.MatchedPath).Finish()
 
+	// Setup logging.
+	{
+		// Every invocation of an endpoint is guaranteed to get its own logger instance.
+		var log logging.Logger
+		if self.Config.LogConfig != nil {
+			log = logging.NewLog(self.Config.LogConfig)
+		} else {
+			log = ctx.Logger
+		}
+
+		log.Tag("request_id", ctx.requestCtx.ID())
+		log.Tag("method", string(ctx.requestCtx.Method()))
+		log.Tag("route", ctx.MatchedPath)
+		log.Tag("path", string(ctx.requestCtx.URI().Path()))
+		log.Tag("action", self.Name())
+
+		// Each path parameter is added as a log tag.
+		// Note: It helps if the path parameter name is descriptive.
+		for param := range self.handlerData.pathParameters {
+			if value, ok := ctx.requestCtx.UserValue(param).(string); ok {
+				log.Tag(param, value)
+			}
+		}
+	}
+
+	ctx.Trace("executing endpoint")
+
 	var err error
 
 	// Content-Type and Accept
@@ -108,33 +139,46 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		var ok bool
 
 		if self.handlerData.hasRequestBody {
+			ctx.Trace("processing request body mime type")
+
 			contentType := ctx.Request().Header.ContentType()
 			if len(contentType) == 0 {
+				ctx.Debug("header Content-Type not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeRequestMimeTypeMissing, "Content-Type MIME type not provided"))
 			}
 
 			requestMimeType, ok = self.Config.MimeTypeHandlers.Get(contentType, self.handlerData.requestMimeTypes)
 			if !ok {
+				ctx.Debug("mime type handler not available: %s", contentType)
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeRequestMimeTypeUnsupported, "Content-Type MIME type not supported: %s", contentType))
 			}
+
+			ctx.Debug("found request mime type handler: %s", contentType)
 		}
 
 		if self.handlerData.hasResponseBody {
+			ctx.Trace("processing response body mime type")
+
 			accept := ctx.Request().Header.Peek(HeaderAccept)
 			if len(accept) == 0 {
+				ctx.Debug("header Accept not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeMissing, "Accept MIME type not provided"))
 			}
 
 			responseMimeType, ok = self.Config.MimeTypeHandlers.Get(accept, self.handlerData.responseMimeTypes)
 			if !ok {
+				ctx.Debug("mime type handler not available: %s", accept)
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
 			}
 			// All responses after this must be marshalable to the mime type.
 			ctx.requestCtx.SetContentType(responseMimeType.MimeType)
+
+			ctx.Debug("found response mime type handler: %s", accept)
 		}
 	}
 
 	if !ctx.ShouldContinue() {
+		ctx.Debug("request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
@@ -143,17 +187,23 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		authTimer := profiling.Profile(ctx, "Auth")
 
 		if self.Config.Auther != nil {
+			ctx.Trace("processing auth handler")
+
 			httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
 			authTimer.Finish()
 			if err != nil {
+				ctx.Debug("auth failed")
 				return self.processErrorResponse(ctx, responseMimeType, httpStatus, err)
 			}
 		}
 	}
 
 	if !ctx.ShouldContinue() {
+		ctx.Debug("request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
+
+	ctx.Trace("allocating handler")
 
 	allocateTimer := profiling.Profile(ctx, "Allocate")
 	handlerAlloc := self.handlerData.allocateHandler()
@@ -166,49 +216,60 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	// Handle Request
 	{
 		if !ctx.ShouldContinue() {
+			ctx.Debug("request canceled or timed out")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
 		if self.handlerData.hasRequestBody {
+			ctx.Trace("processing request body")
+
 			requestBodyBytes := ctx.Request().Body()
 
+			populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
+			err = self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
+			populateRequestTimer.Finish()
+			if err != nil {
+				ctx.Debug("failed processing request body")
+				return self.processErrorResponse(ctx, responseMimeType, http.StatusBadRequest, err)
+			}
+
 			if self.Config.RequestValidator != nil && self.handlerData.shouldValidateRequest {
+				ctx.Trace("processing validation handler")
+
 				validateTimer := profiling.Profile(ctx, "ValidateRequest")
 				var validationFailure error
 				httpStatus, validationFailure = self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
 				validateTimer.Finish()
-				if err != nil {
+				if validationFailure != nil {
+					ctx.Debug("failed request body validation")
+
 					// Validation failures are not hard errors and should be passed through to the error handler.
 					// The failure is passed through since it is assumed this error contains information to be returned in the response.
 					return self.processErrorResponse(ctx, responseMimeType, httpStatus, validationFailure)
 				}
 			}
-
-			populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
-
-			err := self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
-			populateRequestTimer.Finish()
-			if err != nil {
-				return self.processErrorResponse(ctx, responseMimeType, http.StatusInternalServerError, err)
-			}
 		}
 	}
 
 	if !ctx.ShouldContinue() {
+		ctx.Debug("request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
 	// Run the endpoint handler.
-	handleTimer := profiling.Profile(ctx, "Handle")
+	ctx.Trace("running endpoint handler")
+	handleTimer := profiling.Profile(ctx, self.Name()+".Handle()")
 	httpStatus, err = handlerAlloc.handler.Handle(ctx)
 	handleTimer.Finish()
 	if err != nil {
+		ctx.Debug("handler error")
 		return self.processErrorResponse(ctx, responseMimeType, httpStatus, err)
 	}
 
 	// Handle Response
 	{
 		if !ctx.ShouldContinue() {
+			ctx.Debug("request canceled or timed out")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
@@ -216,15 +277,19 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		responseBody, err = self.getHandlerResponseBody(ctx, responseMimeType, handlerAlloc.responseBody)
 		populateResponseTimer.Finish()
 		if err != nil {
+			ctx.Debug("failed processing response")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusInternalServerError, err)
 		}
 
 		if self.Config.ResponseValidator != nil && self.handlerData.shouldValidateResponse {
+			ctx.Trace("processing response validation handler")
+
 			validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
 			var validationFailure error
 			httpStatus, validationFailure = self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
 			validateResponseTimer.Finish()
 			if err != nil {
+				ctx.Debug("failed response validation")
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
 				return self.processErrorResponse(ctx, responseMimeType, httpStatus, validationFailure)
@@ -241,16 +306,24 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 	var responseBody []byte
 	var errStruct interface{}
 
+	defer func() {
+		// Print the actual error response returned to the caller.
+		ctx.Debug("error response: %d %s", httpStatus, responseBody)
+	}()
+
 	if httpStatus >= 500 {
-		ctx.Error("%#v", err)
+		if httpStatus == 500 {
+			ctx.Error("failure (500): %+v", err)
+		} else {
+			ctx.Error("failure (%d): %#v", httpStatus, err)
+		}
 	} else {
-		ctx.Debug("%#v", err)
+		ctx.Debug("error (%d): %#v", httpStatus, err)
 	}
 
 	if responseMimeType == nil {
 		ctx.requestCtx.SetContentType(mimeTypeTextPlain)
-		httpStatus, errStruct = self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
-		responseBody = []byte(fmt.Sprintf("%#v", errStruct))
+		responseBody = []byte(fmt.Sprintf("%#v", err))
 		return httpStatus, responseBody
 	}
 
@@ -260,7 +333,7 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 		ctx.requestCtx.SetContentType(mimeTypeTextPlain)
 		err = errors.New(InternalCodeErrorParseFailure, "Internal server error")
 		httpStatus = http.StatusInternalServerError
-		responseBody = []byte(fmt.Sprintf("%#v", err))
+		responseBody = []byte(fmt.Sprintf("%s", err))
 		return httpStatus, responseBody
 	}
 
@@ -269,6 +342,8 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 
 func (self *Endpoint) setHandlerRequestBody(ctx *Context, mimeHandler *MimeTypeHandler, requestBody interface{}, requestBodyBytes []byte) error {
 	if requestBody != nil {
+		ctx.Trace("non-empty request body")
+
 		if err := mimeHandler.Unmarshal(requestBodyBytes, requestBody); err != nil {
 			ctx.Error("failed to unmarshal request body: %v", err)
 			return ErrorRequestBodyUnmarshalFailure
@@ -279,6 +354,8 @@ func (self *Endpoint) setHandlerRequestBody(ctx *Context, mimeHandler *MimeTypeH
 
 func (self *Endpoint) getHandlerResponseBody(ctx *Context, mimeHandler *MimeTypeHandler, responseBody interface{}) ([]byte, error) {
 	if responseBody != nil {
+		ctx.Trace("non-empty response body")
+
 		ctx.requestCtx.SetContentType(mimeHandler.MimeType)
 		responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 		if err != nil {
@@ -286,6 +363,7 @@ func (self *Endpoint) getHandlerResponseBody(ctx *Context, mimeHandler *MimeType
 			return nil, ErrorResponseBodyMarshalFailure
 		}
 		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes) {
+			ctx.Debug("request body is null")
 			return nil, ErrorResponseBodyNull
 		}
 		return responseBodyBytes, nil

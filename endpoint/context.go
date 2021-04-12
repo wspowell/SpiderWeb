@@ -66,7 +66,10 @@ func (self *Context) ShouldContinue() bool {
 // NewTestContext is an endpoint context setup for testing.
 func NewTestContext() *Context {
 	serverContext := context.Background()
-	logger := logging.NewLog(logging.NewConfig(logging.LevelInfo, map[string]interface{}{"test": true}))
+
+	logConfig := logging.NewConfig(logging.LevelInfo)
+	logConfig.Tags()["test"] = true
+	logger := logging.NewLog(logConfig)
 
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&fasthttp.Request{}, nil, nil)

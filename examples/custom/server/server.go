@@ -10,7 +10,7 @@ import (
 
 func New() *server.Server {
 	serverConfig := &server.Config{
-		LogConfig:    logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+		LogConfig:    logging.NewConfig(logging.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,
