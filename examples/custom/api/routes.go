@@ -6,6 +6,7 @@ import (
 
 	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/examples/custom/api/resources"
 	"github.com/wspowell/spiderweb/examples/custom/middleware"
 	"github.com/wspowell/spiderweb/examples/custom/resources/db"
 	"github.com/wspowell/spiderweb/server"
@@ -16,7 +17,7 @@ func Routes(custom *server.Server) {
 		Auther:       middleware.AuthNoop{},
 		ErrorHandler: middleware.ErrorJsonWithCodeResponse{},
 		LogConfig: &middleware.NoopLogConfig{
-			Config: logging.NewConfig(logging.LevelDebug, map[string]interface{}{}),
+			Config: logging.NewConfig(logging.LevelDebug),
 		},
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  middleware.ValidateNoopRequest{},
@@ -28,6 +29,7 @@ func Routes(custom *server.Server) {
 	}
 
 	custom.HandleNotFound(endpointConfig, &noRoute{})
+	resources.Routes(custom, endpointConfig)
 }
 
 type noRoute struct{}

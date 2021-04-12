@@ -32,6 +32,7 @@ type resourceTypeData struct {
 // handlerTypeData cached so that reflection is optimized.
 // TODO: Remove unused fields.
 type handlerTypeData struct {
+	structName        string
 	structValue       reflect.Value
 	requestBodyValue  reflect.Value
 	responseBodyValue reflect.Value
@@ -158,6 +159,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	}
 
 	return handlerTypeData{
+		structName:             structValue.Type().Name(),
 		structValue:            structValue,
 		requestBodyValue:       requestBodyValue,
 		responseBodyValue:      responseBodyValue,

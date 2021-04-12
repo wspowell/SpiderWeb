@@ -139,7 +139,7 @@ func createTestEndpoint() *Endpoint {
 	}
 
 	config := &Config{
-		LogConfig:         logging.NewConfig(logging.LevelError, map[string]interface{}{}),
+		LogConfig:         logging.NewConfig(logging.LevelError),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
@@ -188,7 +188,7 @@ func newTestContext() *Context {
 	requestCtx.SetUserValue("num", "5")
 	requestCtx.SetUserValue("flag", "true")
 
-	logConfig := logging.NewConfig(logging.LevelError, map[string]interface{}{})
+	logConfig := logging.NewConfig(logging.LevelError)
 	return NewContext(context.Background(), &requestCtx, logging.NewLog(logConfig), 30*time.Second)
 }
 
