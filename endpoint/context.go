@@ -7,10 +7,34 @@ import (
 	"github.com/wspowell/errors"
 	"github.com/wspowell/local"
 	"github.com/wspowell/logging"
-
-	"github.com/fasthttp/router"
-	"github.com/valyala/fasthttp"
 )
+
+type Requester interface {
+	RequestId() string
+
+	// HTTP Method.
+	Method() []byte
+	// Path of the actual request URL.
+	Path() []byte
+
+	ContentType() []byte
+	Accept() []byte
+
+	VisitHeaders(f func(key []byte, value []byte))
+
+	// MatchedPath returns the endpoint path that the request URL matches.
+	// Ex: /some/path/{id}
+	MatchedPath() string
+
+	// PathParam returns the path parameter value for the given parameter name.
+	// Returns false if parameter not found.
+	PathParam(param string) (string, bool)
+	QueryParam(param string) []byte
+
+	RequestBody() []byte
+
+	SetResponseContentType(contentType string)
+}
 
 var _ local.Context = (*Context)(nil)
 
@@ -18,8 +42,8 @@ var _ local.Context = (*Context)(nil)
 type Context struct {
 	*local.Localized
 
-	cancel     context.CancelFunc
-	requestCtx *fasthttp.RequestCtx
+	cancel    context.CancelFunc
+	requester Requester
 
 	HttpMethod  []byte
 	MatchedPath string
@@ -27,25 +51,15 @@ type Context struct {
 
 // NewContext creates a new endpoint context. The server creates this and passes it to the endpoint handler.
 // TODO: It would be really nice if *fasthttp.RequestCtx could be replaced with an interface. Not sure if this is possible.
-func NewContext(serverContext context.Context, requestCtx *fasthttp.RequestCtx, timeout time.Duration) *Context {
+func NewContext(serverContext context.Context, requester Requester, timeout time.Duration) *Context {
 	ctx := local.FromContext(serverContext)
 	cancel := local.WithTimeout(ctx, timeout)
 
-	var matchedPath string
-	matchedPath, _ = requestCtx.UserValue(router.MatchedRoutePathParam).(string)
-
 	return &Context{
-		Localized:   ctx,
-		cancel:      cancel,
-		requestCtx:  requestCtx,
-		HttpMethod:  requestCtx.Method(),
-		MatchedPath: matchedPath,
+		Localized: ctx,
+		cancel:    cancel,
+		requester: requester,
 	}
-}
-
-// Request returns the current request.
-func (self *Context) Request() *fasthttp.Request {
-	return &self.requestCtx.Request
 }
 
 // Cancels the endpoint execution.
@@ -62,7 +76,7 @@ func (self *Context) ShouldContinue() bool {
 }
 
 // NewTestContext is an endpoint context setup for testing.
-func NewTestContext() *Context {
+func NewTestContext(requester Requester) *Context {
 	ctx := context.Background()
 	serverContext := local.FromContext(ctx)
 
@@ -71,8 +85,5 @@ func NewTestContext() *Context {
 
 	logging.WithContext(serverContext, logConfig)
 
-	requestCtx := fasthttp.RequestCtx{}
-	requestCtx.Init(&fasthttp.Request{}, nil, nil)
-
-	return NewContext(serverContext, &requestCtx, 30*time.Second)
+	return NewContext(serverContext, requester, 30*time.Second)
 }

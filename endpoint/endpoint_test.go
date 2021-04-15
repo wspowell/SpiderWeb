@@ -3,6 +3,7 @@ package endpoint
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -290,4 +291,64 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 	if `{"message":"[APP1234] invalid input"}` != string(responseBodyBytes) {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1234] invalid input", string(responseBodyBytes))
 	}
+}
+
+type httpRequester struct {
+	request   *http.Request
+	bodyBytes []byte
+}
+
+func newHttpRequester(request *http.Request) *httpRequester {
+	bodyBytes, _ := io.ReadAll(request.Body)
+
+	return &httpRequester{
+		request:   request,
+		bodyBytes: bodyBytes,
+	}
+}
+
+func (self *httpRequester) RequestId() string {
+	return "abc-123"
+}
+
+func (self *httpRequester) Method() []byte {
+	return []byte(self.request.Method)
+}
+
+func (self *httpRequester) Path() []byte {
+	return []byte(self.request.URL.Path)
+}
+
+func (self *httpRequester) ContentType() []byte {
+	return []byte(self.request.Header.Get("Content-Type"))
+}
+
+func (self *httpRequester) Accept() []byte {
+	return []byte(self.request.Header.Get("Accept"))
+}
+
+func (self *httpRequester) VisitHeaders(f func(key []byte, value []byte)) {
+	for header, value := range self.request.Header {
+		f([]byte(header), []byte(value[0]))
+	}
+}
+
+func (self *httpRequester) MatchedPath() string {
+	return ""
+}
+
+func (self *httpRequester) PathParam(param string) (string, bool) {
+	return "", true
+}
+
+func (self *httpRequester) QueryParam(param string) []byte {
+	return []byte(self.request.URL.Query().Get(param))
+}
+
+func (self *httpRequester) RequestBody() []byte {
+	return self.bodyBytes
+}
+
+func (self *httpRequester) SetResponseContentType(contentType string) {
+	// noop
 }
