@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/wspowell/local"
 	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
 
@@ -23,8 +24,11 @@ type Lambda struct {
 }
 
 func New(endpointConfig *endpoint.Config, handler endpoint.Handler) *Lambda {
+	ctx := local.NewLocalized()
+	logging.WithContext(ctx, endpointConfig.LogConfig)
+
 	return &Lambda{
-		lambdaContext:  context.Background(),
+		lambdaContext:  ctx,
 		endpointConfig: endpointConfig,
 		routeEndpoint:  endpoint.NewEndpoint(endpointConfig, handler),
 	}
@@ -67,13 +71,13 @@ func (self *Lambda) wrapLambdaHandler(routeEndpoint *endpoint.Endpoint) HandlerA
 
 		fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
 			// Every invocation of an endpoint is guaranteed to get its own logger instance.
-			var logger logging.Logger = logging.NewLog(self.endpointConfig.LogConfig)
+			var logger logging.Logger = self.endpointConfig.LogConfig.Logger()
 
 			logger.Tag("request_id", fasthttpCtx.ID())
 			logger.Tag("route", request.HTTPMethod+" "+request.Resource)
 
 			// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-			ctx := endpoint.NewContext(self.lambdaContext, fasthttpCtx, logger, self.endpointConfig.Timeout)
+			ctx := endpoint.NewContext(self.lambdaContext, fasthttpCtx, self.endpointConfig.Timeout)
 			httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
 			fasthttpCtx.SetStatusCode(httpStatus)

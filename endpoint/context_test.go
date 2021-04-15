@@ -17,7 +17,7 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
-	ctx := NewContext(context.Background(), &requestCtx, nil, time.Millisecond)
+	ctx := NewContext(context.Background(), &requestCtx, time.Millisecond)
 
 	time.Sleep(time.Second)
 
@@ -41,7 +41,7 @@ func Test_Context_Canceled(t *testing.T) {
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
-	ctx := NewContext(context.Background(), &requestCtx, nil, 30*time.Second)
+	ctx := NewContext(context.Background(), &requestCtx, 30*time.Second)
 
 	ctx.Cancel()
 

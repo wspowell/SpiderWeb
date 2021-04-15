@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wspowell/local"
 	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
 
@@ -42,14 +43,17 @@ type Server struct {
 
 // NewServer sets up a new server.
 func New(serverConfig *Config) *Server {
-	logger := logging.NewLog(serverConfig.LogConfig)
+	logger := serverConfig.LogConfig.Logger()
 
 	httpServer := &fasthttp.Server{}
 	httpServer.Logger = logger
 	httpServer.ReadTimeout = serverConfig.ReadTimeout
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
 
-	serverContext, shutdownComplete := newServerContext(httpServer)
+	ctx, shutdownComplete := newServerContext(httpServer)
+	serverContext := local.FromContext(ctx)
+
+	logging.WithContext(serverContext, serverConfig.LogConfig)
 
 	router := router.New()
 	router.SaveMatchedRoutePath = true
@@ -75,15 +79,15 @@ func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endp
 		// Every invocation of an endpoint is guaranteed to get its own logger instance.
 		var logger logging.Logger
 		if endpointConfig != nil {
-			logger = logging.NewLog(endpointConfig.LogConfig)
+			logger = endpointConfig.LogConfig.Logger()
 		} else {
-			logger = logging.NewLog(self.serverConfig.LogConfig)
+			logger = self.serverConfig.LogConfig.Logger()
 		}
 		logger.Tag("request_id", fasthttpCtx.ID())
 		logger.Tag("route", "NOT FOUND")
 
 		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, logger, endpointConfig.Timeout)
+		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, endpointConfig.Timeout)
 		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
@@ -186,8 +190,7 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
 		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		log := logging.NewLog(self.serverConfig.LogConfig)
-		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, log, endpointConfig.Timeout)
+		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, endpointConfig.Timeout)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
 		fasthttpCtx.SetStatusCode(httpStatus)

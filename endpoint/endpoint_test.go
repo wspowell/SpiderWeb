@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wspowell/errors"
+	"github.com/wspowell/local"
 	"github.com/wspowell/logging"
 
 	"github.com/valyala/fasthttp"
@@ -31,7 +31,7 @@ type myAuther struct{}
 func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
 	var statusCode int
 	VisitAllHeaders(func(key, value []byte) {
-		ctx.Info("%v:%v", string(key), string(value))
+		logging.Info(ctx, "%v:%v", string(key), string(value))
 	})
 
 	return statusCode, nil
@@ -87,7 +87,7 @@ type myEndpoint struct {
 }
 
 func (self *myEndpoint) Handle(ctx *Context) (int, error) {
-	ctx.Debug("handling myEndpoint")
+	logging.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
@@ -189,7 +189,10 @@ func newTestContext() *Context {
 	requestCtx.SetUserValue("flag", "true")
 
 	logConfig := logging.NewConfig(logging.LevelError)
-	return NewContext(context.Background(), &requestCtx, logging.NewLog(logConfig), 30*time.Second)
+	ctx := local.NewLocalized()
+	logging.WithContext(ctx, logConfig)
+
+	return NewContext(ctx, &requestCtx, 30*time.Second)
 }
 
 func Test_Endpoint_Success(t *testing.T) {

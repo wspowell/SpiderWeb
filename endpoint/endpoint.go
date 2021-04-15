@@ -97,7 +97,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 
 	defer func() {
 		if errPanic := recover(); errPanic != nil {
-			ctx.Error("panic: %+v", errors.New("ERROR", "%+v", errPanic))
+			logging.Error(ctx, "panic: %+v", errors.New("ERROR", "%+v", errPanic))
 			httpStatus, responseBody = self.processErrorResponse(ctx, responseMimeType, http.StatusInternalServerError, ErrorPanic)
 		}
 	}()
@@ -107,29 +107,23 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	// Setup logging.
 	{
 		// Every invocation of an endpoint is guaranteed to get its own logger instance.
-		var log logging.Logger
-		if self.Config.LogConfig != nil {
-			log = logging.NewLog(self.Config.LogConfig)
-		} else {
-			log = ctx.Logger
-		}
-
-		log.Tag("request_id", ctx.requestCtx.ID())
-		log.Tag("method", string(ctx.requestCtx.Method()))
-		log.Tag("route", ctx.MatchedPath)
-		log.Tag("path", string(ctx.requestCtx.URI().Path()))
-		log.Tag("action", self.Name())
+		// See: logging.WithContext()
+		logging.Tag(ctx, "request_id", ctx.requestCtx.ID())
+		logging.Tag(ctx, "method", string(ctx.requestCtx.Method()))
+		logging.Tag(ctx, "route", ctx.MatchedPath)
+		logging.Tag(ctx, "path", string(ctx.requestCtx.URI().Path()))
+		logging.Tag(ctx, "action", self.Name())
 
 		// Each path parameter is added as a log tag.
 		// Note: It helps if the path parameter name is descriptive.
 		for param := range self.handlerData.pathParameters {
 			if value, ok := ctx.requestCtx.UserValue(param).(string); ok {
-				log.Tag(param, value)
+				logging.Tag(ctx, param, value)
 			}
 		}
 	}
 
-	ctx.Trace("executing endpoint")
+	logging.Trace(ctx, "executing endpoint")
 
 	var err error
 
@@ -139,46 +133,46 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		var ok bool
 
 		if self.handlerData.hasRequestBody {
-			ctx.Trace("processing request body mime type")
+			logging.Trace(ctx, "processing request body mime type")
 
 			contentType := ctx.Request().Header.ContentType()
 			if len(contentType) == 0 {
-				ctx.Debug("header Content-Type not found")
+				logging.Debug(ctx, "header Content-Type not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeRequestMimeTypeMissing, "Content-Type MIME type not provided"))
 			}
 
 			requestMimeType, ok = self.Config.MimeTypeHandlers.Get(contentType, self.handlerData.requestMimeTypes)
 			if !ok {
-				ctx.Debug("mime type handler not available: %s", contentType)
+				logging.Debug(ctx, "mime type handler not available: %s", contentType)
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeRequestMimeTypeUnsupported, "Content-Type MIME type not supported: %s", contentType))
 			}
 
-			ctx.Debug("found request mime type handler: %s", contentType)
+			logging.Debug(ctx, "found request mime type handler: %s", contentType)
 		}
 
 		if self.handlerData.hasResponseBody {
-			ctx.Trace("processing response body mime type")
+			logging.Trace(ctx, "processing response body mime type")
 
 			accept := ctx.Request().Header.Peek(HeaderAccept)
 			if len(accept) == 0 {
-				ctx.Debug("header Accept not found")
+				logging.Debug(ctx, "header Accept not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeMissing, "Accept MIME type not provided"))
 			}
 
 			responseMimeType, ok = self.Config.MimeTypeHandlers.Get(accept, self.handlerData.responseMimeTypes)
 			if !ok {
-				ctx.Debug("mime type handler not available: %s", accept)
+				logging.Debug(ctx, "mime type handler not available: %s", accept)
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
 			}
 			// All responses after this must be marshalable to the mime type.
 			ctx.requestCtx.SetContentType(responseMimeType.MimeType)
 
-			ctx.Debug("found response mime type handler: %s", accept)
+			logging.Debug(ctx, "found response mime type handler: %s", accept)
 		}
 	}
 
 	if !ctx.ShouldContinue() {
-		ctx.Debug("request canceled or timed out")
+		logging.Debug(ctx, "request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
@@ -187,23 +181,23 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		authTimer := profiling.Profile(ctx, "Auth")
 
 		if self.Config.Auther != nil {
-			ctx.Trace("processing auth handler")
+			logging.Trace(ctx, "processing auth handler")
 
 			httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
 			authTimer.Finish()
 			if err != nil {
-				ctx.Debug("auth failed")
+				logging.Debug(ctx, "auth failed")
 				return self.processErrorResponse(ctx, responseMimeType, httpStatus, err)
 			}
 		}
 	}
 
 	if !ctx.ShouldContinue() {
-		ctx.Debug("request canceled or timed out")
+		logging.Debug(ctx, "request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
-	ctx.Trace("allocating handler")
+	logging.Trace(ctx, "allocating handler")
 
 	allocateTimer := profiling.Profile(ctx, "Allocate")
 	handlerAlloc := self.handlerData.allocateHandler()
@@ -216,12 +210,12 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	// Handle Request
 	{
 		if !ctx.ShouldContinue() {
-			ctx.Debug("request canceled or timed out")
+			logging.Debug(ctx, "request canceled or timed out")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
 		if self.handlerData.hasRequestBody {
-			ctx.Trace("processing request body")
+			logging.Trace(ctx, "processing request body")
 
 			requestBodyBytes := ctx.Request().Body()
 
@@ -229,19 +223,19 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 			err = self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
 			populateRequestTimer.Finish()
 			if err != nil {
-				ctx.Debug("failed processing request body")
+				logging.Debug(ctx, "failed processing request body")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusBadRequest, err)
 			}
 
 			if self.Config.RequestValidator != nil && self.handlerData.shouldValidateRequest {
-				ctx.Trace("processing validation handler")
+				logging.Trace(ctx, "processing validation handler")
 
 				validateTimer := profiling.Profile(ctx, "ValidateRequest")
 				var validationFailure error
 				httpStatus, validationFailure = self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
 				validateTimer.Finish()
 				if validationFailure != nil {
-					ctx.Debug("failed request body validation")
+					logging.Debug(ctx, "failed request body validation")
 
 					// Validation failures are not hard errors and should be passed through to the error handler.
 					// The failure is passed through since it is assumed this error contains information to be returned in the response.
@@ -252,24 +246,24 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	}
 
 	if !ctx.ShouldContinue() {
-		ctx.Debug("request canceled or timed out")
+		logging.Debug(ctx, "request canceled or timed out")
 		return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 	}
 
 	// Run the endpoint handler.
-	ctx.Trace("running endpoint handler")
+	logging.Trace(ctx, "running endpoint handler")
 	handleTimer := profiling.Profile(ctx, self.Name()+".Handle()")
 	httpStatus, err = handlerAlloc.handler.Handle(ctx)
 	handleTimer.Finish()
 	if err != nil {
-		ctx.Debug("handler error")
+		logging.Debug(ctx, "handler error")
 		return self.processErrorResponse(ctx, responseMimeType, httpStatus, err)
 	}
 
 	// Handle Response
 	{
 		if !ctx.ShouldContinue() {
-			ctx.Debug("request canceled or timed out")
+			logging.Debug(ctx, "request canceled or timed out")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusRequestTimeout, ErrorRequestTimeout)
 		}
 
@@ -277,19 +271,19 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		responseBody, err = self.getHandlerResponseBody(ctx, responseMimeType, handlerAlloc.responseBody)
 		populateResponseTimer.Finish()
 		if err != nil {
-			ctx.Debug("failed processing response")
+			logging.Debug(ctx, "failed processing response")
 			return self.processErrorResponse(ctx, responseMimeType, http.StatusInternalServerError, err)
 		}
 
 		if self.Config.ResponseValidator != nil && self.handlerData.shouldValidateResponse {
-			ctx.Trace("processing response validation handler")
+			logging.Trace(ctx, "processing response validation handler")
 
 			validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
 			var validationFailure error
 			httpStatus, validationFailure = self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
 			validateResponseTimer.Finish()
 			if err != nil {
-				ctx.Debug("failed response validation")
+				logging.Debug(ctx, "failed response validation")
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
 				return self.processErrorResponse(ctx, responseMimeType, httpStatus, validationFailure)
@@ -297,7 +291,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}
 
-	ctx.Debug("success response: %d %s", httpStatus, responseBody)
+	logging.Debug(ctx, "success response: %d %s", httpStatus, responseBody)
 
 	return httpStatus, responseBody
 }
@@ -308,17 +302,17 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 
 	defer func() {
 		// Print the actual error response returned to the caller.
-		ctx.Debug("error response: %d %s", httpStatus, responseBody)
+		logging.Debug(ctx, "error response: %d %s", httpStatus, responseBody)
 	}()
 
 	if httpStatus >= 500 {
 		if httpStatus == 500 {
-			ctx.Error("failure (500): %+v", err)
+			logging.Error(ctx, "failure (500): %+v", err)
 		} else {
-			ctx.Error("failure (%d): %#v", httpStatus, err)
+			logging.Error(ctx, "failure (%d): %#v", httpStatus, err)
 		}
 	} else {
-		ctx.Debug("error (%d): %#v", httpStatus, err)
+		logging.Debug(ctx, "error (%d): %#v", httpStatus, err)
 	}
 
 	if responseMimeType == nil {
@@ -342,10 +336,10 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 
 func (self *Endpoint) setHandlerRequestBody(ctx *Context, mimeHandler *MimeTypeHandler, requestBody interface{}, requestBodyBytes []byte) error {
 	if requestBody != nil {
-		ctx.Trace("non-empty request body")
+		logging.Trace(ctx, "non-empty request body")
 
 		if err := mimeHandler.Unmarshal(requestBodyBytes, requestBody); err != nil {
-			ctx.Error("failed to unmarshal request body: %v", err)
+			logging.Error(ctx, "failed to unmarshal request body: %v", err)
 			return ErrorRequestBodyUnmarshalFailure
 		}
 	}
@@ -354,16 +348,16 @@ func (self *Endpoint) setHandlerRequestBody(ctx *Context, mimeHandler *MimeTypeH
 
 func (self *Endpoint) getHandlerResponseBody(ctx *Context, mimeHandler *MimeTypeHandler, responseBody interface{}) ([]byte, error) {
 	if responseBody != nil {
-		ctx.Trace("non-empty response body")
+		logging.Trace(ctx, "non-empty response body")
 
 		ctx.requestCtx.SetContentType(mimeHandler.MimeType)
 		responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 		if err != nil {
-			ctx.Error("failed to marshal response: %v", err)
+			logging.Error(ctx, "failed to marshal response: %v", err)
 			return nil, ErrorResponseBodyMarshalFailure
 		}
 		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes) {
-			ctx.Debug("request body is null")
+			logging.Debug(ctx, "request body is null")
 			return nil, ErrorResponseBodyNull
 		}
 		return responseBodyBytes, nil

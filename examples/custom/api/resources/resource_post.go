@@ -7,6 +7,7 @@ import (
 
 	"github.com/wspowell/errors"
 	"github.com/wspowell/local"
+	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
@@ -19,7 +20,7 @@ type postResource struct {
 
 func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "PostResource").Finish()
-	ctx.Debug("handling PostResource")
+	logging.Debug(ctx, "handling PostResource")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")

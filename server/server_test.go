@@ -29,7 +29,7 @@ type myEndpoint struct {
 }
 
 func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
-	ctx.Debug("handling myEndpoint")
+	logging.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")

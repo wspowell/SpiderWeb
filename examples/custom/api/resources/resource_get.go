@@ -3,6 +3,7 @@ package resources
 import (
 	"net/http"
 
+	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
@@ -16,9 +17,9 @@ type getResource struct {
 
 func (self *getResource) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "GetResource").Finish()
-	ctx.Debug("handling GetResource")
+	logging.Debug(ctx, "handling GetResource")
 
-	ctx.Info("resource id: %v", self.ResourceId)
+	logging.Info(ctx, "resource id: %v", self.ResourceId)
 
 	self.Db.RetrieveValue()
 
