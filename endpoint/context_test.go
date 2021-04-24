@@ -6,18 +6,15 @@ import (
 	"time"
 
 	"github.com/wspowell/errors"
-
-	"github.com/valyala/fasthttp"
 )
 
 func Test_Context_DeadlineExceeded(t *testing.T) {
 	t.Parallel()
 
-	var req fasthttp.Request
-	requestCtx := fasthttp.RequestCtx{}
-	requestCtx.Init(&req, nil, nil)
+	endpointCtx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
 
-	ctx := NewContext(context.Background(), &requestCtx, time.Millisecond)
+	ctx := NewContext(endpointCtx, nil)
 
 	time.Sleep(time.Second)
 
@@ -37,13 +34,11 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 func Test_Context_Canceled(t *testing.T) {
 	t.Parallel()
 
-	var req fasthttp.Request
-	requestCtx := fasthttp.RequestCtx{}
-	requestCtx.Init(&req, nil, nil)
+	endpointCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 
-	ctx := NewContext(context.Background(), &requestCtx, 30*time.Second)
+	ctx := NewContext(endpointCtx, nil)
 
-	ctx.Cancel()
+	cancel()
 
 	if ctx.ShouldContinue() {
 		t.Errorf("ShouldContinue() should have returned false")

@@ -20,10 +20,6 @@ const (
 	structTagOptionValidate = "validate"
 )
 
-const (
-	HeaderAccept = "Accept"
-)
-
 var (
 	nullBytes = []byte("null")
 )
@@ -102,22 +98,24 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}()
 
-	defer profiling.Profile(ctx, string(ctx.HttpMethod)+" "+ctx.MatchedPath).Finish()
+	defer profiling.Profile(ctx, string(ctx.requester.Method())+" "+ctx.requester.MatchedPath()).Finish()
+
+	ctx.requester.SetResponseHeader("X-Request-Id", ctx.requester.RequestId())
 
 	// Setup logging.
 	{
 		// Every invocation of an endpoint is guaranteed to get its own logger instance.
 		// See: logging.WithContext()
-		logging.Tag(ctx, "request_id", ctx.requestCtx.ID())
-		logging.Tag(ctx, "method", string(ctx.requestCtx.Method()))
-		logging.Tag(ctx, "route", ctx.MatchedPath)
-		logging.Tag(ctx, "path", string(ctx.requestCtx.URI().Path()))
+		logging.Tag(ctx, "request_id", ctx.requester.RequestId())
+		logging.Tag(ctx, "method", string(ctx.requester.Method()))
+		logging.Tag(ctx, "route", ctx.requester.MatchedPath())
+		logging.Tag(ctx, "path", string(ctx.requester.Path()))
 		logging.Tag(ctx, "action", self.Name())
 
 		// Each path parameter is added as a log tag.
 		// Note: It helps if the path parameter name is descriptive.
 		for param := range self.handlerData.pathParameters {
-			if value, ok := ctx.requestCtx.UserValue(param).(string); ok {
+			if value, ok := ctx.requester.PathParam(param); ok {
 				logging.Tag(ctx, param, value)
 			}
 		}
@@ -135,7 +133,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		if self.handlerData.hasRequestBody {
 			logging.Trace(ctx, "processing request body mime type")
 
-			contentType := ctx.Request().Header.ContentType()
+			contentType := ctx.requester.ContentType()
 			if len(contentType) == 0 {
 				logging.Debug(ctx, "header Content-Type not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeRequestMimeTypeMissing, "Content-Type MIME type not provided"))
@@ -153,7 +151,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		if self.handlerData.hasResponseBody {
 			logging.Trace(ctx, "processing response body mime type")
 
-			accept := ctx.Request().Header.Peek(HeaderAccept)
+			accept := ctx.requester.Accept()
 			if len(accept) == 0 {
 				logging.Debug(ctx, "header Accept not found")
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeMissing, "Accept MIME type not provided"))
@@ -165,7 +163,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 				return self.processErrorResponse(ctx, responseMimeType, http.StatusUnsupportedMediaType, errors.New(InternalCodeResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
 			}
 			// All responses after this must be marshalable to the mime type.
-			ctx.requestCtx.SetContentType(responseMimeType.MimeType)
+			ctx.requester.SetResponseContentType(responseMimeType.MimeType)
 
 			logging.Debug(ctx, "found response mime type handler: %s", accept)
 		}
@@ -183,7 +181,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		if self.Config.Auther != nil {
 			logging.Trace(ctx, "processing auth handler")
 
-			httpStatus, err = self.Config.Auther.Auth(ctx, ctx.Request().Header.VisitAll)
+			httpStatus, err = self.Config.Auther.Auth(ctx, ctx.requester.VisitHeaders)
 			authTimer.Finish()
 			if err != nil {
 				logging.Debug(ctx, "auth failed")
@@ -203,8 +201,8 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 	handlerAlloc := self.handlerData.allocateHandler()
 
 	self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources)
-	self.handlerData.setPathParameters(handlerAlloc.handlerValue, ctx.requestCtx)
-	self.handlerData.setQueryParameters(handlerAlloc.handlerValue, ctx.requestCtx)
+	self.handlerData.setPathParameters(handlerAlloc.handlerValue, ctx.requester)
+	self.handlerData.setQueryParameters(handlerAlloc.handlerValue, ctx.requester)
 	allocateTimer.Finish()
 
 	// Handle Request
@@ -217,7 +215,7 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		if self.handlerData.hasRequestBody {
 			logging.Trace(ctx, "processing request body")
 
-			requestBodyBytes := ctx.Request().Body()
+			requestBodyBytes := ctx.requester.RequestBody()
 
 			populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
 			err = self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
@@ -316,7 +314,7 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 	}
 
 	if responseMimeType == nil {
-		ctx.requestCtx.SetContentType(mimeTypeTextPlain)
+		ctx.requester.SetResponseContentType(mimeTypeTextPlain)
 		responseBody = []byte(fmt.Sprintf("%#v", err))
 		return httpStatus, responseBody
 	}
@@ -324,7 +322,7 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 	httpStatus, errStruct = self.Config.ErrorHandler.HandleError(ctx, httpStatus, err)
 	responseBody, err = responseMimeType.Marshal(errStruct)
 	if err != nil {
-		ctx.requestCtx.SetContentType(mimeTypeTextPlain)
+		ctx.requester.SetResponseContentType(mimeTypeTextPlain)
 		err = errors.New(InternalCodeErrorParseFailure, "Internal server error")
 		httpStatus = http.StatusInternalServerError
 		responseBody = []byte(fmt.Sprintf("%s", err))
@@ -350,7 +348,7 @@ func (self *Endpoint) getHandlerResponseBody(ctx *Context, mimeHandler *MimeType
 	if responseBody != nil {
 		logging.Trace(ctx, "non-empty response body")
 
-		ctx.requestCtx.SetContentType(mimeHandler.MimeType)
+		ctx.requester.SetResponseContentType(mimeHandler.MimeType)
 		responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 		if err != nil {
 			logging.Error(ctx, "failed to marshal response: %v", err)

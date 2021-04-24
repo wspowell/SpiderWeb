@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,6 +16,10 @@ import (
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
+)
+
+const (
+	headerAccept = "Accept"
 )
 
 // Config top level options.
@@ -75,28 +80,17 @@ func New(serverConfig *Config) *Server {
 }
 
 func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
-	requestHandler := fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
-		// Every invocation of an endpoint is guaranteed to get its own logger instance.
-		var logger logging.Logger
-		if endpointConfig != nil {
-			logger = endpointConfig.LogConfig.Logger()
-		} else {
-			logger = self.serverConfig.LogConfig.Logger()
-		}
-		logger.Tag("request_id", fasthttpCtx.ID())
-		logger.Tag("route", "NOT FOUND")
-
-		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, endpointConfig.Timeout)
+	requestHandler := fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
+		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
 		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
-		fasthttpCtx.SetStatusCode(httpStatus)
-		fasthttpCtx.SetBody(responseBody)
+		requestCtx.SetStatusCode(httpStatus)
+		requestCtx.SetBody(responseBody)
 
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
-		fasthttpCtx.Response.SetConnectionClose()
+		requestCtx.Response.SetConnectionClose()
 	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
 
 	self.router.NotFound = requestHandler
@@ -188,16 +182,81 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
-	return fasthttp.TimeoutWithCodeHandler(func(fasthttpCtx *fasthttp.RequestCtx) {
-		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, fasthttpCtx, endpointConfig.Timeout)
+	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
+		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
-		fasthttpCtx.SetStatusCode(httpStatus)
-		fasthttpCtx.SetBody(responseBody)
+		requestCtx.SetStatusCode(httpStatus)
+		requestCtx.SetBody(responseBody)
 
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
-		fasthttpCtx.Response.SetConnectionClose()
+		requestCtx.Response.SetConnectionClose()
 	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
+}
+
+type fasthttpRequester struct {
+	requestCtx *fasthttp.RequestCtx
+}
+
+func newFasthttpRequester(requestCtx *fasthttp.RequestCtx) *fasthttpRequester {
+	return &fasthttpRequester{
+		requestCtx: requestCtx,
+	}
+}
+
+func (self *fasthttpRequester) RequestId() string {
+	return strconv.Itoa(int(self.requestCtx.ID()))
+}
+
+func (self *fasthttpRequester) Method() []byte {
+	return self.requestCtx.Method()
+}
+
+func (self *fasthttpRequester) Path() []byte {
+	return self.requestCtx.URI().Path()
+}
+
+func (self *fasthttpRequester) ContentType() []byte {
+	return self.requestCtx.Request.Header.ContentType()
+}
+
+func (self *fasthttpRequester) Accept() []byte {
+	return self.requestCtx.Request.Header.Peek(headerAccept)
+}
+
+func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
+	self.requestCtx.Request.Header.VisitAll(f)
+}
+
+func (self *fasthttpRequester) MatchedPath() string {
+	var matchedPath string
+	matchedPath, _ = self.requestCtx.UserValue(router.MatchedRoutePathParam).(string)
+	return matchedPath
+}
+
+func (self *fasthttpRequester) PathParam(param string) (string, bool) {
+	value, ok := self.requestCtx.UserValue(param).(string)
+	return value, ok
+}
+
+func (self *fasthttpRequester) QueryParam(param string) ([]byte, bool) {
+	value := self.requestCtx.URI().QueryArgs().Peek(param)
+	return value, value != nil
+}
+
+func (self *fasthttpRequester) RequestBody() []byte {
+	return self.requestCtx.Request.Body()
+}
+
+func (self *fasthttpRequester) SetResponseHeader(header string, value string) {
+	self.requestCtx.Response.Header.Set(header, value)
+}
+
+func (self *fasthttpRequester) SetResponseContentType(contentType string) {
+	self.requestCtx.SetContentType(contentType)
+}
+
+func (self *fasthttpRequester) ResponseContentType() string {
+	return string(self.requestCtx.Response.Header.Peek("Content-Type"))
 }

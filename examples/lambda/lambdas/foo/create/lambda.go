@@ -14,6 +14,6 @@ func main() {
 		Timeout:   30 * time.Second,
 	}
 
-	handler := lambda.New(config, &create{})
+	handler := lambda.New(config, "/foo", &create{})
 	handler.Start()
 }

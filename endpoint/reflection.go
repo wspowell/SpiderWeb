@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/valyala/fasthttp"
 )
 
 // This file contains all the reflection that is not nice to look at.
@@ -241,7 +239,7 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 	}
 }
 
-func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) {
+func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requester Requester) {
 	for param, fieldNum := range self.pathParameters {
 
 		parameterValue := handlerValue.Elem().Field(fieldNum)
@@ -250,7 +248,7 @@ func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, reques
 			continue
 		}
 
-		value, ok := requestCtx.UserValue(param).(string)
+		value, ok := requester.PathParam(param)
 		if !ok {
 			continue
 		}
@@ -259,7 +257,7 @@ func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, reques
 	}
 }
 
-func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, requestCtx *fasthttp.RequestCtx) {
+func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, requester Requester) {
 	for query, fieldNum := range self.queryParameters {
 		queryValue := handlerValue.Elem().Field(fieldNum)
 
@@ -267,7 +265,10 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 			continue
 		}
 
-		queryBytes := requestCtx.URI().QueryArgs().Peek(query)
+		queryBytes, ok := requester.QueryParam(query)
+		if !ok {
+			continue
+		}
 
 		setValueFromString(queryValue, string(queryBytes))
 	}
