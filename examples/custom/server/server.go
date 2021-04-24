@@ -3,14 +3,14 @@ package server
 import (
 	"time"
 
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/examples/custom/api"
 	"github.com/wspowell/spiderweb/server"
 )
 
 func New() *server.Server {
 	serverConfig := &server.Config{
-		LogConfig:    logging.NewConfig(logging.LevelDebug),
+		LogConfig:    log.NewConfig(log.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,

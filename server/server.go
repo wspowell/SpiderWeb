@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wspowell/local"
-	"github.com/wspowell/logging"
 	"github.com/wspowell/spiderweb/endpoint"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
+	"github.com/wspowell/context"
+	"github.com/wspowell/log"
 )
 
 const (
@@ -29,14 +28,14 @@ type Config struct {
 	Port         int
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
-	LogConfig    logging.Configer
+	LogConfig    log.Configer
 }
 
 // Server listens for incoming requests and routes them to the registered endpoint handlers.
 type Server struct {
 	serverConfig *Config
 
-	logger logging.Logger
+	logger log.Logger
 	server *fasthttp.Server
 	router *router.Router
 
@@ -56,9 +55,9 @@ func New(serverConfig *Config) *Server {
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
 
 	ctx, shutdownComplete := newServerContext(httpServer)
-	serverContext := local.FromContext(ctx)
+	serverContext := context.Localize(ctx)
 
-	logging.WithContext(serverContext, serverConfig.LogConfig)
+	log.WithContext(serverContext, serverConfig.LogConfig)
 
 	router := router.New()
 	router.SaveMatchedRoutePath = true

@@ -3,11 +3,11 @@ package middleware
 import (
 	"io"
 
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 )
 
 type NoopLogConfig struct {
-	*logging.Config
+	*log.Config
 }
 
 func (self *NoopLogConfig) Out() io.Writer {

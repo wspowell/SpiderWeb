@@ -3,8 +3,8 @@ package profiling
 import (
 	"time"
 
-	"github.com/wspowell/local"
-	"github.com/wspowell/logging"
+	"github.com/wspowell/context"
+	"github.com/wspowell/log"
 )
 
 type contextKey struct{}
@@ -19,12 +19,12 @@ type Finisher interface {
 
 // Profile a given span.
 // Must call Finish() on the returned timer.
-func Profile(ctx local.Context, name string) Finisher {
+func Profile(ctx context.Context, name string) Finisher {
 	return newTiming(ctx, name)
 }
 
 type timing struct {
-	ctx                 local.Context
+	ctx                 context.Context
 	parent              *timing
 	finishedChildTimers []*timing
 	name                string
@@ -32,7 +32,7 @@ type timing struct {
 	duration            time.Duration
 }
 
-func newTiming(ctx local.Context, name string) *timing {
+func newTiming(ctx context.Context, name string) *timing {
 	var parentTimer *timing
 	if activeTimer, ok := ctx.Value(activeTimerKey).(*timing); ok {
 		parentTimer = activeTimer
@@ -46,7 +46,7 @@ func newTiming(ctx local.Context, name string) *timing {
 		start:               time.Now().UTC(),
 	}
 
-	ctx.Localize(activeTimerKey, timer)
+	context.WithLocalValue(ctx, activeTimerKey, timer)
 
 	return timer
 }
@@ -56,18 +56,18 @@ func (self *timing) Finish() {
 	if self.parent == nil {
 		// Dump profiling data.
 		// FIXME: This always prints profiling, even when LevelFatal is desired.
-		//logConfig := logging.NewConfig(logging.LevelDebug)
-		//logger := logging.NewLogger(logConfig)
+		//logConfig := log.NewConfig(log.LevelDebug)
+		//logger := log.NewLogger(logConfig)
 
 		//printTimers(logger, self, 0)
 	} else {
 		self.parent.finishedChildTimers = append(self.parent.finishedChildTimers, self)
 
-		self.ctx.Localize(activeTimerKey, self.parent)
+		context.WithLocalValue(self.ctx, activeTimerKey, self.parent)
 	}
 }
 
-func printTimers(logger logging.Logger, timer *timing, paddingSize int) {
+func printTimers(logger log.Logger, timer *timing, paddingSize int) {
 	var padding string
 	for i := 0; i < paddingSize; i++ {
 		padding += " "

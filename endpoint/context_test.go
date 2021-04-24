@@ -1,10 +1,10 @@
 package endpoint
 
 import (
-	"context"
 	"testing"
 	"time"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 )
 

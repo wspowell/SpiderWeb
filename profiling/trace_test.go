@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wspowell/local"
+	"github.com/wspowell/context"
 )
 
 func Test_trace(t *testing.T) {
@@ -14,7 +14,7 @@ func Test_trace(t *testing.T) {
 }
 
 func runProcess() {
-	ctx := local.NewLocalized()
+	ctx := context.Local()
 	defer Profile(ctx, "runProcesses").Finish()
 
 	timer := Profile(ctx, "manualDoOne")
@@ -28,19 +28,19 @@ func runProcess() {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func doOne(ctx local.Context) {
+func doOne(ctx context.Context) {
 	defer Profile(ctx, "doOne").Finish()
 	time.Sleep(200 * time.Millisecond)
 }
 
-func doTwo(ctx local.Context) {
+func doTwo(ctx context.Context) {
 	defer Profile(ctx, "doTwo").Finish()
 	time.Sleep(300 * time.Millisecond)
 	doThree(ctx)
 	time.Sleep(400 * time.Millisecond)
 }
 
-func doThree(ctx local.Context) {
+func doThree(ctx context.Context) {
 	defer Profile(ctx, "doThree").Finish()
 	time.Sleep(500 * time.Millisecond)
 }

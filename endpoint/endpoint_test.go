@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
-	"github.com/wspowell/local"
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 )
 
 type errorResponse struct {
@@ -30,7 +31,7 @@ type myAuther struct{}
 func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
 	var statusCode int
 	VisitAllHeaders(func(key, value []byte) {
-		logging.Info(ctx, "%v:%v", string(key), string(value))
+		log.Info(ctx, "%v:%v", string(key), string(value))
 	})
 
 	return statusCode, nil
@@ -86,7 +87,7 @@ type myEndpoint struct {
 }
 
 func (self *myEndpoint) Handle(ctx *Context) (int, error) {
-	logging.Debug(ctx, "handling myEndpoint")
+	log.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1", "invalid input")
@@ -138,7 +139,7 @@ func createTestEndpoint() *Endpoint {
 	}
 
 	config := &Config{
-		LogConfig:         logging.NewConfig(logging.LevelError),
+		LogConfig:         log.NewConfig(log.LevelError),
 		ErrorHandler:      myErrorHandler{},
 		Auther:            myAuther{},
 		RequestValidator:  myRequestValidator{},
@@ -168,14 +169,6 @@ func createDefaultTestEndpoint() *Endpoint {
 	return NewEndpoint(config, &myEndpoint{})
 }
 
-func newTestContext(req Requester) *Context {
-	logConfig := logging.NewConfig(logging.LevelError)
-	ctx := local.NewLocalized()
-	logging.WithContext(ctx, logConfig)
-
-	return NewContext(ctx, req)
-}
-
 func Test_Endpoint_Success(t *testing.T) {
 	t.Parallel()
 
@@ -189,9 +182,19 @@ func Test_Endpoint_Success(t *testing.T) {
 
 	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
-	ctx := newTestContext(requester)
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	var httpStatus int
+	var responseBodyBytes []byte
 
-	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		endpointCtx := NewContext(ctx, requester)
+		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+	}()
+	wg.Wait()
 
 	if http.StatusOK != httpStatus {
 		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
@@ -224,9 +227,19 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 
 	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
-	ctx := newTestContext(requester)
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	var httpStatus int
+	var responseBodyBytes []byte
 
-	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		endpointCtx := NewContext(ctx, requester)
+		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+	}()
+	wg.Wait()
 
 	if http.StatusOK != httpStatus {
 		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
@@ -259,15 +272,23 @@ func Test_Endpoint_Error(t *testing.T) {
 
 	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
-	ctx := newTestContext(requester)
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	var httpStatus int
+	var responseBodyBytes []byte
 
-	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		endpointCtx := NewContext(ctx, requester)
+		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+	}()
+	wg.Wait()
 
 	if http.StatusUnprocessableEntity != httpStatus {
 		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)
 	}
-
-	fmt.Println(string(responseBodyBytes))
 
 	var responseBody errorResponse
 	if err := json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
@@ -292,9 +313,19 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 
 	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
-	ctx := newTestContext(requester)
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	var httpStatus int
+	var responseBodyBytes []byte
 
-	httpStatus, responseBodyBytes := endpoint.Execute(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		endpointCtx := NewContext(ctx, requester)
+		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+	}()
+	wg.Wait()
 
 	if http.StatusUnprocessableEntity != httpStatus {
 		t.Errorf("expected HTTP status code to be %v, but got %v", http.StatusOK, httpStatus)

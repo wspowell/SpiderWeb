@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/wspowell/errors"
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server"
 )
@@ -29,7 +29,7 @@ type myEndpoint struct {
 }
 
 func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
-	logging.Debug(ctx, "handling myEndpoint")
+	log.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
@@ -45,7 +45,7 @@ func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
 
 func Test_Default_Server_Config(t *testing.T) {
 	serverConfig := &server.Config{
-		LogConfig:    logging.NewConfig(logging.LevelDebug),
+		LogConfig:    log.NewConfig(log.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,

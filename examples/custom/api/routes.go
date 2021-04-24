@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/examples/custom/api/resources"
 	"github.com/wspowell/spiderweb/examples/custom/middleware"
@@ -17,7 +17,7 @@ func Routes(custom *server.Server) {
 		Auther:       middleware.AuthNoop{},
 		ErrorHandler: middleware.ErrorJsonWithCodeResponse{},
 		LogConfig: &middleware.NoopLogConfig{
-			Config: logging.NewConfig(logging.LevelDebug),
+			Config: log.NewConfig(log.LevelDebug),
 		},
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  middleware.ValidateNoopRequest{},

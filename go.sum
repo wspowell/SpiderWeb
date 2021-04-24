@@ -60,12 +60,12 @@ github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyC
 github.com/valyala/fasthttp v1.23.0 h1:0ufwSD9BhWa6f8HWdmdq4FHQ23peRo3Ng/Qs8m5NcFs=
 github.com/valyala/fasthttp v1.23.0/go.mod h1:0mw2RjXGOzxf4NL2jni3gUQ7LfjjUSiG5sskOUUSEpU=
 github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a/go.mod h1:v3UYOV9WzVtRmSR+PDvWpU/qWl4Wa5LApYYX4ZtKbio=
+github.com/wspowell/context v0.0.5 h1:yKgAKxA8Fu2tJB6eQLZS+4D/EThAtu8KWfcitiLyPqI=
+github.com/wspowell/context v0.0.5/go.mod h1:qUqrvgstirgLtXeiA7IOJkBeQbstEuNwJmD5PMYr3wQ=
 github.com/wspowell/errors v0.1.0 h1:Ataom9dgpBi6lIZVhPfRspKzX+lN7QnunIGjut7dUgo=
 github.com/wspowell/errors v0.1.0/go.mod h1:bnpOAkrMa5BSomFdepcgEqbSWWiUzK4Uphhd+dYw7PY=
-github.com/wspowell/local v0.0.3 h1:GsveS8m2+dcPuHjErPMBl6QHArrFwSOs4gsfcWCrgXc=
-github.com/wspowell/local v0.0.3/go.mod h1:b0v9tQaoIbgU1+Y5I8ohOZVrYk3kyIHciI/QRBVSiJE=
-github.com/wspowell/logging v0.0.4 h1:HcWQ48x81THNcPya5tZGP+IaBMCNZsxUgWWVP80kLjQ=
-github.com/wspowell/logging v0.0.4/go.mod h1:i3oRCoghYPu9nsofPcuB9NNFFKI5RILNWYa6K2DRXqQ=
+github.com/wspowell/log v0.0.5 h1:inwVF5onfrqIPbvDe75Vlt0gISSvRiNdmLuWIWLQPQ8=
+github.com/wspowell/log v0.0.5/go.mod h1:hqyGnDXuwyIEGcFqtuau7gJLEENcML8ib4m1qGTrhM8=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
@@ -125,8 +125,6 @@ gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 h1:tQIYjPdBoyREyB9XMu+nnTclp
 gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gotest.tools v2.1.0+incompatible h1:5USw7CrJBYKqjg9R7QlA6jzqZKEAtvW82aNmsxxGPxw=
 gotest.tools v2.1.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
-gotest.tools/gotestsum v1.6.3 h1:E3wOF4wmxKA19BB5wTY7t0L1m+QNARtDcBX4yqG6DEc=
-gotest.tools/gotestsum v1.6.3/go.mod h1:fTR9ZhxC/TLAAx2/WMk/m3TkMB9eEI89gdEzhiRVJT8=
 gotest.tools/gotestsum v1.6.4 h1:HFkapG0hK/HWiOxWS78SbR/JK5EpbH8hFzUuCvvfbfQ=
 gotest.tools/gotestsum v1.6.4/go.mod h1:fTR9ZhxC/TLAAx2/WMk/m3TkMB9eEI89gdEzhiRVJT8=
 gotest.tools/v3 v3.0.3/go.mod h1:Z7Lb0S5l+klDB31fvDQX8ss/FlKDxtlFlw3Oa8Ymbl8=

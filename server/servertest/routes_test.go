@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server"
 )
 
 func routes() *server.Server {
 	serverConfig := &server.Config{
-		LogConfig:    logging.NewConfig(logging.LevelDebug),
+		LogConfig:    log.NewConfig(log.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,
@@ -29,7 +29,7 @@ func routes() *server.Server {
 func sampleRoutes(sample *server.Server) {
 	config := &endpoint.Config{
 		LogConfig: &noopLogConfig{
-			Config: logging.NewConfig(logging.LevelDebug),
+			Config: log.NewConfig(log.LevelDebug),
 		},
 		Resources: map[string]interface{}{
 			"datastore": &database{},
@@ -49,7 +49,7 @@ func (self *noRoute) Handle(ctx *endpoint.Context) (int, error) {
 }
 
 type noopLogConfig struct {
-	*logging.Config
+	*log.Config
 }
 
 func (self *noopLogConfig) Out() io.Writer {

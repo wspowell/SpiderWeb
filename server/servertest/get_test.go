@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
@@ -52,9 +52,9 @@ type get struct {
 
 func (self *get) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "GetResource").Finish()
-	logging.Debug(ctx, "handling GetResource")
+	log.Debug(ctx, "handling GetResource")
 
-	logging.Info(ctx, "resource id: %v", self.ResourceId)
+	log.Info(ctx, "resource id: %v", self.ResourceId)
 
 	self.ResponseBody = &fooResponseModel{
 		MyString: self.Db.RetrieveValue(),

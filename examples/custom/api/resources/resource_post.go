@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
-	"github.com/wspowell/local"
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
@@ -20,7 +20,7 @@ type postResource struct {
 
 func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
 	defer profiling.Profile(ctx, "PostResource").Finish()
-	logging.Debug(ctx, "handling PostResource")
+	log.Debug(ctx, "handling PostResource")
 
 	if self.RequestBody.ShouldFail {
 		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
@@ -37,7 +37,7 @@ func (self *postResource) Handle(ctx *endpoint.Context) (int, error) {
 }
 
 // Fake spending time to save data.
-func saveResource(ctx local.Context) {
+func saveResource(ctx context.Context) {
 	defer profiling.Profile(ctx, "saveResource").Finish()
 
 	source := rand.NewSource(time.Now().UnixNano())

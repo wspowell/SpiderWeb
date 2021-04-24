@@ -1,12 +1,13 @@
 package servertest
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"reflect"
 	"runtime/debug"
 	"testing"
+
+	"github.com/wspowell/context"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"

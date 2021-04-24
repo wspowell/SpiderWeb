@@ -1,7 +1,7 @@
 package lambda
 
 import (
-	"context"
+	"github.com/wspowell/context"
 
 	"github.com/wspowell/spiderweb/endpoint"
 

@@ -1,27 +1,23 @@
 package endpoint
 
 import (
-	"context"
-
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
-	"github.com/wspowell/local"
 )
-
-var _ local.Context = (*Context)(nil)
 
 // Context defines local endpoint data.
 type Context struct {
-	*local.Localized
+	context.Context
 
 	requester Requester
 }
 
 // NewContext creates a new endpoint context. The server creates this and passes it to the endpoint handler.
 func NewContext(serverContext context.Context, requester Requester) *Context {
-	ctx := local.FromContext(serverContext)
+	ctx := context.Localize(serverContext)
 
 	return &Context{
-		Localized: ctx,
+		Context:   ctx,
 		requester: requester,
 	}
 }
