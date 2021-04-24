@@ -98,7 +98,9 @@ func (self *Endpoint) Execute(ctx *Context) (httpStatus int, responseBody []byte
 		}
 	}()
 
-	defer profiling.Profile(ctx, string(ctx.HttpMethod)+" "+ctx.MatchedPath).Finish()
+	defer profiling.Profile(ctx, string(ctx.requester.Method())+" "+ctx.requester.MatchedPath()).Finish()
+
+	ctx.requester.SetResponseHeader("X-Request-Id", ctx.requester.RequestId())
 
 	// Setup logging.
 	{

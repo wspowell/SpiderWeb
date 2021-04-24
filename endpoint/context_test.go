@@ -11,7 +11,10 @@ import (
 func Test_Context_DeadlineExceeded(t *testing.T) {
 	t.Parallel()
 
-	ctx := NewContext(context.Background(), nil, time.Millisecond)
+	endpointCtx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+
+	ctx := NewContext(endpointCtx, nil)
 
 	time.Sleep(time.Second)
 
@@ -31,9 +34,11 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 func Test_Context_Canceled(t *testing.T) {
 	t.Parallel()
 
-	ctx := NewContext(context.Background(), nil, 30*time.Second)
+	endpointCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 
-	ctx.Cancel()
+	ctx := NewContext(endpointCtx, nil)
+
+	cancel()
 
 	if ctx.ShouldContinue() {
 		t.Errorf("ShouldContinue() should have returned false")

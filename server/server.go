@@ -81,18 +81,7 @@ func New(serverConfig *Config) *Server {
 
 func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
 	requestHandler := fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		// Every invocation of an endpoint is guaranteed to get its own logger instance.
-		var logger logging.Logger
-		if endpointConfig != nil {
-			logger = endpointConfig.LogConfig.Logger()
-		} else {
-			logger = self.serverConfig.LogConfig.Logger()
-		}
-		logger.Tag("request_id", requestCtx.ID())
-		logger.Tag("route", "NOT FOUND")
-
-		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, newFasthttpRequester(requestCtx), endpointConfig.Timeout)
+		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
 		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
@@ -194,8 +183,7 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		// Note: The endpoint context must receive the same timeout as the fasthttp.TimeoutWithCodeHandler or this will cause unexpected behavior.
-		ctx := endpoint.NewContext(self.serverContext, newFasthttpRequester(requestCtx), endpointConfig.Timeout)
+		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
 		httpStatus, responseBody := routeEndpoint.Execute(ctx)
 
 		requestCtx.SetStatusCode(httpStatus)
@@ -252,14 +240,23 @@ func (self *fasthttpRequester) PathParam(param string) (string, bool) {
 	return value, ok
 }
 
-func (self *fasthttpRequester) QueryParam(param string) []byte {
-	return self.requestCtx.URI().QueryArgs().Peek(param)
+func (self *fasthttpRequester) QueryParam(param string) ([]byte, bool) {
+	value := self.requestCtx.URI().QueryArgs().Peek(param)
+	return value, value != nil
 }
 
 func (self *fasthttpRequester) RequestBody() []byte {
 	return self.requestCtx.Request.Body()
 }
 
+func (self *fasthttpRequester) SetResponseHeader(header string, value string) {
+	self.requestCtx.Response.Header.Set(header, value)
+}
+
 func (self *fasthttpRequester) SetResponseContentType(contentType string) {
 	self.requestCtx.SetContentType(contentType)
+}
+
+func (self *fasthttpRequester) ResponseContentType() string {
+	return string(self.requestCtx.Response.Header.Peek("Content-Type"))
 }

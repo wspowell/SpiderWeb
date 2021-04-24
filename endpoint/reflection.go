@@ -265,7 +265,10 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 			continue
 		}
 
-		queryBytes := requester.QueryParam(query)
+		queryBytes, ok := requester.QueryParam(query)
+		if !ok {
+			continue
+		}
 
 		setValueFromString(queryValue, string(queryBytes))
 	}
