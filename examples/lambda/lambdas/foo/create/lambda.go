@@ -3,14 +3,14 @@ package main
 import (
 	"time"
 
-	"github.com/wspowell/logging"
+	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/lambda"
 )
 
 func main() {
 	config := &endpoint.Config{
-		LogConfig: logging.NewConfig(logging.LevelDebug),
+		LogConfig: log.NewConfig(log.LevelDebug),
 		Timeout:   30 * time.Second,
 	}
 
