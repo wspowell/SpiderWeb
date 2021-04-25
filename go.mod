@@ -12,7 +12,7 @@ require (
 	github.com/valyala/fasthttp v1.23.0
 	github.com/wspowell/context v0.0.5
 	github.com/wspowell/errors v0.1.0
-	github.com/wspowell/log v0.0.5
+	github.com/wspowell/log v0.0.6
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 	gotest.tools v2.1.0+incompatible // indirect
