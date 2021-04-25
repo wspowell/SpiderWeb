@@ -1,30 +1,49 @@
 package endpoint
 
-import (
-	"github.com/wspowell/errors"
-)
-
-// All errors emitted by endpoint.
-// It is expected that consumers check for FrameworkErrors in their ErrorHandlers and process them accordingly.
-var (
-	ErrorPanic = errors.New("SW0", "internal server error")
-
-	ErrorRequestTimeout              = errors.New("SW1", "request timeout")
-	ErrorRequestUnsupportedMimeType  = errors.New("SW2", "unsupported request MIME type")
-	ErrorRequestBodyReadFailure      = errors.New("SW3", "request body read failure")
-	ErrorRequestBodyUnmarshalFailure = errors.New("SW4", "request body unmarshal failure")
-	ErrorRequestValidationError      = errors.New("SW5", "request validation error")
-
-	ErrorResponseBodyMarshalFailure  = errors.New("SW6", "response body marshal failure")
-	ErrorResponseBodyMissing         = errors.New("SW7", "missing response body")
-	ErrorResponseBodyNull            = errors.New("SW8", "response body null")
-	ErrorResponseUnsupportedMimeType = errors.New("SW9", "unsupported response MIME type")
-)
-
 const (
-	InternalCodeRequestMimeTypeMissing      = "SW1"
-	InternalCodeRequestMimeTypeUnsupported  = "SW2"
-	InternalCodeResponseMimeTypeUnsupported = "SW3"
-	InternalCodeResponseMimeTypeMissing     = "SW4"
-	InternalCodeErrorParseFailure           = "SW5"
+	internalServerError = "internal server error"
+	badRequest          = "bad request"
+)
+
+// Internal Codes.
+
+// Internal error codes.
+const (
+	icPanic             = "SW000"
+	icErrorParseFailure = "SW001"
+)
+
+// Request errors codes.
+const (
+	icRequestMimeTypeMissing      = "SW100"
+	icRequestMimeTypeUnsupported  = "SW101"
+	icRequestBodyUnmarshalFailure = "SW102"
+	icRequestPathParamsError      = "SW103"
+	icRequestQueryParamsError     = "SW104"
+	icRequestResourcesError       = "SW105"
+	icRequestTimeout1             = "SW190"
+	icRequestTimeout2             = "SW191"
+	icRequestTimeout3             = "SW192"
+	icRequestTimeout4             = "SW193"
+	icRequestTimeout5             = "SW194"
+)
+
+// Response errors codes.
+const (
+	icResponseMimeTypeUnsupported = "SW201"
+	icResponseMimeTypeMissing     = "SW202"
+	icResponseBodyMarshalFailure  = "SW203"
+	icResponseBodyNull            = "SW204"
+)
+
+// Reflection error codes.
+const (
+	icPathParamCannotSet       = "SW901"
+	icPathParamValueNotFound   = "SW902"
+	icCannotSetValueFromString = "SW903"
+	icPathParamSetFailure      = "SW904"
+	icQueryParamCannotSet      = "SW905"
+	icQueryParamValueNotFound  = "SW906"
+	icQueryParamSetFailure     = "SW907"
+	icResourceNotSet           = "SW908"
 )

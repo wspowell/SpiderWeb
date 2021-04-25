@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/wspowell/errors"
 )
 
 // This file contains all the reflection that is not nice to look at.
@@ -225,9 +227,9 @@ func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType refl
 	return newValue.Addr().Interface()
 }
 
-func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) {
-	for resourceType, resource := range resources {
-		if resourceData, exists := self.resources[resourceType]; exists {
+func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) error {
+	for resourceName, resourceData := range self.resources {
+		if resource, exists := resources[resourceName]; exists {
 			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)
 			if resourceValue.CanSet() {
 				if resourceValue.Kind() != reflect.Interface {
@@ -235,54 +237,68 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 				}
 				resourceValue.Set(reflect.ValueOf(resource))
 			}
+		} else {
+			return errors.New(icResourceNotSet, "failed to set resource: %s", resourceName)
 		}
 	}
+
+	return nil
 }
 
-func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requester Requester) {
+func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requester Requester) error {
 	for param, fieldNum := range self.pathParameters {
 
 		parameterValue := handlerValue.Elem().Field(fieldNum)
 
 		if !parameterValue.CanSet() {
-			continue
+			return errors.New(icPathParamCannotSet, "cannot set path param: %s", param)
 		}
 
 		value, ok := requester.PathParam(param)
 		if !ok {
-			continue
+			return errors.New(icPathParamValueNotFound, "path param value not found: %s", param)
 		}
 
-		setValueFromString(parameterValue, value)
+		if err := setValueFromString(parameterValue, value); err != nil {
+			return errors.Wrap(icPathParamSetFailure, err)
+		}
 	}
+
+	return nil
 }
 
-func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, requester Requester) {
+func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, requester Requester) error {
 	for query, fieldNum := range self.queryParameters {
 		queryValue := handlerValue.Elem().Field(fieldNum)
 
 		if !queryValue.CanSet() {
-			continue
+			return errors.New(icQueryParamCannotSet, "cannot set query param: %s", query)
 		}
 
 		queryBytes, ok := requester.QueryParam(query)
 		if !ok {
-			continue
+			return errors.New(icQueryParamValueNotFound, "query param value not found: %s", query)
 		}
 
-		setValueFromString(queryValue, string(queryBytes))
+		if err := setValueFromString(queryValue, string(queryBytes)); err != nil {
+			return errors.Wrap(icQueryParamSetFailure, err)
+		}
 	}
+
+	return nil
 }
 
-func setValueFromString(variable reflect.Value, value string) {
+func setValueFromString(variable reflect.Value, value string) error {
 	switch variable.Kind() {
 	case reflect.String:
 		variable.Set(reflect.ValueOf(value))
+		return nil
 	case reflect.Bool:
 		if parsedValue, err := strconv.ParseBool(value); err == nil {
 			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Int:
@@ -290,6 +306,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(int(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Int8:
@@ -297,6 +314,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(int8(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Int16:
@@ -304,6 +322,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(int16(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Int32:
@@ -311,6 +330,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(int32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Int64:
@@ -318,6 +338,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(int64(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Uint:
@@ -325,6 +346,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(uint(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Uint8:
@@ -332,6 +354,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(uint8(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Uint16:
@@ -339,6 +362,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(uint16(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Uint32:
@@ -346,6 +370,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(uint32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Uint64:
@@ -353,6 +378,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(uint64(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Float32:
@@ -360,6 +386,7 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(float32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	case reflect.Float64:
@@ -367,9 +394,12 @@ func setValueFromString(variable reflect.Value, value string) {
 			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+				return nil
 			}
 		}
 	}
+
+	return errors.New(icCannotSetValueFromString, "could not set value (%v) from string (%s)", variable, value)
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {
