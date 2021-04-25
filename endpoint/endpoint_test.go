@@ -22,7 +22,7 @@ type myErrorHandler struct{}
 
 func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, interface{}) {
 	return httpStatus, errorResponse{
-		Message: fmt.Sprintf("%#v", err),
+		Message: fmt.Sprintf("%v", err),
 	}
 }
 
@@ -31,7 +31,7 @@ type myAuther struct{}
 func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
 	var statusCode int
 	VisitAllHeaders(func(key, value []byte) {
-		log.Info(ctx, "%v:%v", string(key), string(value))
+		log.Info(ctx, "%s:%s", key, value)
 	})
 
 	return statusCode, nil

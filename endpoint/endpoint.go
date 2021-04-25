@@ -315,7 +315,7 @@ func (self *Endpoint) processErrorResponse(ctx *Context, responseMimeType *MimeT
 
 	if responseMimeType == nil {
 		ctx.requester.SetResponseContentType(mimeTypeTextPlain)
-		responseBody = []byte(fmt.Sprintf("%#v", err))
+		responseBody = []byte(fmt.Sprintf("%v", err))
 		return httpStatus, responseBody
 	}
 
