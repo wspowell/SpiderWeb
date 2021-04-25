@@ -142,6 +142,13 @@ func TestRequest(t *testing.T, server *server.Server, about string, testCase *re
 		req.Header.SetMethod(copyTestCase.request.httpMethod)
 		req.Header.SetRequestURI(url)
 		req.Header.Set(fasthttp.HeaderHost, "localhost")
+
+		if copyTestCase.request.requestMimeType == "" && copyTestCase.responseMimeType == "" {
+			copyTestCase.request.requestMimeType = "application/json"
+			copyTestCase.responseMimeType = "application/json"
+		} else if copyTestCase.responseMimeType == "" {
+			copyTestCase.responseMimeType = copyTestCase.request.requestMimeType
+		}
 		req.Header.Set("Content-Type", copyTestCase.request.requestMimeType)
 		req.Header.Set("Accept", copyTestCase.responseMimeType)
 

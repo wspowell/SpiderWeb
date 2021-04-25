@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server"
@@ -12,7 +13,9 @@ import (
 
 func routes() *server.Server {
 	serverConfig := &server.Config{
-		LogConfig:    log.NewConfig(log.LevelDebug),
+		LogConfig: &noopLogConfig{
+			Config: log.NewConfig(log.LevelFatal),
+		},
 		Host:         "localhost",
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,
@@ -29,7 +32,7 @@ func routes() *server.Server {
 func sampleRoutes(sample *server.Server) {
 	config := &endpoint.Config{
 		LogConfig: &noopLogConfig{
-			Config: log.NewConfig(log.LevelDebug),
+			Config: log.NewConfig(log.LevelFatal),
 		},
 		Resources: map[string]interface{}{
 			"datastore": &database{},
@@ -44,7 +47,7 @@ func sampleRoutes(sample *server.Server) {
 
 type noRoute struct{}
 
-func (self *noRoute) Handle(ctx *endpoint.Context) (int, error) {
+func (self *noRoute) Handle(ctx context.Context) (int, error) {
 	return http.StatusNotFound, nil
 }
 

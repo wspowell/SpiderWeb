@@ -54,8 +54,7 @@ func (self *Lambda) wrapLambdaHandler(routeEndpoint *endpoint.Endpoint) HandlerA
 			cancel()
 		}()
 
-		endpointCtx := endpoint.NewContext(ctx, requester)
-		httpStatus, responseBody := routeEndpoint.Execute(endpointCtx)
+		httpStatus, responseBody := routeEndpoint.Execute(ctx, requester)
 
 		response.Body = string(responseBody)
 		response.StatusCode = httpStatus

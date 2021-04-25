@@ -20,7 +20,7 @@ type errorResponse struct {
 
 type myErrorHandler struct{}
 
-func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) (int, interface{}) {
+func (self myErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, interface{}) {
 	return httpStatus, errorResponse{
 		Message: fmt.Sprintf("%v", err),
 	}
@@ -28,7 +28,7 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 
 type myAuther struct{}
 
-func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
+func (self myAuther) Auth(ctx context.Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
 	var statusCode int
 	VisitAllHeaders(func(key, value []byte) {
 		log.Info(ctx, "%s:%s", key, value)
@@ -39,13 +39,13 @@ func (self myAuther) Auth(ctx *Context, VisitAllHeaders func(func(key, value []b
 
 type myRequestValidator struct{}
 
-func (self myRequestValidator) ValidateRequest(ctx *Context, requestBodyBytes []byte) (int, error) {
+func (self myRequestValidator) ValidateRequest(ctx context.Context, requestBodyBytes []byte) (int, error) {
 	return http.StatusOK, nil
 }
 
 type myResponseValidator struct{}
 
-func (self myResponseValidator) ValidateResponse(ctx *Context, httpStatus int, responseBodyBytes []byte) (int, error) {
+func (self myResponseValidator) ValidateResponse(ctx context.Context, httpStatus int, responseBodyBytes []byte) (int, error) {
 	return http.StatusOK, nil
 }
 
@@ -86,7 +86,7 @@ type myEndpoint struct {
 	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *myEndpoint) Handle(ctx *Context) (int, error) {
+func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
@@ -191,8 +191,7 @@ func Test_Endpoint_Success(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		endpointCtx := NewContext(ctx, requester)
-		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -236,8 +235,7 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		endpointCtx := NewContext(ctx, requester)
-		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -281,8 +279,7 @@ func Test_Endpoint_Error(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		endpointCtx := NewContext(ctx, requester)
-		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -322,8 +319,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		endpointCtx := NewContext(ctx, requester)
-		httpStatus, responseBodyBytes = endpoint.Execute(endpointCtx)
+		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 

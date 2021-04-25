@@ -3,8 +3,8 @@ package server_test
 import (
 	"net/http"
 	"testing"
-	"time"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
@@ -28,7 +28,7 @@ type myEndpoint struct {
 	ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
+func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling myEndpoint")
 
 	if self.RequestBody.ShouldFail {
@@ -44,15 +44,7 @@ func (self *myEndpoint) Handle(ctx *endpoint.Context) (int, error) {
 }
 
 func Test_Default_Server_Config(t *testing.T) {
-	serverConfig := &server.Config{
-		LogConfig:    log.NewConfig(log.LevelDebug),
-		Host:         "localhost",
-		Port:         8080,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-	}
-
-	server := server.New(serverConfig)
+	server := server.New(nil)
 
 	server.Handle(&endpoint.Config{}, http.MethodGet, "/", &myEndpoint{})
 

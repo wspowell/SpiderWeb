@@ -32,8 +32,7 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 		requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
 		for pb.Next() {
-			endpointCtx := NewContext(ctx, requester)
-			endpointRunner.Execute(endpointCtx)
+			endpointRunner.Execute(ctx, requester)
 		}
 	})
 }
@@ -55,8 +54,7 @@ func Benchmark_Endpoint_Default_Error(b *testing.B) {
 		requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 
 		for pb.Next() {
-			endpointCtx := NewContext(ctx, requester)
-			endpointRunner.Execute(endpointCtx)
+			endpointRunner.Execute(ctx, requester)
 		}
 	})
 }

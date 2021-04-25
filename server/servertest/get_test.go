@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/wspowell/context"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
@@ -50,7 +50,7 @@ type get struct {
 	ResponseBody *fooResponseModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *get) Handle(ctx *endpoint.Context) (int, error) {
+func (self *get) Handle(ctx context.Context) (int, error) {
 	defer profiling.Profile(ctx, "GetResource").Finish()
 	log.Debug(ctx, "handling GetResource")
 

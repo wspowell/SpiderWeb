@@ -1,13 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
-
-	"github.com/wspowell/spiderweb/endpoint"
 )
 
 type notFoundResource struct{}
 
-func (self *notFoundResource) Handle(ctx *endpoint.Context) (int, error) {
+func (self *notFoundResource) Handle(ctx context.Context) (int, error) {
 	return http.StatusNotFound, nil
 }

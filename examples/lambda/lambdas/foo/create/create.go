@@ -8,7 +8,6 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
@@ -29,7 +28,7 @@ type create struct {
 	ResponseBody *createResponse `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *create) Handle(ctx *endpoint.Context) (int, error) {
+func (self *create) Handle(ctx context.Context) (int, error) {
 	defer profiling.Profile(ctx, "PostResource").Finish()
 	log.Debug(ctx, "handling PostResource")
 

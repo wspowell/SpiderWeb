@@ -74,7 +74,7 @@ type MyEndpoint struct {
 	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=json"`
 }
 
-func (self *MyEndpoint) Handler(ctx *endpoint.Context) (int, error) {
+func (self *MyEndpoint) Handler(ctx context.Context) (int, error) {
     // RequestBody and ResponseBody parsed, validated, and ready to go.
 }
 ```
@@ -131,7 +131,7 @@ func (self myErrorHandler) HandleError(ctx *Context, httpStatus int, err error) 
 Being able to monitor your endpoints is crucial to operational health, but is often overlooked during first endpoint implementations due to time constraints. Logging, profiling (APM/traces), and metrics should not be afterthoughts, but built in with your endpoint design. Each Spiderweb endpoint provides interfaces and patterns that allow for all of these as first class features.
 
 ```
-func (self *MyEndpoint) Handle(ctx *endpoint.Context) (int, error) {
+func (self *MyEndpoint) Handle(ctx context.Context) (int, error) {
     ... // Profiling is already setup at this point.
 }
 
@@ -154,7 +154,7 @@ Golang `context.Context` is a feature that is easily abused. A `context.Context`
 
 From these conflicting use cases arises Spiderweb's `context.Context`. A `context.Context` is both a `context.Context` and a variable store. The difference is that `context.Context` provides behavior to localize data to the endpoint. Localized data is not immutable and must never be sent across API boundaries (and therefore not thread safe). If the context needs to be sent to a goroutine, simply pass the underlying `context.Context` by using `Context()`.
 
-Spiderweb endpoints take advantage of this behavior to provide local data such as profiling traces and log. All endpoint receive an `*endpoint.Context` which implements `context.Context`.
+Spiderweb endpoints take advantage of this behavior to provide local data such as profiling traces and log. All endpoint receive an `context.Context` which implements `context.Context`.
 ```
 // Create a new localized context.
 ctx := context.NewLocalized()

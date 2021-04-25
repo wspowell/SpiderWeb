@@ -235,7 +235,12 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 				if resourceValue.Kind() != reflect.Interface {
 					panic("resource types must be an interface, not struct")
 				}
-				resourceValue.Set(reflect.ValueOf(resource))
+				value := reflect.ValueOf(resource)
+				if !value.IsValid() {
+					return errors.New(icResourceNotValid, "failed to set resource: %s", resourceName)
+				}
+
+				resourceValue.Set(value)
 			}
 		} else {
 			return errors.New(icResourceNotSet, "failed to set resource: %s", resourceName)

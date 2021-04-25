@@ -28,19 +28,16 @@ func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
 	// The endpoint is never handed a struct with nil values so set nil chance to 0.
 	f := fuzz.New().NilChance(0)
 
-	endpointContext := endpoint.NewContext(context.Background(), nil)
 	for i := 0; i < 100; i++ {
 		f.Fuzz(handler)
-		_, err := handler.Handle(endpointContext)
+		_, err := handler.Handle(context.Local())
 		assert.Nil(t, err)
 	}
 }
 
 // TestEndpoint for business logic.
 func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handler, expectedHttpStatus int, expectedError error) {
-	endpointContext := endpoint.NewContext(context.Background(), nil)
-
-	httpStatus, err := input.Handle(endpointContext)
+	httpStatus, err := input.Handle(context.Local())
 
 	if expectedError != err {
 		t.Errorf("expected error %v, but got %v", expectedError, err)

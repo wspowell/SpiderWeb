@@ -35,5 +35,5 @@ func Test_RouteTest(t *testing.T) {
 	TestRequest(t, sample, "Failure, not mocked",
 		GivenRequest(http.MethodGet, "/sample/{id}").
 			ExpectResponse(http.StatusInternalServerError).
-			WithResponseBody("application/json", []byte(`{"message":"[SW000] internal server error"}`)))
+			WithResponseBody("application/json", []byte(`{"message":"[SW105] internal server error"}`)))
 }

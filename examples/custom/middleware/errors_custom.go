@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/endpoint"
 )
@@ -29,7 +30,7 @@ type ErrorJsonWithCodeResponse struct {
 	Message      string `json:"message"`
 }
 
-func (self ErrorJsonWithCodeResponse) HandleError(ctx *endpoint.Context, httpStatus int, err error) (int, interface{}) {
+func (self ErrorJsonWithCodeResponse) HandleError(ctx context.Context, httpStatus int, err error) (int, interface{}) {
 	var myErr ErrorWithCodes
 	if errors.As(err, &myErr) {
 		return httpStatus, ErrorJsonWithCodeResponse{

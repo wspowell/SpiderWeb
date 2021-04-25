@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/examples/custom/api/resources"
@@ -34,6 +35,6 @@ func Routes(custom *server.Server) {
 
 type noRoute struct{}
 
-func (self *noRoute) Handle(ctx *endpoint.Context) (int, error) {
+func (self *noRoute) Handle(ctx context.Context) (int, error) {
 	return http.StatusNotFound, nil
 }

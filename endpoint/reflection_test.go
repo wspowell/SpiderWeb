@@ -3,6 +3,8 @@ package endpoint
 import (
 	"net/http"
 	"testing"
+
+	"github.com/wspowell/context"
 )
 
 type testEndpointReqPtrResVal struct {
@@ -11,7 +13,7 @@ type testEndpointReqPtrResVal struct {
 	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *testEndpointReqPtrResVal) Handle(ctx *Context) (int, error) {
+func (self *testEndpointReqPtrResVal) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
@@ -65,7 +67,7 @@ type testEndpointNoReqResVal struct {
 	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *testEndpointNoReqResVal) Handle(ctx *Context) (int, error) {
+func (self *testEndpointNoReqResVal) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
@@ -110,7 +112,7 @@ type testEndpointReqValResPtr struct {
 	ResponseBody myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *testEndpointReqValResPtr) Handle(ctx *Context) (int, error) {
+func (self *testEndpointReqValResPtr) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 

@@ -3,8 +3,8 @@ package resources
 import (
 	"net/http"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
@@ -15,7 +15,7 @@ type getResource struct {
 	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
-func (self *getResource) Handle(ctx *endpoint.Context) (int, error) {
+func (self *getResource) Handle(ctx context.Context) (int, error) {
 	defer profiling.Profile(ctx, "GetResource").Finish()
 	log.Debug(ctx, "handling GetResource")
 

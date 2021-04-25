@@ -11,8 +11,6 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 
 	sample := routes()
 
-	b.ResetTimer()
-
 	var req fasthttp.Request
 
 	req.Header.SetMethod(http.MethodPost)
@@ -25,6 +23,7 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		httpStatus, _ := sample.Execute(&requestCtx)
 		if httpStatus != http.StatusCreated {
@@ -65,8 +64,6 @@ func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
 
 	sample := routes()
 
-	b.ResetTimer()
-
 	var req fasthttp.Request
 
 	req.Header.SetMethod(http.MethodGet)
@@ -78,6 +75,7 @@ func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		httpStatus, _ := sample.Execute(&requestCtx)
 		if httpStatus != http.StatusOK {

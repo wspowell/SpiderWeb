@@ -30,6 +30,12 @@ func NewMimeTypeHandlers() MimeTypeHandlers {
 func (m MimeTypeHandlers) Get(contentType []byte, supportedMimeTypes []string) (*MimeTypeHandler, bool) {
 	// Check if the MIME type handler exists at all.
 	if handler, exists := m[string(contentType)]; exists {
+		if len(supportedMimeTypes) == 0 {
+			// If there are no supported mime types, then check against all registered handlers.
+			// This is useful when there is no response body.
+			return handler, true
+		}
+
 		// Now check if the MIME type is in the given list of supported types.
 		for _, supportedMimeType := range supportedMimeTypes {
 			if _, exists := m[supportedMimeType]; exists {

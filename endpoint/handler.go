@@ -1,5 +1,7 @@
 package endpoint
 
+import "github.com/wspowell/context"
+
 // Handler is the hook into the request handler.
 // Handler struct should contain all data that should be
 //   populated and validated before any business logic is run.
@@ -8,5 +10,5 @@ type Handler interface {
 	// While not explicitly prevented, this function should
 	//   not touch the request or do any post processing of
 	//   any request data.
-	Handle(ctx *Context) (int, error)
+	Handle(ctx context.Context) (int, error)
 }

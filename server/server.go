@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof" // FIXME: Do not include this for release builds.
 	"os"
 	"os/signal"
 	"strconv"
@@ -29,13 +30,13 @@ type Config struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	LogConfig    log.Configer
+	EnablePprof  bool
 }
 
 // Server listens for incoming requests and routes them to the registered endpoint handlers.
 type Server struct {
 	serverConfig *Config
 
-	logger log.Logger
 	server *fasthttp.Server
 	router *router.Router
 
@@ -47,31 +48,53 @@ type Server struct {
 
 // NewServer sets up a new server.
 func New(serverConfig *Config) *Server {
-	logger := serverConfig.LogConfig.Logger()
+	// Set server config defaults.
+	if serverConfig == nil {
+		serverConfig = &Config{}
+	}
+	if serverConfig.LogConfig == nil {
+		serverConfig.LogConfig = log.NewConfig(log.LevelInfo)
+	}
+	if serverConfig.ReadTimeout == 0 {
+		serverConfig.ReadTimeout = 30 * time.Second
+	}
+	if serverConfig.WriteTimeout == 0 {
+		serverConfig.WriteTimeout = 30 * time.Second
+	}
+	if serverConfig.Host == "" {
+		serverConfig.Host = "localhost"
+	}
+	if serverConfig.Port == 0 {
+		serverConfig.Port = 8080
+	}
 
 	httpServer := &fasthttp.Server{}
-	httpServer.Logger = logger
+	httpServer.Logger = serverConfig.LogConfig.Logger()
 	httpServer.ReadTimeout = serverConfig.ReadTimeout
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
 
 	ctx, shutdownComplete := newServerContext(httpServer)
-	serverContext := context.Localize(ctx)
-
-	log.WithContext(serverContext, serverConfig.LogConfig)
+	ctx = context.Localize(ctx)
+	ctx = log.WithContext(ctx, serverConfig.LogConfig)
 
 	router := router.New()
 	router.SaveMatchedRoutePath = true
 
+	if serverConfig.EnablePprof {
+		go func() {
+			_ = http.ListenAndServe("localhost:6060", nil)
+		}()
+	}
+
 	server := &Server{
 		serverConfig: serverConfig,
 
-		logger: logger,
 		server: httpServer,
 		router: router,
 
 		routes: map[string]*endpoint.Endpoint{},
 
-		serverContext:    serverContext,
+		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
 	}
 
@@ -79,10 +102,10 @@ func New(serverConfig *Config) *Server {
 }
 
 func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
+	routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+
 	requestHandler := fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
-		routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
-		httpStatus, responseBody := routeEndpoint.Execute(ctx)
+		httpStatus, responseBody := routeEndpoint.Execute(requestCtx, newFasthttpRequester(requestCtx))
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)
@@ -149,26 +172,26 @@ func (self Server) Listen() {
 
 func (self *Server) listenForever() {
 	for key, list := range self.router.List() {
-		self.logger.Debug("%v", key)
+		log.Debug(self.serverContext, "%v", key)
 		for _, item := range list {
-			self.logger.Debug("  %v", item)
+			log.Debug(self.serverContext, "  %v", item)
 		}
 	}
 
-	self.logger.Info("listening for requests")
+	log.Info(self.serverContext, "listening for requests")
 
 	self.server.Handler = self.router.Handler
 
 	listenAddress := fmt.Sprintf("%s:%d", self.serverConfig.Host, self.serverConfig.Port)
 	if err := self.server.ListenAndServe(listenAddress); err != nil {
-		self.logger.Fatal("server failed: %v", err)
+		log.Fatal(self.serverContext, "server failed: %v", err)
 	}
 
-	self.logger.Info("shutting down")
+	log.Info(self.serverContext, "shutting down")
 
 	// Wait for the server to gracefully stop before exiting the process.
 	<-self.shutdownComplete
-	self.logger.Info("server stopped")
+	log.Info(self.serverContext, "server stopped")
 }
 
 func (self *Server) Endpoint(httpMethod string, path string) *endpoint.Endpoint {
@@ -182,8 +205,7 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		ctx := endpoint.NewContext(requestCtx, newFasthttpRequester(requestCtx))
-		httpStatus, responseBody := routeEndpoint.Execute(ctx)
+		httpStatus, responseBody := routeEndpoint.Execute(requestCtx, newFasthttpRequester(requestCtx))
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)

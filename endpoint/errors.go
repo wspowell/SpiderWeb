@@ -46,4 +46,5 @@ const (
 	icQueryParamValueNotFound  = "SW906"
 	icQueryParamSetFailure     = "SW907"
 	icResourceNotSet           = "SW908"
+	icResourceNotValid         = "SW909"
 )
