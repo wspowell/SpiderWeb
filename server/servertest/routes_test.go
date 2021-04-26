@@ -20,6 +20,7 @@ func routes() *server.Server {
 		Port:         8080,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
+		EnablePprof:  false,
 	}
 
 	sample := server.New(serverConfig)

@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"bytes"
 	"encoding/json"
 )
 
@@ -63,29 +62,48 @@ func jsonHandler() *MimeTypeHandler {
 	}
 }
 
+// var (
+// 	byteBufferPool = &sync.Pool{
+// 		New: func() interface{} {
+// 			// The Pool's New function should generally only return pointer
+// 			// types, since a pointer can be put into the return interface
+// 			// value without an allocation:
+// 			return new(bytes.Buffer)
+// 		},
+// 	}
+// )
+
 func jsonMarshal(value interface{}) ([]byte, error) {
-	buffer := bytes.NewBuffer([]byte{})
-	encoder := json.NewEncoder(buffer)
-	if err := encoder.Encode(value); err != nil {
-		return nil, err
-	}
+	// buffer := byteBufferPool.Get().(*bytes.Buffer)
+	// defer byteBufferPool.Put(buffer)
+	// buffer.Reset()
 
-	jsonBytes := buffer.Bytes()
+	// encoder := json.NewEncoder(buffer)
+	// if err := encoder.Encode(value); err != nil {
+	// 	return nil, err
+	// }
 
-	// Encoder appends a new line at the endpoint of the bytes.
-	// This is useful for streaming, but breaks responses.
-	// Trim it off.
-	if len(jsonBytes) > 0 {
-		jsonBytes = jsonBytes[:len(jsonBytes)-1]
-	}
+	// if buffer.Len() == 0 {
+	// 	return nil, nil
+	// }
 
-	return jsonBytes, nil
+	// // Encoder appends a new line at the endpoint of the bytes.
+	// // This is useful for streaming, but breaks responses.
+	// // Trim it off.
+	// jsonBytes := make([]byte, buffer.Len()-1)
+	// copy(jsonBytes, buffer.Bytes())
+
+	// return jsonBytes, nil
+
+	return json.Marshal(value)
 }
 
 func jsonUnmarshal(data []byte, value interface{}) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if err := decoder.Decode(value); err != nil {
-		return err
-	}
-	return nil
+	// decoder := json.NewDecoder(bytes.NewReader(data))
+	// if err := decoder.Decode(value); err != nil {
+	// 	return err
+	// }
+	// return nil
+
+	return json.Unmarshal(data, value)
 }

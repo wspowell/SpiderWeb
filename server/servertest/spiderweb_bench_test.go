@@ -3,18 +3,72 @@ package servertest
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/valyala/fasthttp"
+	"github.com/wspowell/context"
+	"github.com/wspowell/log"
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/server"
 )
 
-func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
+type benchRequest struct {
+	MyString   string `json:"my_string"`
+	MyInt      int    `json:"my_int"`
+	ShouldFail bool   `json:"fail"`
+}
 
-	sample := routes()
+type benchResponse struct {
+	MyString string `json:"output_string"`
+	MyInt    int    `json:"output_int"`
+}
+
+type bench struct {
+	Test string
+
+	RequestBody  *createRequest  `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody *createResponse `spiderweb:"response,mime=application/json,validate"`
+}
+
+func (self *bench) Handle(ctx context.Context) (int, error) {
+	self.ResponseBody = &createResponse{
+		MyString: self.RequestBody.MyString,
+		MyInt:    self.RequestBody.MyInt,
+	}
+
+	return http.StatusCreated, nil
+}
+
+func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
+	serverConfig := &server.Config{
+		LogConfig: &noopLogConfig{
+			Config: log.NewConfig(log.LevelFatal),
+		},
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		EnablePprof:  false,
+	}
+
+	sample := server.New(serverConfig)
+
+	config := &endpoint.Config{
+		LogConfig: &noopLogConfig{
+			Config: log.NewConfig(log.LevelFatal),
+		},
+		Resources: map[string]interface{}{
+			"datastore": &database{},
+		},
+		Timeout: 30 * time.Second,
+	}
+
+	sample.Handle(config, http.MethodPost, "/bench", &bench{})
 
 	var req fasthttp.Request
 
 	req.Header.SetMethod(http.MethodPost)
-	req.Header.SetRequestURI("/sample")
+	req.Header.SetRequestURI("/bench")
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -34,7 +88,30 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 
 func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 
-	sample := routes()
+	serverConfig := &server.Config{
+		LogConfig: &noopLogConfig{
+			Config: log.NewConfig(log.LevelFatal),
+		},
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		EnablePprof:  false,
+	}
+
+	sample := server.New(serverConfig)
+
+	config := &endpoint.Config{
+		LogConfig: &noopLogConfig{
+			Config: log.NewConfig(log.LevelFatal),
+		},
+		Resources: map[string]interface{}{
+			"datastore": &database{},
+		},
+		Timeout: 30 * time.Second,
+	}
+
+	sample.Handle(config, http.MethodPost, "/bench", &bench{})
 
 	b.ResetTimer()
 
@@ -42,7 +119,7 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 		var req fasthttp.Request
 
 		req.Header.SetMethod(http.MethodPost)
-		req.Header.SetRequestURI("/sample")
+		req.Header.SetRequestURI("/bench")
 		req.Header.Set(fasthttp.HeaderHost, "localhost")
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")

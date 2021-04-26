@@ -9,7 +9,7 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/profiling"
+	_ "github.com/wspowell/spiderweb/profiling"
 )
 
 const (
@@ -117,7 +117,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		}
 	}()
 
-	defer profiling.Profile(ctx, string(requester.Method())+" "+requester.MatchedPath()).Finish()
+	//defer profiling.Profile(ctx, string(requester.Method())+" "+requester.MatchedPath()).Finish()
 
 	requester.SetResponseHeader("X-Request-Id", requester.RequestId())
 
@@ -185,20 +185,15 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		log.Trace(ctx, "found response mime type handler: %s", accept)
 	}
 
-	if !ShouldContinue(ctx) {
-		log.Debug(ctx, "request canceled or timed out")
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout1, "request timeout"))
-	}
-
 	// Authentication
 	{
-		authTimer := profiling.Profile(ctx, "Auth")
+		//authTimer := profiling.Profile(ctx, "Auth")
 
 		if self.Config.Auther != nil {
 			log.Trace(ctx, "processing auth handler")
 
 			httpStatus, err = self.Config.Auther.Auth(ctx, requester.VisitHeaders)
-			authTimer.Finish()
+			//authTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "auth failed")
 				return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
@@ -206,14 +201,9 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		}
 	}
 
-	if !ShouldContinue(ctx) {
-		log.Debug(ctx, "request canceled or timed out")
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout2, "request timeout"))
-	}
-
 	log.Trace(ctx, "allocating handler")
 
-	allocateTimer := profiling.Profile(ctx, "Allocate")
+	//allocateTimer := profiling.Profile(ctx, "Allocate")
 	handlerAlloc := self.handlerData.allocateHandler()
 	if err = self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources); err != nil {
 		log.Debug(ctx, "failed to set resources")
@@ -227,23 +217,18 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		log.Debug(ctx, "failed to set query parameters")
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.New(icRequestQueryParamsError, badRequest))
 	}
-	allocateTimer.Finish()
+	//allocateTimer.Finish()
 
 	// Handle Request
 	{
-		if !ShouldContinue(ctx) {
-			log.Debug(ctx, "request canceled or timed out")
-			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout3, "request timeout"))
-		}
-
 		if self.handlerData.hasRequestBody {
 			log.Trace(ctx, "processing request body")
 
 			requestBodyBytes := requester.RequestBody()
 
-			populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
+			//populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
 			err = self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
-			populateRequestTimer.Finish()
+			//populateRequestTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "failed processing request body")
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, err)
@@ -252,10 +237,10 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			if self.Config.RequestValidator != nil && self.handlerData.shouldValidateRequest {
 				log.Trace(ctx, "processing validation handler")
 
-				validateTimer := profiling.Profile(ctx, "ValidateRequest")
+				//validateTimer := profiling.Profile(ctx, "ValidateRequest")
 				var validationFailure error
 				httpStatus, validationFailure = self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
-				validateTimer.Finish()
+				//validateTimer.Finish()
 				if validationFailure != nil {
 					log.Debug(ctx, "failed request body validation")
 
@@ -269,30 +254,31 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	if !ShouldContinue(ctx) {
 		log.Debug(ctx, "request canceled or timed out")
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout4, "request timeout"))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout1, "request timeout"))
 	}
 
 	// Run the endpoint handler.
 	log.Trace(ctx, "running endpoint handler")
-	handleTimer := profiling.Profile(ctx, self.Name()+".Handle()")
+	//handleTimer := profiling.Profile(ctx, self.Name()+".Handle()")
 	httpStatus, err = handlerAlloc.handler.Handle(ctx)
-	handleTimer.Finish()
+	//handleTimer.Finish()
 	log.Trace(ctx, "completed endpoint handler")
 	if err != nil {
 		log.Debug(ctx, "handler error")
 		return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
 	}
 
+	if !ShouldContinue(ctx) {
+		log.Debug(ctx, "request canceled or timed out")
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout2, "request timeout"))
+	}
+
 	// Handle Response
 	{
-		if !ShouldContinue(ctx) {
-			log.Debug(ctx, "request canceled or timed out")
-			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout5, "request timeout"))
-		}
 
-		populateResponseTimer := profiling.Profile(ctx, "MarshalResponseBody")
+		//populateResponseTimer := profiling.Profile(ctx, "MarshalResponseBody")
 		responseBody, err = self.getHandlerResponseBody(ctx, requester, responseMimeType, handlerAlloc.responseBody)
-		populateResponseTimer.Finish()
+		//populateResponseTimer.Finish()
 		if err != nil {
 			log.Debug(ctx, "failed processing response")
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, err)
@@ -301,10 +287,10 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if self.Config.ResponseValidator != nil && self.handlerData.shouldValidateResponse {
 			log.Trace(ctx, "processing response validation handler")
 
-			validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
+			//validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
 			var validationFailure error
 			httpStatus, validationFailure = self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
-			validateResponseTimer.Finish()
+			//validateResponseTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "failed response validation")
 				// Validation failures are not hard errors and should be passed through to the error handler.

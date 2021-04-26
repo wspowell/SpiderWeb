@@ -23,9 +23,6 @@ const (
 	icRequestResourcesError       = "SW105"
 	icRequestTimeout1             = "SW190"
 	icRequestTimeout2             = "SW191"
-	icRequestTimeout3             = "SW192"
-	icRequestTimeout4             = "SW193"
-	icRequestTimeout5             = "SW194"
 )
 
 // Response errors codes.
