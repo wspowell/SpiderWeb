@@ -1,7 +1,6 @@
 package api
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/wspowell/context"
@@ -10,10 +9,10 @@ import (
 	"github.com/wspowell/spiderweb/examples/custom/api/resources"
 	"github.com/wspowell/spiderweb/examples/custom/middleware"
 	"github.com/wspowell/spiderweb/examples/custom/resources/db"
-	"github.com/wspowell/spiderweb/server"
+	"github.com/wspowell/spiderweb/http"
 )
 
-func Routes(custom *server.Server) {
+func Routes(custom *http.Server) {
 	endpointConfig := &endpoint.Config{
 		Auther:       middleware.AuthNoop{},
 		ErrorHandler: middleware.ErrorJsonWithCodeResponse{},

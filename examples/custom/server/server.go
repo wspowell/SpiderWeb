@@ -5,11 +5,11 @@ import (
 
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/examples/custom/api"
-	"github.com/wspowell/spiderweb/server"
+	"github.com/wspowell/spiderweb/http"
 )
 
-func New() *server.Server {
-	serverConfig := &server.Config{
+func New() *http.Server {
+	serverConfig := &http.ServerConfig{
 		LogConfig:    log.NewConfig(log.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
@@ -17,7 +17,7 @@ func New() *server.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	custom := server.New(serverConfig)
+	custom := http.NewServer(serverConfig)
 
 	api.Routes(custom)
 

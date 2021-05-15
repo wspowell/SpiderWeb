@@ -1,14 +1,12 @@
 package resources
 
 import (
-	"net/http"
-
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/server"
+	"github.com/wspowell/spiderweb/http"
 )
 
-func Routes(custom *server.Server, config *endpoint.Config) {
+func Routes(custom *http.Server, config *endpoint.Config) {
 	getConfig := config
 	getConfig.LogConfig = log.NewConfig(log.LevelDebug)
 

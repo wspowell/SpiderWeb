@@ -74,16 +74,17 @@ type myResponseBodyModel struct {
 }
 
 type myEndpoint struct {
-	Test          string
-	MyStringQuery string               `spiderweb:"query=id"`
-	MyIntQuery    int                  `spiderweb:"query=num"`
-	MyBoolQuery   bool                 `spiderweb:"query=flag"`
-	MyStringParam string               `spiderweb:"path=id"`
-	MyIntParam    int                  `spiderweb:"path=num"`
-	MyFlagParam   bool                 `spiderweb:"path=flag"`
-	MyDatabase    Datastore            `spiderweb:"resource=db"`
-	RequestBody   *myRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
-	ResponseBody  *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
+	Test            string
+	MyStringQuery   string               `spiderweb:"query=id,required"`
+	MyIntQuery      int                  `spiderweb:"query=num"`
+	MyBoolQuery     bool                 `spiderweb:"query=flag"`
+	MyOptionalQuery string               `spiderweb:"query=optional"`
+	MyStringParam   string               `spiderweb:"path=id"`
+	MyIntParam      int                  `spiderweb:"path=num"`
+	MyFlagParam     bool                 `spiderweb:"path=flag"`
+	MyDatabase      Datastore            `spiderweb:"resource=db"`
+	RequestBody     *myRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
+	ResponseBody    *myResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
 }
 
 func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
@@ -123,6 +124,10 @@ func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 
 	if self.MyDatabase.Conn() != "myconnection" {
 		return http.StatusInternalServerError, errors.New("APP9", "database connection error")
+	}
+
+	if self.MyOptionalQuery != "" {
+		return http.StatusInternalServerError, errors.New("APP10", "optional path param shoulde not be set")
 	}
 
 	self.ResponseBody = &myResponseBodyModel{

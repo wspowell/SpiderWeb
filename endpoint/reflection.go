@@ -15,6 +15,8 @@ const (
 	structTagPath     = "path"
 	structTagQuery    = "query"
 	structTagResource = "resource"
+
+	tagValueRequired = "required"
 )
 
 type handlerAllocation struct {
@@ -56,9 +58,10 @@ type handlerTypeData struct {
 	requestMimeTypes  []string
 	responseMimeTypes []string
 
-	resources       map[string]resourceTypeData
-	pathParameters  map[string]int
-	queryParameters map[string]int
+	resources               map[string]resourceTypeData
+	pathParameters          map[string]int
+	queryParameters         map[string]int
+	requiredQueryParameters map[string]bool
 }
 
 func newHandlerTypeData(handler interface{}) handlerTypeData {
@@ -81,6 +84,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	resources := map[string]resourceTypeData{}
 	pathParameters := map[string]int{}
 	queryParameters := map[string]int{}
+	requiredQueryParameters := map[string]bool{}
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -132,6 +136,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 					queryTagValue := strings.SplitN(tagValuePart, "=", 2)
 					queryVariable := queryTagValue[1]
 					queryParameters[queryVariable] = i
+					// Detect if query param is required.
+					requiredQueryParameters[queryVariable] = tagValueParts[len(tagValueParts)-1] == tagValueRequired
 					break
 				}
 			}
@@ -159,26 +165,27 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	}
 
 	return handlerTypeData{
-		structName:             structValue.Type().Name(),
-		structValue:            structValue,
-		requestBodyValue:       requestBodyValue,
-		responseBodyValue:      responseBodyValue,
-		requestBodyType:        requestBodyType,
-		responseBodyType:       responseBodyType,
-		isStructPtr:            isStructPtr,
-		isRequestPtr:           isRequestPtr,
-		isResponsePtr:          isResponsePtr,
-		requestFieldNum:        requestFieldNum,
-		responseFieldNum:       responseFieldNum,
-		shouldValidateRequest:  shouldValidateRequest,
-		shouldValidateResponse: shouldValidateResponse,
-		requestMimeTypes:       requestMimeTypes,
-		responseMimeTypes:      responseMimeTypes,
-		hasRequestBody:         hasRequestBody,
-		hasResponseBody:        hasResponseBody,
-		resources:              resources,
-		pathParameters:         pathParameters,
-		queryParameters:        queryParameters,
+		structName:              structValue.Type().Name(),
+		structValue:             structValue,
+		requestBodyValue:        requestBodyValue,
+		responseBodyValue:       responseBodyValue,
+		requestBodyType:         requestBodyType,
+		responseBodyType:        responseBodyType,
+		isStructPtr:             isStructPtr,
+		isRequestPtr:            isRequestPtr,
+		isResponsePtr:           isResponsePtr,
+		requestFieldNum:         requestFieldNum,
+		responseFieldNum:        responseFieldNum,
+		shouldValidateRequest:   shouldValidateRequest,
+		shouldValidateResponse:  shouldValidateResponse,
+		requestMimeTypes:        requestMimeTypes,
+		responseMimeTypes:       responseMimeTypes,
+		hasRequestBody:          hasRequestBody,
+		hasResponseBody:         hasResponseBody,
+		resources:               resources,
+		pathParameters:          pathParameters,
+		queryParameters:         queryParameters,
+		requiredQueryParameters: requiredQueryParameters,
 	}
 }
 
@@ -280,9 +287,15 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 			return errors.New(icQueryParamCannotSet, "cannot set query param: %s", query)
 		}
 
+		isRequired := self.requiredQueryParameters[query]
 		queryBytes, ok := requester.QueryParam(query)
 		if !ok {
-			return errors.New(icQueryParamValueNotFound, "query param value not found: %s", query)
+			if isRequired {
+				return errors.New(icQueryParamValueNotFound, "query param value not found: %s", query)
+			} else {
+				// Query param not required. Leave the value at the zero value.
+				continue
+			}
 		}
 
 		if err := setValueFromString(queryValue, string(queryBytes)); err != nil {
