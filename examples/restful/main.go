@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/wspowell/spiderweb/examples/custom/server"
+	"github.com/wspowell/spiderweb/examples/restful/server"
 )
 
 func main() {

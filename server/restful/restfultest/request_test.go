@@ -1,25 +1,26 @@
-package httptest
+package restfultest_test
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/wspowell/spiderweb/server/restful/restfultest"
 	"github.com/wspowell/spiderweb/test"
 )
 
 func Test_RouteTest(t *testing.T) {
 	t.Parallel()
 
-	sample := test.Routes()
+	sample := Routes()
 
-	TestCase(t, sample, "Route not found").
+	restfultest.TestCase(t, sample, "Route not found").
 		GivenRequest(http.MethodPost, "/not_found").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
 		ExpectResponse(http.StatusNotFound).
 		WithEmptyBody().
 		Run()
 
-	TestCase(t, sample, "Success POST /sample").
+	restfultest.TestCase(t, sample, "Success POST /sample").
 		GivenRequest(http.MethodPost, "/sample").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
 		ExpectResponse(http.StatusCreated).
@@ -28,7 +29,7 @@ func Test_RouteTest(t *testing.T) {
 
 	dbMock := &test.MockDatastore{}
 	dbMock.On("RetrieveValue").Return("test")
-	TestCase(t, sample, "Success GET /sample/{id}").
+	restfultest.TestCase(t, sample, "Success GET /sample/{id}").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		WithPathParam("id", "34").
 		WithResourceMock("datastore", dbMock).
@@ -37,7 +38,7 @@ func Test_RouteTest(t *testing.T) {
 		Run()
 
 	// Not mocked, so it returns 500.
-	TestCase(t, sample, "Failure, not mocked").
+	restfultest.TestCase(t, sample, "Failure, not mocked").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		ExpectResponse(http.StatusInternalServerError).
 		WithResponseBody("application/json", []byte(`{"message":"[SW105] internal server error"}`)).

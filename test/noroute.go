@@ -5,8 +5,8 @@ import (
 	"github.com/wspowell/spiderweb/http"
 )
 
-type noRoute struct{}
+type NoRoute struct{}
 
-func (self *noRoute) Handle(ctx context.Context) (int, error) {
+func (self *NoRoute) Handle(ctx context.Context) (int, error) {
 	return http.StatusNotFound, nil
 }

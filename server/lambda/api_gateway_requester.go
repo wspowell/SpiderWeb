@@ -48,6 +48,13 @@ func (self *ApiGatewayRequester) Accept() []byte {
 	return []byte(self.request.Headers["Accept"])
 }
 
+func (self *ApiGatewayRequester) PeekHeader(key string) []byte {
+	if value, exists := self.request.Headers[key]; exists {
+		return []byte(value)
+	}
+	return nil
+}
+
 func (self *ApiGatewayRequester) VisitHeaders(f func(key []byte, value []byte)) {
 	for header, value := range self.request.Headers {
 		f([]byte(header), []byte(value))
@@ -90,4 +97,8 @@ func (self *ApiGatewayRequester) SetResponseContentType(contentType string) {
 
 func (self *ApiGatewayRequester) ResponseContentType() string {
 	return self.responseHeaders["Content-Type"]
+}
+
+func (self *ApiGatewayRequester) ResponseHeaders() map[string]string {
+	return self.responseHeaders
 }

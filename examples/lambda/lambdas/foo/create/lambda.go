@@ -5,7 +5,7 @@ import (
 
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/lambda"
+	"github.com/wspowell/spiderweb/server/lambda"
 )
 
 func main() {

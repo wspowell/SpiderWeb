@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/wspowell/spiderweb/examples/custom/resources"
+	"github.com/wspowell/spiderweb/examples/restful/resources"
 )
 
 var _ resources.Datastore = (*Database)(nil)

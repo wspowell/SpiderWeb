@@ -6,13 +6,14 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/examples/custom/api/resources"
-	"github.com/wspowell/spiderweb/examples/custom/middleware"
-	"github.com/wspowell/spiderweb/examples/custom/resources/db"
+	"github.com/wspowell/spiderweb/examples/restful/api/resources"
+	"github.com/wspowell/spiderweb/examples/restful/middleware"
+	"github.com/wspowell/spiderweb/examples/restful/resources/db"
 	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/server/restful"
 )
 
-func Routes(custom *http.Server) {
+func Routes(custom *restful.Server) {
 	endpointConfig := &endpoint.Config{
 		Auther:       middleware.AuthNoop{},
 		ErrorHandler: middleware.ErrorJsonWithCodeResponse{},

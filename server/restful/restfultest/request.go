@@ -1,4 +1,4 @@
-package httptest
+package restfultest
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/server/restful"
 
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/mock"
@@ -21,11 +21,11 @@ type Mocker interface {
 type testCase struct {
 	t *testing.T
 
-	server *http.Server
+	server *restful.Server
 	name   string
 }
 
-func TestCase(t *testing.T, server *http.Server, name string) *testCase {
+func TestCase(t *testing.T, server *restful.Server, name string) *testCase {
 	return &testCase{
 		t:      t,
 		server: server,
@@ -245,7 +245,7 @@ func runTest(testCase *responseTestCase) {
 	requestFuzzTest(t, testCase.server, testCase.request.httpMethod, testCase.request.path)
 }
 
-func requestFuzzTest(t *testing.T, server *http.Server, httpMethod string, path string) {
+func requestFuzzTest(t *testing.T, server *restful.Server, httpMethod string, path string) {
 	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
 		return
 	}

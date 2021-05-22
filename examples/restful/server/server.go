@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/examples/custom/api"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/examples/restful/api"
+	"github.com/wspowell/spiderweb/server/restful"
 )
 
-func New() *http.Server {
-	serverConfig := &http.ServerConfig{
+func New() *restful.Server {
+	serverConfig := &restful.ServerConfig{
 		LogConfig:    log.NewConfig(log.LevelDebug),
 		Host:         "localhost",
 		Port:         8080,
@@ -17,7 +17,7 @@ func New() *http.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	custom := http.NewServer(serverConfig)
+	custom := restful.NewServer(serverConfig)
 
 	api.Routes(custom)
 

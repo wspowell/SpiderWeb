@@ -1,8 +1,8 @@
-package http
+package restful
 
 import (
 	"fmt"
-	"net/http"
+	gohttp "net/http"
 	_ "net/http/pprof" // FIXME: Do not include this for release builds.
 	"os"
 	"os/signal"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/http"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
@@ -78,7 +79,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 
 	if serverConfig.EnablePprof {
 		go func() {
-			_ = http.ListenAndServe("localhost:6060", nil)
+			_ = gohttp.ListenAndServe("localhost:6060", nil)
 		}()
 	}
 
@@ -239,7 +240,11 @@ func (self *fasthttpRequester) ContentType() []byte {
 }
 
 func (self *fasthttpRequester) Accept() []byte {
-	return self.requestCtx.Request.Header.Peek(HeaderAccept)
+	return self.requestCtx.Request.Header.Peek(http.HeaderAccept)
+}
+
+func (self *fasthttpRequester) PeekHeader(key string) []byte {
+	return self.requestCtx.Request.Header.Peek(string(key))
 }
 
 func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
@@ -276,4 +281,12 @@ func (self *fasthttpRequester) SetResponseContentType(contentType string) {
 
 func (self *fasthttpRequester) ResponseContentType() string {
 	return string(self.requestCtx.Response.Header.Peek("Content-Type"))
+}
+
+func (self *fasthttpRequester) ResponseHeaders() map[string]string {
+	headers := map[string]string{}
+	self.requestCtx.Response.Header.VisitAll(func(key []byte, value []byte) {
+		headers[string(key)] = string(value)
+	})
+	return headers
 }
