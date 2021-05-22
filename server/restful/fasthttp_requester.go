@@ -46,10 +46,14 @@ func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
 	self.requestCtx.Request.Header.VisitAll(f)
 }
 
-func (self *fasthttpRequester) MatchedPath() string {
+func matchedPath(requestCtx *fasthttp.RequestCtx) string {
 	var matchedPath string
-	matchedPath, _ = self.requestCtx.UserValue(router.MatchedRoutePathParam).(string)
+	matchedPath, _ = requestCtx.UserValue(router.MatchedRoutePathParam).(string)
 	return matchedPath
+}
+
+func (self *fasthttpRequester) MatchedPath() string {
+	return matchedPath(self.requestCtx)
 }
 
 func (self *fasthttpRequester) PathParam(param string) (string, bool) {

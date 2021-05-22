@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/http"
 
@@ -65,6 +66,8 @@ func NewServer(serverConfig *ServerConfig) *Server {
 	}
 
 	httpServer := &fasthttp.Server{}
+	httpServer.Name = "spiderweb"
+	httpServer.NoDefaultContentType = true
 	httpServer.Logger = serverConfig.LogConfig.Logger()
 	httpServer.ReadTimeout = serverConfig.ReadTimeout
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
@@ -201,7 +204,10 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		httpStatus, responseBody := routeEndpoint.Execute(requestCtx, newFasthttpRequester(requestCtx))
+		span, ctx := opentracing.StartSpanFromContextWithTracer(requestCtx, routeEndpoint.Config.Tracer, string(requestCtx.Method())+" "+matchedPath(requestCtx))
+		defer span.Finish()
+
+		httpStatus, responseBody := routeEndpoint.Execute(ctx, newFasthttpRequester(requestCtx))
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)

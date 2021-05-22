@@ -12,7 +12,7 @@ type getResource struct {
 	Test         string
 	Db           Datastore            `spiderweb:"resource=datastore"`
 	ResourceId   int                  `spiderweb:"path=id"`
-	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
+	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate,etag"`
 }
 
 func (self *getResource) Handle(ctx context.Context) (int, error) {

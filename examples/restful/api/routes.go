@@ -15,11 +15,9 @@ import (
 
 func Routes(custom *restful.Server) {
 	endpointConfig := &endpoint.Config{
-		Auther:       middleware.AuthNoop{},
-		ErrorHandler: middleware.ErrorJsonWithCodeResponse{},
-		LogConfig: &middleware.NoopLogConfig{
-			Config: log.NewConfig(log.LevelDebug),
-		},
+		Auther:            middleware.AuthNoop{},
+		ErrorHandler:      middleware.ErrorJsonWithCodeResponse{},
+		LogConfig:         log.NewConfig(log.LevelDebug),
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  middleware.ValidateNoopRequest{},
 		ResponseValidator: middleware.ValidateNoopResponse{},

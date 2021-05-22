@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
@@ -37,6 +38,7 @@ type Config struct {
 	MimeTypeHandlers  MimeTypeHandlers
 	Resources         map[string]interface{}
 	Timeout           time.Duration
+	Tracer            opentracing.Tracer
 }
 
 // Endpoint defines the behavior of a given handler.
@@ -90,6 +92,12 @@ func NewEndpoint(config *Config, handler Handler) *Endpoint {
 		configClone.Timeout = config.Timeout
 	}
 
+	if config.Tracer == nil {
+		configClone.Tracer = opentracing.GlobalTracer()
+	} else {
+		configClone.Tracer = config.Tracer
+	}
+
 	return &Endpoint{
 		Config: configClone,
 
@@ -103,6 +111,9 @@ func (self *Endpoint) Name() string {
 
 // Execute the endpoint and run the endpoint handler.
 func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpStatus int, responseBody []byte) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Execute()")
+	defer span.Finish()
+
 	ctx = context.Localize(ctx)
 
 	// Every invocation of an endpoint creates its own logger instance.
@@ -117,12 +128,12 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		}
 	}()
 
-	//defer profiling.Profile(ctx, string(requester.Method())+" "+requester.MatchedPath()).Finish()
-
 	requester.SetResponseHeader("X-Request-Id", requester.RequestId())
 
 	// Setup log.
 	{
+		logSpan, ctx := opentracing.StartSpanFromContext(ctx, "setup log")
+
 		log.Tag(ctx, "request_id", requester.RequestId())
 		log.Tag(ctx, "method", string(requester.Method()))
 		log.Tag(ctx, "route", requester.MatchedPath())
@@ -136,6 +147,8 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 				log.Tag(ctx, param, value)
 			}
 		}
+
+		logSpan.Finish()
 	}
 
 	log.Trace(ctx, "executing endpoint")
@@ -145,6 +158,8 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	// Content-Type and Accept
 	var requestMimeType *MimeTypeHandler
 	{
+		mimeTypeSpan, ctx := opentracing.StartSpanFromContext(ctx, "setup mime types")
+
 		var ok bool
 
 		if self.handlerData.hasRequestBody {
@@ -153,12 +168,14 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			contentType := requester.ContentType()
 			if len(contentType) == 0 {
 				log.Debug(ctx, "header Content-Type not found")
+				mimeTypeSpan.Finish()
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeMissing, "Content-Type MIME type not provided"))
 			}
 
 			requestMimeType, ok = self.Config.MimeTypeHandlers.Get(contentType, self.handlerData.requestMimeTypes)
 			if !ok {
 				log.Debug(ctx, "mime type handler not available: %s", contentType)
+				mimeTypeSpan.Finish()
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeUnsupported, "Content-Type MIME type not supported: %s", contentType))
 			}
 
@@ -171,85 +188,98 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		accept := requester.Accept()
 		if len(accept) == 0 {
 			log.Debug(ctx, "header Accept not found")
+			mimeTypeSpan.Finish()
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeMissing, "Accept MIME type not provided"))
 		}
 
 		responseMimeType, ok = self.Config.MimeTypeHandlers.Get(accept, self.handlerData.responseMimeTypes)
 		if !ok {
 			log.Debug(ctx, "mime type handler not available: %s", accept)
+			mimeTypeSpan.Finish()
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
 		}
 		// All responses after this must be marshalable to the mime type.
 		requester.SetResponseContentType(responseMimeType.MimeType)
 
 		log.Trace(ctx, "found response mime type handler: %s", accept)
+
+		mimeTypeSpan.Finish()
 	}
 
 	// Authentication
 	{
-		//authTimer := profiling.Profile(ctx, "Auth")
+		authSpan, ctx := opentracing.StartSpanFromContext(ctx, "authentication")
 
 		if self.Config.Auther != nil {
 			log.Trace(ctx, "processing auth handler")
 
 			httpStatus, err = self.Config.Auther.Auth(ctx, requester.VisitHeaders)
-			//authTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "auth failed")
+				authSpan.Finish()
 				return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
 			}
 		}
+
+		authSpan.Finish()
 	}
 
 	log.Trace(ctx, "allocating handler")
 
-	//allocateTimer := profiling.Profile(ctx, "Allocate")
+	allocSpan, ctx := opentracing.StartSpanFromContext(ctx, "handler allocation")
+
 	handlerAlloc := self.handlerData.allocateHandler()
 	if err = self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources); err != nil {
 		log.Debug(ctx, "failed to set resources")
+		allocSpan.Finish()
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.New(icRequestResourcesError, internalServerError))
 	}
 	if err = self.handlerData.setPathParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set path parameters")
+		allocSpan.Finish()
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.New(icRequestPathParamsError, badRequest))
 	}
 	if err = self.handlerData.setQueryParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set query parameters")
+		allocSpan.Finish()
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.New(icRequestQueryParamsError, badRequest))
 	}
-	//allocateTimer.Finish()
 
-	// Handle Request
+	allocSpan.Finish()
+
+	// Handle Request Body
 	{
+		requestBodySpan, ctx := opentracing.StartSpanFromContext(ctx, "process request body")
+
 		if self.handlerData.hasRequestBody {
 			log.Trace(ctx, "processing request body")
 
 			requestBodyBytes := requester.RequestBody()
 
-			//populateRequestTimer := profiling.Profile(ctx, "UnmarshalRequest")
 			err = self.setHandlerRequestBody(ctx, requestMimeType, handlerAlloc.requestBody, requestBodyBytes)
-			//populateRequestTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "failed processing request body")
+				requestBodySpan.Finish()
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, err)
 			}
 
 			if self.Config.RequestValidator != nil && self.handlerData.shouldValidateRequest {
 				log.Trace(ctx, "processing validation handler")
 
-				//validateTimer := profiling.Profile(ctx, "ValidateRequest")
 				var validationFailure error
 				httpStatus, validationFailure = self.Config.RequestValidator.ValidateRequest(ctx, requestBodyBytes)
-				//validateTimer.Finish()
 				if validationFailure != nil {
 					log.Debug(ctx, "failed request body validation")
 
 					// Validation failures are not hard errors and should be passed through to the error handler.
 					// The failure is passed through since it is assumed this error contains information to be returned in the response.
+					requestBodySpan.Finish()
 					return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, validationFailure)
 				}
 			}
 		}
+
+		requestBodySpan.Finish()
 	}
 
 	if !ShouldContinue(ctx) {
@@ -259,9 +289,11 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	// Run the endpoint handler.
 	log.Trace(ctx, "running endpoint handler")
-	//handleTimer := profiling.Profile(ctx, self.Name()+".Handle()")
+
+	handlerSpan, ctx := opentracing.StartSpanFromContext(ctx, "Handle()")
 	httpStatus, err = handlerAlloc.handler.Handle(ctx)
-	//handleTimer.Finish()
+	handlerSpan.Finish()
+
 	log.Trace(ctx, "completed endpoint handler")
 	if err != nil {
 		log.Debug(ctx, "handler error")
@@ -273,43 +305,47 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout2, "request timeout"))
 	}
 
-	// Handle Response
+	// Handle Response Body
 	{
+		responseBodySpan, ctx := opentracing.StartSpanFromContext(ctx, "process response body")
 
-		//populateResponseTimer := profiling.Profile(ctx, "MarshalResponseBody")
 		responseBody, err = self.getHandlerResponseBody(ctx, requester, responseMimeType, handlerAlloc.responseBody)
-		//populateResponseTimer.Finish()
 		if err != nil {
 			log.Debug(ctx, "failed processing response")
+			responseBodySpan.Finish()
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, err)
 		}
 
 		if self.Config.ResponseValidator != nil && self.handlerData.shouldValidateResponse {
 			log.Trace(ctx, "processing response validation handler")
 
-			//validateResponseTimer := profiling.Profile(ctx, "ValidateResponse")
 			var validationFailure error
 			httpStatus, validationFailure = self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
-			//validateResponseTimer.Finish()
 			if err != nil {
 				log.Debug(ctx, "failed response validation")
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
+				responseBodySpan.Finish()
 				return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, validationFailure)
 			}
 		}
+
+		responseBodySpan.Finish()
 	}
 
 	log.Debug(ctx, "success response: %d %s", httpStatus, responseBody)
 
 	if self.handlerData.eTagEnabled {
-		log.Debug(ctx, "eTagEnabled, handling etag")
+		log.Trace(ctx, "eTagEnabled, handling etag")
 		return handleETag(ctx, requester, self.handlerData.maxAgeSeconds, httpStatus, responseBody)
 	}
 	return httpStatus, responseBody
 }
 
 func (self *Endpoint) processErrorResponse(ctx context.Context, requester Requester, responseMimeType *MimeTypeHandler, httpStatus int, err error) (int, []byte) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "processErrorResponse()")
+	defer span.Finish()
+
 	var responseBody []byte
 	var errStruct interface{}
 

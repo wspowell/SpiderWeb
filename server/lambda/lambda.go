@@ -1,6 +1,7 @@
 package lambda
 
 import (
+	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 
 	"github.com/wspowell/spiderweb/endpoint"
@@ -45,6 +46,9 @@ func (self *Lambda) Start() {
 
 func (self *Lambda) wrapLambdaHandler(routeEndpoint *endpoint.Endpoint) HandlerAPIGateway {
 	return func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+		span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, routeEndpoint.Config.Tracer, request.HTTPMethod+" "+self.matchedPath)
+		defer span.Finish()
+
 		response := events.APIGatewayProxyResponse{}
 		requester := NewApiGatewayRequester(self.matchedPath, &request)
 

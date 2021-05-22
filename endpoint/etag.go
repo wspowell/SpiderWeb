@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/http"
@@ -20,6 +21,9 @@ var (
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
 // If the cache is fresh and a success case with non-empty body, this will return 304 Not Modified with an empty body.
 func handleETag(ctx context.Context, requester Requester, maxAgeSeconds int, httpStatus int, responseBody []byte) (int, []byte) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
+	defer span.Finish()
+
 	ifNoneMatch := requester.PeekHeader(http.HeaderIfNoneMatch)
 	ifMatch := requester.PeekHeader(http.HeaderIfMatch)
 	cacheControl := requester.PeekHeader(http.HeaderCacheControl)
@@ -33,7 +37,7 @@ func handleETag(ctx context.Context, requester Requester, maxAgeSeconds int, htt
 		len(responseBody) == 0 ||
 		bytes.Contains(cacheControl, noCache) ||
 		(len(ifNoneMatch) == 0 && len(ifMatch) == 0) {
-		log.Debug(ctx, "skipping etag check: httpStatus = %v, response body size = %v, Cache-Control = %v", httpStatus, len(responseBody), cacheControl)
+		log.Trace(ctx, "skipping etag check: httpStatus = %v, response body size = %v, Cache-Control = %v", httpStatus, len(responseBody), cacheControl)
 		return httpStatus, responseBody
 	}
 
@@ -42,17 +46,17 @@ func handleETag(ctx context.Context, requester Requester, maxAgeSeconds int, htt
 
 	requester.SetResponseHeader(http.HeaderETag, eTagValue)
 	if maxAgeSeconds != 0 {
-		log.Debug(ctx, "etag max age seconds: %v", maxAgeSeconds)
+		log.Trace(ctx, "etag max age seconds: %v", maxAgeSeconds)
 		requester.SetResponseHeader(http.HeaderCacheControl, "max-age="+strconv.Itoa(maxAgeSeconds))
 	} else {
-		log.Debug(ctx, "etag max age: indefinite")
+		log.Trace(ctx, "etag max age: indefinite")
 	}
 
 	if newHttpStatus, ok := isCacheFresh(requester, ifNoneMatch, ifMatch, []byte(eTagValue)); ok {
-		log.Debug(ctx, "etag fresh, not modified: %v", eTagValue)
+		log.Trace(ctx, "etag fresh, not modified: %v", eTagValue)
 		return newHttpStatus, nil
 	}
-	log.Debug(ctx, "refreshed etag: %v", eTagValue)
+	log.Trace(ctx, "refreshed etag: %v", eTagValue)
 	return httpStatus, responseBody
 }
 
