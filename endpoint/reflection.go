@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,6 +16,8 @@ const (
 	structTagPath     = "path"
 	structTagQuery    = "query"
 	structTagResource = "resource"
+	structTagETag     = "etag"
+	structTagMaxAge   = "max-age"
 
 	tagValueRequired = "required"
 )
@@ -62,6 +65,9 @@ type handlerTypeData struct {
 	pathParameters          map[string]int
 	queryParameters         map[string]int
 	requiredQueryParameters map[string]bool
+
+	eTagEnabled   bool
+	maxAgeSeconds int
 }
 
 func newHandlerTypeData(handler interface{}) handlerTypeData {
@@ -85,6 +91,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	pathParameters := map[string]int{}
 	queryParameters := map[string]int{}
 	requiredQueryParameters := map[string]bool{}
+	var eTagEnabled bool
+	var maxAgeSeconds int
 
 	structValue = reflect.ValueOf(handler)
 	if structValue.Kind() == reflect.Ptr {
@@ -104,13 +112,6 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 
 			for n := 0; n < len(tagValueParts); n++ {
 				tagValuePart := tagValueParts[n]
-
-				// Detect mime type.
-				if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
-					mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
-					mimeTypes = strings.Split(mimeTagValue[1], mimeTypeSeparator)
-					break
-				}
 
 				// Detect resources.
 				if strings.HasPrefix(tagValuePart, structTagResource+"=") {
@@ -140,6 +141,33 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 					requiredQueryParameters[queryVariable] = tagValueParts[len(tagValueParts)-1] == tagValueRequired
 					break
 				}
+
+				// Detect mime type.
+				if tagValueParts[0] == structTagValueRequest || tagValueParts[0] == structTagValueResponse {
+					if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
+						mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
+						mimeTypes = strings.Split(mimeTagValue[1], mimeTypeSeparator)
+						continue
+					}
+				}
+
+				// Detect etag
+				if tagValueParts[0] == structTagValueResponse {
+					if tagValuePart == structTagETag {
+						eTagEnabled = true
+						continue
+					}
+					if strings.HasPrefix(tagValuePart, structTagMaxAge+"=") {
+						maxAgeTagValue := strings.SplitN(tagValuePart, "=", 2)
+						var err error
+						maxAgeSeconds, err = strconv.Atoi(maxAgeTagValue[1])
+						if err != nil {
+							log.Fatalf("invalid struct tag value for 'maxage' (%v): %v", maxAgeTagValue[1], err)
+						}
+						continue
+					}
+				}
+
 			}
 
 			switch tagValueParts[0] {
@@ -186,6 +214,8 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		pathParameters:          pathParameters,
 		queryParameters:         queryParameters,
 		requiredQueryParameters: requiredQueryParameters,
+		eTagEnabled:             eTagEnabled,
+		maxAgeSeconds:           maxAgeSeconds,
 	}
 }
 

@@ -17,6 +17,7 @@ type Requester interface {
 	ContentType() []byte
 	Accept() []byte
 
+	PeekHeader(key string) []byte
 	VisitHeaders(f func(key []byte, value []byte))
 
 	// MatchedPath returns the endpoint path that the request URL matches.
@@ -33,6 +34,7 @@ type Requester interface {
 	SetResponseHeader(header string, value string)
 	SetResponseContentType(contentType string)
 	ResponseContentType() string
+	ResponseHeaders() map[string]string
 }
 
 var _ Requester = (*HttpRequester)(nil)
@@ -80,6 +82,13 @@ func (self *HttpRequester) Accept() []byte {
 	return []byte(self.request.Header.Get("Accept"))
 }
 
+func (self *HttpRequester) PeekHeader(key string) []byte {
+	if value, exists := self.request.Header[key]; exists {
+		return []byte(value[0])
+	}
+	return nil
+}
+
 func (self *HttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
 	for header, value := range self.request.Header {
 		f([]byte(header), []byte(value[0]))
@@ -122,4 +131,13 @@ func (self *HttpRequester) SetResponseContentType(contentType string) {
 
 func (self *HttpRequester) ResponseContentType() string {
 	return self.request.Response.Header.Get("Content-Type")
+}
+
+func (self *HttpRequester) ResponseHeaders() map[string]string {
+	headers := map[string]string{}
+	for key, value := range self.request.Response.Header {
+		headers[key] = value[0]
+	}
+
+	return headers
 }

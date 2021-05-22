@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
 )
 
@@ -150,4 +151,56 @@ func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 		}
 		handler.ResponseBody.MyInt = 5
 	}
+}
+
+func Test_handlerTypeData_no_etag(t *testing.T) {
+	t.Parallel()
+
+	type endpoint struct {
+		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json"`
+	}
+
+	typeData := newHandlerTypeData(&endpoint{})
+
+	assert.False(t, typeData.eTagEnabled)
+	assert.Equal(t, 0, typeData.maxAgeSeconds)
+}
+
+func Test_handlerTypeData_etag(t *testing.T) {
+	t.Parallel()
+
+	type endpoint struct {
+		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,etag"`
+	}
+
+	typeData := newHandlerTypeData(&endpoint{})
+
+	assert.True(t, typeData.eTagEnabled)
+	assert.Equal(t, 0, typeData.maxAgeSeconds)
+}
+
+func Test_handlerTypeData_maxage(t *testing.T) {
+	t.Parallel()
+
+	type endpoint struct {
+		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,max-age=300"`
+	}
+
+	typeData := newHandlerTypeData(&endpoint{})
+
+	assert.False(t, typeData.eTagEnabled)
+	assert.Equal(t, 300, typeData.maxAgeSeconds)
+}
+
+func Test_handlerTypeData_etag_maxage(t *testing.T) {
+	t.Parallel()
+
+	type endpoint struct {
+		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,etag,max-age=300"`
+	}
+
+	typeData := newHandlerTypeData(&endpoint{})
+
+	assert.True(t, typeData.eTagEnabled)
+	assert.Equal(t, 300, typeData.maxAgeSeconds)
 }

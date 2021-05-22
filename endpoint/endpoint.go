@@ -302,6 +302,10 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	log.Debug(ctx, "success response: %d %s", httpStatus, responseBody)
 
+	if self.handlerData.eTagEnabled {
+		log.Debug(ctx, "eTagEnabled, handling etag")
+		return handleETag(ctx, requester, self.handlerData.maxAgeSeconds, httpStatus, responseBody)
+	}
 	return httpStatus, responseBody
 }
 
