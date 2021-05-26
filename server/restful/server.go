@@ -85,7 +85,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		}()
 	}
 
-	server := &Server{
+	return &Server{
 		serverConfig: serverConfig,
 
 		server: httpServer,
@@ -96,8 +96,6 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
 	}
-
-	return server
 }
 
 func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
