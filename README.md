@@ -18,7 +18,7 @@ The goals of Spiderweb:
     * Use of interfaces to prevent forcing opinionated code
     * Retain flexibility to allow for exceptions
 
-See spiderweb in action: https://github.com/wspowell/pmail
+See spiderweb in action: https://github.com/wspowell/snailmail
 
 # Design Discussion
 
