@@ -350,7 +350,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			}
 		}
 	case reflect.Int:
-		if parsedValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+		if parsedValue, err := strconv.ParseInt(value, 10, 32); err == nil {
 			val := reflect.ValueOf(int(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
@@ -390,7 +390,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			}
 		}
 	case reflect.Uint:
-		if parsedValue, err := strconv.ParseUint(value, 10, 64); err == nil {
+		if parsedValue, err := strconv.ParseUint(value, 10, 32); err == nil {
 			val := reflect.ValueOf(uint(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
