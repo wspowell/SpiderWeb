@@ -302,7 +302,7 @@ func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, reques
 		}
 
 		if err := setValueFromString(parameterValue, value); err != nil {
-			return errors.Wrap(icPathParamSetFailure, err)
+			return errors.Propagate(icPathParamSetFailure, err)
 		}
 	}
 
@@ -329,7 +329,7 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 		}
 
 		if err := setValueFromString(queryValue, string(queryBytes)); err != nil {
-			return errors.Wrap(icQueryParamSetFailure, err)
+			return errors.Propagate(icQueryParamSetFailure, err)
 		}
 	}
 

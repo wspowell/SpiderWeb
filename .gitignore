@@ -2,3 +2,7 @@
 examples/app/app
 __debug_bin
 bin/
+cpu.prof
+cpu_latency.png
+cpu_throughput.png
+restful.test
