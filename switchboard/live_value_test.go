@@ -69,6 +69,8 @@ var (
 )
 
 func Test_Value_Set(t *testing.T) {
+	t.Parallel()
+
 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
 
 	// Create a new value.
@@ -80,6 +82,8 @@ func Test_Value_Set(t *testing.T) {
 }
 
 func Test_Value_Set_no_change(t *testing.T) {
+	t.Parallel()
+
 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
 
 	// Create a new value.
@@ -91,6 +95,8 @@ func Test_Value_Set_no_change(t *testing.T) {
 }
 
 func Test_Value_UpdateFunc(t *testing.T) {
+	t.Parallel()
+
 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
 
 	// Create a new value.
@@ -101,6 +107,8 @@ func Test_Value_UpdateFunc(t *testing.T) {
 }
 
 func Test_Value_Listen(t *testing.T) {
+	t.Parallel()
+
 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
 
 	// Create a new value.
