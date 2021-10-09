@@ -7,9 +7,6 @@ import (
 )
 
 type ErrorHandler interface {
-
-	// FIXME: HandlerError only really converts an error into []byte. This function definition could be made simpler.
-	//        The error could be returned and then the internal endpoint code handles the marshaling.
 	HandleError(ctx context.Context, httpStatus int, err error) (int, interface{})
 }
 

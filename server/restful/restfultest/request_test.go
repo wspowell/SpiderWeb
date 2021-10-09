@@ -13,34 +13,34 @@ func Test_RouteTest(t *testing.T) {
 
 	sample := Routes()
 
-	restfultest.TestCase(t, sample, "Route not found").
+	restfultest.TestCase(sample, "Route not found").
 		GivenRequest(http.MethodPost, "/not_found").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
 		ExpectResponse(http.StatusNotFound).
 		WithEmptyBody().
-		Run()
+		RunParallel(t)
 
-	restfultest.TestCase(t, sample, "Success POST /sample").
+	restfultest.TestCase(sample, "Success POST /sample").
 		GivenRequest(http.MethodPost, "/sample").
 		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
 		ExpectResponse(http.StatusCreated).
 		WithResponseBody("application/json", []byte(`{"output_string":"hello","output_int":5}`)).
-		Run()
+		RunParallel(t)
 
 	dbMock := &test.MockDatastore{}
 	dbMock.On("RetrieveValue").Return("test")
-	restfultest.TestCase(t, sample, "Success GET /sample/{id}").
+	restfultest.TestCase(sample, "Success GET /sample/{id}").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		WithPathParam("id", "34").
 		WithResourceMock("datastore", dbMock).
 		ExpectResponse(http.StatusOK).
 		WithResponseBody("application/json", []byte(`{"output_string":"test","output_int":34}`)).
-		Run()
+		RunParallel(t)
 
 	// Not mocked, so it returns 500.
-	restfultest.TestCase(t, sample, "Failure, not mocked").
+	restfultest.TestCase(sample, "Failure, not mocked").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		ExpectResponse(http.StatusInternalServerError).
-		WithResponseBody("application/json", []byte(`{"message":"[SW105] internal server error"}`)).
-		Run()
+		WithResponseBody("application/json", []byte(`{"message":"[SW001] internal server error"}`)).
+		RunParallel(t)
 }

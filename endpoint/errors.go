@@ -1,16 +1,20 @@
 package endpoint
 
-const (
-	internalServerError = "internal server error"
-	badRequest          = "bad request"
+import "github.com/wspowell/errors"
+
+var (
+	ErrInternalServerError = errors.New(icInternalServerError, "internal server error")
+	ErrBadRequest          = errors.New(icBadRequest, "bad request")
 )
 
 // Internal Codes.
 
 // Internal error codes.
 const (
-	icPanic             = "SW000"
-	icErrorParseFailure = "SW001"
+	icPanic               = "SW000"
+	icInternalServerError = "SW001"
+	icBadRequest          = "SW002"
+	icErrorParseFailure   = "SW002"
 )
 
 // Request errors codes.

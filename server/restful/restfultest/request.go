@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/wspowell/spiderweb/server/restful"
@@ -14,20 +15,22 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+var (
+	// FIXME: Remove the need for this by fixing runTest().
+	mutex = &sync.Mutex{}
+)
+
 type Mocker interface {
 	AssertExpectations(t mock.TestingT) bool
 }
 
 type testCase struct {
-	t *testing.T
-
 	server *restful.Server
 	name   string
 }
 
-func TestCase(t *testing.T, server *restful.Server, name string) *testCase {
+func TestCase(server *restful.Server, name string) *testCase {
 	return &testCase{
-		t:      t,
 		server: server,
 		name:   name,
 	}
@@ -125,14 +128,23 @@ func (self *responseTestCase) WithResponseBody(mimeType string, responseBody []b
 	return self
 }
 
-func (self *responseTestCase) Run() {
-	self.t.Run(self.name, func(t *testing.T) {
-		runTest(self)
+func (self *responseTestCase) Run(t *testing.T) {
+	t.Run(self.name, func(t *testing.T) {
+		self.runTest(t)
 	})
 }
 
-func runTest(testCase *responseTestCase) {
-	t := testCase.t
+func (self *responseTestCase) RunParallel(t *testing.T) {
+	t.Run(self.name, func(t *testing.T) {
+		t.Parallel()
+		self.runTest(t)
+	})
+}
+
+func (testCase *responseTestCase) runTest(t *testing.T) {
+	// FIXME: Tests alter the endpoint config for mocks, so these cannot run in parallel without locking.
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	copyRequestBody := make([]byte, len(testCase.request.requestBody))
 	copy(copyRequestBody, testCase.request.requestBody)

@@ -121,10 +121,13 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	var responseMimeType *MimeTypeHandler
 
+	// Defer recover at this point so that logging and context has been initialized.
 	defer func() {
-		if errPanic := recover(); errPanic != nil {
-			log.Error(ctx, "panic: %+v", errors.New("ERROR", "%+v", errPanic))
-			httpStatus, responseBody = self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.New(icPanic, internalServerError))
+		if err := errors.Recover(recover()); err != nil {
+			log.Error(ctx, "panic: %+v", err)
+			// Convert the panic error to an internal server error. Never expose panics directly.
+			err = errors.Convert(icPanic, errors.Panic, ErrInternalServerError)
+			httpStatus, responseBody = self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, err)
 		}
 	}()
 
@@ -232,17 +235,17 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	if err = self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources); err != nil {
 		log.Debug(ctx, "failed to set resources")
 		allocSpan.Finish()
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.New(icRequestResourcesError, internalServerError))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.Propagate(icRequestResourcesError, ErrInternalServerError))
 	}
 	if err = self.handlerData.setPathParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set path parameters")
 		allocSpan.Finish()
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.New(icRequestPathParamsError, badRequest))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestPathParamsError, ErrBadRequest))
 	}
 	if err = self.handlerData.setQueryParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set query parameters")
 		allocSpan.Finish()
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.New(icRequestQueryParamsError, badRequest))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestQueryParamsError, ErrBadRequest))
 	}
 
 	allocSpan.Finish()
@@ -374,7 +377,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 	responseBody, err = responseMimeType.Marshal(errStruct)
 	if err != nil {
 		requester.SetResponseContentType(mimeTypeTextPlain)
-		err = errors.New(icErrorParseFailure, internalServerError)
+		err = errors.Propagate(icErrorParseFailure, ErrInternalServerError)
 		httpStatus = http.StatusInternalServerError
 		responseBody = []byte(fmt.Sprintf("%s", err))
 		return httpStatus, responseBody
@@ -389,7 +392,7 @@ func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *Mi
 
 		if err := mimeHandler.Unmarshal(requestBodyBytes, requestBody); err != nil {
 			log.Error(ctx, "failed to unmarshal request body: %v", err)
-			return errors.New(icRequestBodyUnmarshalFailure, badRequest)
+			return errors.Propagate(icRequestBodyUnmarshalFailure, ErrBadRequest)
 		}
 	}
 	return nil
@@ -403,11 +406,11 @@ func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requ
 		responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 		if err != nil {
 			log.Error(ctx, "failed to marshal response: %v", err)
-			return nil, errors.New(icResponseBodyMarshalFailure, internalServerError)
+			return nil, errors.Propagate(icResponseBodyMarshalFailure, ErrInternalServerError)
 		}
 		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes) {
 			log.Debug(ctx, "request body is null")
-			return nil, errors.New(icResponseBodyNull, internalServerError)
+			return nil, errors.Propagate(icResponseBodyNull, ErrInternalServerError)
 		}
 		return responseBodyBytes, nil
 	}

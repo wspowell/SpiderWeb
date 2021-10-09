@@ -14,7 +14,7 @@ fuzz: test
 
 bench: build
 	# Run benchmarks with -race for testing purposes (since -race adds overhead to real benchmarks).
-	go test -run=._bench_test.go -bench=. -benchmem -count=1 -parallel 8 -race ./
+	go test -run=._bench_test.go -bench=. -benchmem -count=1 -parallel 8 -race ./...
 	go test -run=._bench_test.go -bench=. -benchmem -count=1 -parallel 8 -tags release -race ./...
 	#
 	# *** Run for real ***
