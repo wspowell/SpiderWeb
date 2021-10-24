@@ -6,6 +6,7 @@ import (
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server/lambda"
+	"github.com/wspowell/spiderweb/server/route"
 )
 
 func main() {
@@ -14,6 +15,6 @@ func main() {
 		Timeout:   30 * time.Second,
 	}
 
-	handler := lambda.New(config, "/foo", &create{})
+	handler := lambda.New(config, route.Post("/foo", &create{}))
 	handler.Start()
 }

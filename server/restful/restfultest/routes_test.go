@@ -5,8 +5,8 @@ import (
 
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/http"
 	"github.com/wspowell/spiderweb/server/restful"
+	"github.com/wspowell/spiderweb/server/route"
 	"github.com/wspowell/spiderweb/test"
 )
 
@@ -41,6 +41,6 @@ func sampleRoutes(sample *restful.Server) {
 	}
 
 	sample.HandleNotFound(config, &test.NoRoute{})
-	sample.Handle(config, http.MethodPost, "/sample", &test.Create{})
-	sample.Handle(config, http.MethodGet, "/sample/{id}", &test.Get{})
+	sample.Handle(config, route.Post("/sample", &test.Create{}))
+	sample.Handle(config, route.Get("/sample/{id}", &test.Get{}))
 }

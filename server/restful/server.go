@@ -12,6 +12,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/server/route"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
@@ -117,9 +118,9 @@ func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endp
 
 // Handle the given route to the provided endpoint handler.
 // This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
-func (self *Server) Handle(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) {
-	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, httpMethod, path, handler)
-	self.router.Handle(httpMethod, path, wrappedHandler)
+func (self *Server) Handle(endpointConfig *endpoint.Config, routeDefinition route.Route) {
+	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, routeDefinition.HttpMethod, routeDefinition.Path, routeDefinition.Handler)
+	self.router.Handle(routeDefinition.HttpMethod, routeDefinition.Path, wrappedHandler)
 }
 
 // newServerContext that will be canceled when the process receives an interrupt.

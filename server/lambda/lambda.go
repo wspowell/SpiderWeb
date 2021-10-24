@@ -5,6 +5,7 @@ import (
 	"github.com/wspowell/context"
 
 	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/server/route"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -15,16 +16,16 @@ import (
 type HandlerAPIGateway func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error)
 
 type Lambda struct {
-	matchedPath    string
 	endpointConfig *endpoint.Config
+	matchedPath    string
 	routeEndpoint  *endpoint.Endpoint
 }
 
-func New(endpointConfig *endpoint.Config, matchedPath string, handler endpoint.Handler) *Lambda {
+func New(endpointConfig *endpoint.Config, routeDefinition route.Route) *Lambda {
 	return &Lambda{
-		matchedPath:    matchedPath,
 		endpointConfig: endpointConfig,
-		routeEndpoint:  endpoint.NewEndpoint(endpointConfig, handler),
+		matchedPath:    routeDefinition.Path,
+		routeEndpoint:  endpoint.NewEndpoint(endpointConfig, routeDefinition.Handler),
 	}
 }
 
