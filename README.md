@@ -169,7 +169,8 @@ All struct tags must have key "spiderweb".
 
 * Request/Response additional options:
     * "mime=<name>" - Parse using Mime type. 
-	* A default handler for "application/json" is provided but any custom implementation may registered and used.
+		* Multiple mime types may be specified using ";" separated value.
+		* A default handler for "application/json" is provided but any custom implementation may registered and used.
     * "validate" - When provided, validates the value and responds with an error if it fails.
 * Response only additional options:
     * "etag" - When provided, add ETag header to the response and handles ETag caching.
