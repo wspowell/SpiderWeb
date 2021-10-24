@@ -42,7 +42,7 @@ serverConfig := &restful.ServerConfig{
 }
 
 myServer := restful.NewServer(serverConfig)
-custom.Handle(serverConfig, http.MethodPost, "/resources", &postResource{})
+custom.Handle(serverConfig, route.Post("/resources", &postResource{}))
 ...
 
 // Custom endpoint configuration to use instead of the default server configuration.
@@ -76,7 +76,7 @@ config := &endpoint.Config{
 	Timeout:   30 * time.Second,
 }
 
-handler := lambda.New(config, "/foo", &create{})
+handler := lambda.New(config, route.Post("/foo", &create{}))
 handler.Start()
 ```
 
@@ -86,29 +86,21 @@ When creating AWS Lambdas, the only caveat is that each lambda must be its own b
 // users.go
 // Setup an endpoint config to be shared between a RESTful server and AWS Lambda.
 
-type definition struct {
-	method  string
-	path    string
-	handler endpoint.Handler
-}
-
 var (
-	create = definition{http.MethodPost, "/users", &createUser{}}
+	RouteCreate = route.Post("/users", &createUser{})
 )
 
 func Routes(server *restful.Server, config *endpoint.Config) {
-	server.Handle(config, create.method, create.path, create.handler)
-}
-
-func LambdaCreate(config *endpoint.Config) *lambda.Lambda {
-	return lambda.New(config, create.path, create.handler)
+	server.Handle(config, RouteCreate)
 }
 
 ...
 
 // lambda.go
 // Call the endpoint (api package contains setup as described in the configuration section above)
-users.LambdaCreate(api.Config()).Start()
+func main() {
+	lambda.New(api.Config(), users.RouteCreate).Start()
+}
 ```
 
 ## Contexts
