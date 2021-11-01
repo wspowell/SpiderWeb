@@ -9,13 +9,12 @@ import (
 	"github.com/wspowell/spiderweb/examples/restful/api/resources"
 	"github.com/wspowell/spiderweb/examples/restful/middleware"
 	"github.com/wspowell/spiderweb/examples/restful/resources/db"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/server/restful"
 )
 
 func Routes(custom *restful.Server) {
 	endpointConfig := &endpoint.Config{
-		Auther:            middleware.AuthNoop{},
 		ErrorHandler:      middleware.ErrorJsonWithCodeResponse{},
 		LogConfig:         log.NewConfig(log.LevelDebug),
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
@@ -34,5 +33,5 @@ func Routes(custom *restful.Server) {
 type noRoute struct{}
 
 func (self *noRoute) Handle(ctx context.Context) (int, error) {
-	return http.StatusNotFound, nil
+	return httpstatus.NotFound, nil
 }

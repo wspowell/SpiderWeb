@@ -5,7 +5,7 @@ import (
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpheader"
 )
 
 type fasthttpRequester struct {
@@ -35,7 +35,7 @@ func (self *fasthttpRequester) ContentType() []byte {
 }
 
 func (self *fasthttpRequester) Accept() []byte {
-	return self.requestCtx.Request.Header.Peek(http.HeaderAccept)
+	return self.requestCtx.Request.Header.Peek(httpheader.Accept)
 }
 
 func (self *fasthttpRequester) PeekHeader(key string) []byte {

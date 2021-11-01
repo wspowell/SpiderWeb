@@ -11,10 +11,11 @@ var (
 
 // Internal error codes.
 const (
-	icPanic               = "SW000"
-	icInternalServerError = "SW001"
-	icBadRequest          = "SW002"
-	icErrorParseFailure   = "SW002"
+	icPanic                    = "SW000"
+	icInternalServerError      = "SW001"
+	icBadRequest               = "SW002"
+	icErrorParseFailure        = "SW002"
+	icAuthorizerInterfaceError = "SW003"
 )
 
 // Request errors codes.

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"net/http"
 	"strconv"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpheader"
 )
 
 var (
@@ -24,9 +25,9 @@ func handleETag(ctx context.Context, requester Requester, maxAgeSeconds int, htt
 	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
 	defer span.Finish()
 
-	ifNoneMatch := requester.PeekHeader(http.HeaderIfNoneMatch)
-	ifMatch := requester.PeekHeader(http.HeaderIfMatch)
-	cacheControl := requester.PeekHeader(http.HeaderCacheControl)
+	ifNoneMatch := requester.PeekHeader(httpheader.IfNoneMatch)
+	ifMatch := requester.PeekHeader(httpheader.IfMatch)
+	cacheControl := requester.PeekHeader(httpheader.CacheControl)
 
 	// Simply return the current http status and response body if any:
 	//   1. Not a success response (2xx)
@@ -44,10 +45,10 @@ func handleETag(ctx context.Context, requester Requester, maxAgeSeconds int, htt
 	md5Sum := md5.Sum(responseBody)
 	eTagValue := strconv.Itoa(len(responseBody)) + "-" + hex.EncodeToString(md5Sum[:])
 
-	requester.SetResponseHeader(http.HeaderETag, eTagValue)
+	requester.SetResponseHeader(httpheader.ETag, eTagValue)
 	if maxAgeSeconds != 0 {
 		log.Trace(ctx, "etag max age seconds: %v", maxAgeSeconds)
-		requester.SetResponseHeader(http.HeaderCacheControl, "max-age="+strconv.Itoa(maxAgeSeconds))
+		requester.SetResponseHeader(httpheader.CacheControl, "max-age="+strconv.Itoa(maxAgeSeconds))
 	} else {
 		log.Trace(ctx, "etag max age: indefinite")
 	}

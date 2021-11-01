@@ -2,7 +2,7 @@ package restful
 
 import (
 	"fmt"
-	gohttp "net/http"
+	"net/http"
 	_ "net/http/pprof" // FIXME: Do not include this for release builds.
 	"os"
 	"os/signal"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/server/route"
 
 	"github.com/fasthttp/router"
@@ -82,7 +82,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 
 	if serverConfig.EnablePprof {
 		go func() {
-			_ = gohttp.ListenAndServe("localhost:6060", nil)
+			_ = http.ListenAndServe("localhost:6060", nil)
 		}()
 	}
 
@@ -100,7 +100,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 }
 
 func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endpoint.Handler) {
-	routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+	routeEndpoint := endpoint.NewEndpoint(self.serverContext, endpointConfig, handler)
 
 	requestHandler := fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
 		httpStatus, responseBody := routeEndpoint.Execute(requestCtx, newFasthttpRequester(requestCtx))
@@ -111,7 +111,7 @@ func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endp
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
 		requestCtx.Response.SetConnectionClose()
-	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
+	}, endpointConfig.Timeout, "", httpstatus.RequestTimeout)
 
 	self.router.NotFound = requestHandler
 }
@@ -197,7 +197,7 @@ func (self *Server) Endpoint(httpMethod string, path string) *endpoint.Endpoint 
 }
 
 func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
-	routeEndpoint := endpoint.NewEndpoint(endpointConfig, handler)
+	routeEndpoint := endpoint.NewEndpoint(self.serverContext, endpointConfig, handler)
 	self.routes[path+" "+httpMethod] = routeEndpoint
 
 	// Wrapping the handler in a timeout will force a timeout response.
@@ -214,5 +214,5 @@ func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMet
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
 		requestCtx.Response.SetConnectionClose()
-	}, endpointConfig.Timeout, "", http.StatusRequestTimeout)
+	}, endpointConfig.Timeout, "", httpstatus.RequestTimeout)
 }

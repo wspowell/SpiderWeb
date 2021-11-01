@@ -8,6 +8,6 @@ import (
 
 type AuthNoop struct{}
 
-func (self AuthNoop) Auth(ctx context.Context, VisitAllHeaders func(func(key, value []byte))) (int, error) {
+func (self AuthNoop) Authorization(ctx context.Context, PeekHeader func(key string) []byte) (int, error) {
 	return http.StatusOK, nil
 }

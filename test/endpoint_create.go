@@ -7,7 +7,7 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
@@ -34,7 +34,7 @@ func (self *Create) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling PostResource")
 
 	if self.RequestBody.ShouldFail {
-		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
+		return httpstatus.UnprocessableEntity, errors.New("APP1234", "invalid input")
 	}
 
 	// If running benchmarks, do not add randomness.
@@ -47,7 +47,7 @@ func (self *Create) Handle(ctx context.Context) (int, error) {
 		MyInt:    self.RequestBody.MyInt,
 	}
 
-	return http.StatusCreated, nil
+	return httpstatus.Created, nil
 }
 
 // Fake spending time to save data.

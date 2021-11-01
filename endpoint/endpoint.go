@@ -10,6 +10,7 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
+	"github.com/wspowell/spiderweb/httpstatus"
 	_ "github.com/wspowell/spiderweb/profiling"
 )
 
@@ -20,6 +21,8 @@ const (
 	structTagValueResponse = "response"
 
 	structTagOptionValidate = "validate"
+
+	structTagAuth = "auth"
 )
 
 var (
@@ -32,7 +35,6 @@ var (
 type Config struct {
 	LogConfig         log.Configer
 	ErrorHandler      ErrorHandler
-	Auther            Auther
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
 	MimeTypeHandlers  MimeTypeHandlers
@@ -50,7 +52,7 @@ type Endpoint struct {
 
 // Create a new endpoint that will run the given handler.
 // This will be created by the Server during normal operations.
-func NewEndpoint(config *Config, handler Handler) *Endpoint {
+func NewEndpoint(ctx context.Context, config *Config, handler Handler) *Endpoint {
 	configClone := &Config{}
 
 	// Set defaults, if not set.
@@ -101,7 +103,7 @@ func NewEndpoint(config *Config, handler Handler) *Endpoint {
 	return &Endpoint{
 		Config: configClone,
 
-		handlerData: newHandlerTypeData(handler),
+		handlerData: newHandlerTypeData(ctx, handler),
 	}
 }
 
@@ -209,29 +211,11 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		mimeTypeSpan.Finish()
 	}
 
-	// Authentication
-	{
-		authSpan, ctx := opentracing.StartSpanFromContext(ctx, "authentication")
-
-		if self.Config.Auther != nil {
-			log.Trace(ctx, "processing auth handler")
-
-			httpStatus, err = self.Config.Auther.Auth(ctx, requester.VisitHeaders)
-			if err != nil {
-				log.Debug(ctx, "auth failed")
-				authSpan.Finish()
-				return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
-			}
-		}
-
-		authSpan.Finish()
-	}
-
 	log.Trace(ctx, "allocating handler")
 
 	allocSpan, ctx := opentracing.StartSpanFromContext(ctx, "handler allocation")
 
-	handlerAlloc := self.handlerData.allocateHandler()
+	handlerAlloc := self.handlerData.allocateHandler(ctx)
 	if err = self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources); err != nil {
 		log.Debug(ctx, "failed to set resources")
 		allocSpan.Finish()
@@ -249,6 +233,31 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	}
 
 	allocSpan.Finish()
+
+	// Authentication
+	{
+		authSpan, ctx := opentracing.StartSpanFromContext(ctx, "authorization")
+
+		if handlerAlloc.auth != nil {
+			log.Trace(ctx, "processing auth handler")
+
+			log.Error(ctx, "auth type: %T", handlerAlloc.auth)
+			if asAuthorizer, ok := handlerAlloc.auth.(Authorizer); ok {
+				httpStatus, err = asAuthorizer.Authorization(ctx, requester.PeekHeader)
+				if err != nil {
+					log.Debug(ctx, "authorization failed")
+					authSpan.Finish()
+					return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
+				}
+			} else {
+				log.Debug(ctx, "authorization object does not implement Authorizer")
+				authSpan.Finish()
+				return self.processErrorResponse(ctx, requester, responseMimeType, httpstatus.InternalServerError, errors.Propagate(icAuthorizerInterfaceError, ErrInternalServerError))
+			}
+		}
+
+		authSpan.Finish()
+	}
 
 	// Handle Request Body
 	{

@@ -1,12 +1,13 @@
 package endpoint
 
 import (
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
 
+	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
+	"github.com/wspowell/log"
 )
 
 // This file contains all the reflection that is not nice to look at.
@@ -27,6 +28,7 @@ type handlerAllocation struct {
 	handler      Handler
 	requestBody  interface{}
 	responseBody interface{}
+	auth         interface{}
 }
 
 type resourceTypeData struct {
@@ -41,19 +43,24 @@ type handlerTypeData struct {
 	structValue       reflect.Value
 	requestBodyValue  reflect.Value
 	responseBodyValue reflect.Value
+	authValue         reflect.Value
 
 	requestBodyType  reflect.Type
 	responseBodyType reflect.Type
+	authType         reflect.Type
 
 	isStructPtr   bool
 	isRequestPtr  bool
 	isResponsePtr bool
+	isAuthPtr     bool
 
 	hasRequestBody  bool
 	hasResponseBody bool
+	hasAuth         bool
 
 	requestFieldNum  int
 	responseFieldNum int
+	authFieldNum     int
 
 	shouldValidateRequest  bool
 	shouldValidateResponse bool
@@ -70,21 +77,26 @@ type handlerTypeData struct {
 	maxAgeSeconds int
 }
 
-func newHandlerTypeData(handler interface{}) handlerTypeData {
+func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeData {
 	var structValue reflect.Value
 	var requestBodyValue reflect.Value
 	var responseBodyValue reflect.Value
+	var authValue reflect.Value
 	var requestBodyType reflect.Type
 	var responseBodyType reflect.Type
+	var authType reflect.Type
 	var isStructPtr bool
 	var isRequestPtr bool
 	var isResponsePtr bool
+	var isAuthPtr bool
 	var requestFieldNum int
 	var responseFieldNum int
+	var authFieldNum int
 	var shouldValidateRequest bool
 	var shouldValidateResponse bool
 	var hasRequestBody bool
 	var hasResponseBody bool
+	var hasAuth bool
 	requestMimeTypes := []string{}
 	responseMimeTypes := []string{}
 	resources := map[string]resourceTypeData{}
@@ -164,7 +176,7 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 						var err error
 						maxAgeSeconds, err = strconv.Atoi(maxAgeTagValue[1])
 						if err != nil {
-							log.Fatalf("invalid struct tag value for 'maxage' (%v): %v", maxAgeTagValue[1], err)
+							log.Fatal(ctx, "invalid struct tag value for 'maxage' (%v): %v", maxAgeTagValue[1], err)
 						}
 						continue
 					}
@@ -189,6 +201,12 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 				responseMimeTypes = mimeTypes
 				hasResponseBody = structFieldValue.IsValid()
 				responseBodyType = structFieldValue.Type()
+			case structTagAuth:
+				authValue = getFieldValue(structFieldValue)
+				authFieldNum = i
+				isAuthPtr = structFieldValue.Kind() == reflect.Ptr
+				hasAuth = structFieldValue.IsValid()
+				authType = structFieldValue.Type()
 			}
 
 		}
@@ -199,19 +217,24 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 		structValue:             structValue,
 		requestBodyValue:        requestBodyValue,
 		responseBodyValue:       responseBodyValue,
+		authValue:               authValue,
 		requestBodyType:         requestBodyType,
 		responseBodyType:        responseBodyType,
+		authType:                authType,
 		isStructPtr:             isStructPtr,
 		isRequestPtr:            isRequestPtr,
 		isResponsePtr:           isResponsePtr,
+		isAuthPtr:               isAuthPtr,
 		requestFieldNum:         requestFieldNum,
 		responseFieldNum:        responseFieldNum,
+		authFieldNum:            authFieldNum,
 		shouldValidateRequest:   shouldValidateRequest,
 		shouldValidateResponse:  shouldValidateResponse,
 		requestMimeTypes:        requestMimeTypes,
 		responseMimeTypes:       responseMimeTypes,
 		hasRequestBody:          hasRequestBody,
 		hasResponseBody:         hasResponseBody,
+		hasAuth:                 hasAuth,
 		resources:               resources,
 		pathParameters:          pathParameters,
 		queryParameters:         queryParameters,
@@ -221,14 +244,15 @@ func newHandlerTypeData(handler interface{}) handlerTypeData {
 	}
 }
 
-func (self handlerTypeData) allocateHandler() *handlerAllocation {
+func (self handlerTypeData) allocateHandler(ctx context.Context) *handlerAllocation {
 	handlerValue := self.newHandlerValue()
 
 	return &handlerAllocation{
 		handlerValue: handlerValue,
 		handler:      handlerValue.Interface().(Handler),
-		requestBody:  self.newRequestBody(handlerValue),
-		responseBody: self.newResponseBody(handlerValue),
+		requestBody:  self.newRequestBody(ctx, handlerValue),
+		responseBody: self.newResponseBody(ctx, handlerValue),
+		auth:         self.newAuth(ctx, handlerValue),
 	}
 }
 
@@ -240,30 +264,40 @@ func (self handlerTypeData) newHandlerValue() reflect.Value {
 	}
 }
 
-func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newRequestBody(ctx context.Context, handlerValue reflect.Value) interface{} {
 	if self.hasRequestBody {
-		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr)
+		return self.newStruct(ctx, handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr).Interface()
 	}
 	return nil
 }
 
-func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newResponseBody(ctx context.Context, handlerValue reflect.Value) interface{} {
 	if self.hasResponseBody {
-		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr)
+		return self.newStruct(ctx, handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr).Interface()
 	}
 	return nil
 }
 
-func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType reflect.Type, fieldNum int, isPtr bool) interface{} {
+func (self handlerTypeData) newAuth(ctx context.Context, handlerValue reflect.Value) interface{} {
+	if self.hasAuth {
+		return self.newStruct(ctx, handlerValue, self.authType, self.authFieldNum, self.isAuthPtr).Elem().Interface()
+	}
+	return nil
+}
+
+func (self handlerTypeData) newStruct(ctx context.Context, handlerValue reflect.Value, valueType reflect.Type, fieldNum int, isPtr bool) reflect.Value {
 
 	newValue := handlerValue.Elem().Field(fieldNum)
 
 	// Only if the value is a pointer. Values will be zero initialized automatically.
 	if isPtr {
 		newValue.Set(reflect.New(valueType.Elem()))
+		log.Error(ctx, "type: %s, value: %+v", newValue.Type(), newValue.Interface())
+		return newValue.Addr()
+	} else {
+		newValue.Set(reflect.New(valueType).Elem())
+		return newValue.Addr()
 	}
-
-	return newValue.Addr().Interface()
 }
 
 func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) error {

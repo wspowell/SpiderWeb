@@ -3,6 +3,7 @@ package lambda
 import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
+	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server/route"
@@ -22,10 +23,13 @@ type Lambda struct {
 }
 
 func New(endpointConfig *endpoint.Config, routeDefinition route.Route) *Lambda {
+	ctx := context.Local()
+	log.WithContext(ctx, endpointConfig.LogConfig)
+
 	return &Lambda{
 		endpointConfig: endpointConfig,
 		matchedPath:    routeDefinition.Path,
-		routeEndpoint:  endpoint.NewEndpoint(endpointConfig, routeDefinition.Handler),
+		routeEndpoint:  endpoint.NewEndpoint(ctx, endpointConfig, routeDefinition.Handler),
 	}
 }
 

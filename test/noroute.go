@@ -2,11 +2,11 @@ package test
 
 import (
 	"github.com/wspowell/context"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpstatus"
 )
 
 type NoRoute struct{}
 
 func (self *NoRoute) Handle(ctx context.Context) (int, error) {
-	return http.StatusNotFound, nil
+	return httpstatus.NotFound, nil
 }

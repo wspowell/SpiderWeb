@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
@@ -30,5 +30,5 @@ func (self *Get) Handle(ctx context.Context) (int, error) {
 		MyInt:    self.ResourceId,
 	}
 
-	return http.StatusOK, nil
+	return httpstatus.OK, nil
 }

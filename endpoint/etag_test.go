@@ -6,12 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
-	"github.com/wspowell/spiderweb/http"
+	"github.com/wspowell/spiderweb/httpheader"
+	"github.com/wspowell/spiderweb/httpmethod"
+	"github.com/wspowell/spiderweb/httpstatus"
 )
 
 var (
-	uncachedHttpStatus = http.StatusOK
-	cachedHttpStatus   = http.StatusNotModified
+	uncachedHttpStatus = httpstatus.OK
+	cachedHttpStatus   = httpstatus.NotModified
 	uncachedResponse   = []byte("response not cached")
 	cachedResponse     = []byte(nil)
 	uncachedETag       = "uncached"
@@ -34,9 +36,9 @@ func Test_handleETag(t *testing.T) {
 			description:             "non-success, no cache",
 			clientHeaders:           map[string]string{},
 			maxAgeSeconds:           0,
-			httpStatus:              http.StatusBadRequest,
+			httpStatus:              httpstatus.BadRequest,
 			expectedResponseHeaders: map[string]string{},
-			expectedHttpStatus:      http.StatusBadRequest,
+			expectedHttpStatus:      httpstatus.BadRequest,
 			expectedResponseBody:    uncachedResponse,
 		},
 		{
@@ -51,12 +53,12 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch client header with fresh cache, no max age, returns new etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch: cachedETag,
+				httpheader.IfNoneMatch: cachedETag,
 			},
 			maxAgeSeconds: 0,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag: cachedETag,
+				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   cachedHttpStatus,
 			expectedResponseBody: cachedResponse,
@@ -64,8 +66,8 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch Cache-Control=no-cache client header with fresh cache, no max age, no etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch:  cachedETag,
-				http.HeaderCacheControl: "no-cache",
+				httpheader.IfNoneMatch:  cachedETag,
+				httpheader.CacheControl: "no-cache",
 			},
 			maxAgeSeconds:           0,
 			httpStatus:              uncachedHttpStatus,
@@ -76,12 +78,12 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch client header with stale cache, no max age, returns new etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch: uncachedETag,
+				httpheader.IfNoneMatch: uncachedETag,
 			},
 			maxAgeSeconds: 0,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag: cachedETag,
+				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
 			expectedResponseBody: uncachedResponse,
@@ -89,13 +91,13 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch client header with fresh cache, max age 300, returns new etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch: cachedETag,
+				httpheader.IfNoneMatch: cachedETag,
 			},
 			maxAgeSeconds: 300,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag:         cachedETag,
-				http.HeaderCacheControl: "max-age=300",
+				httpheader.ETag:         cachedETag,
+				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   cachedHttpStatus,
 			expectedResponseBody: cachedResponse,
@@ -103,8 +105,8 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch Cache-Control=no-cache client header with fresh cache, max age 300, returns new etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch:  cachedETag,
-				http.HeaderCacheControl: "no-cache",
+				httpheader.IfNoneMatch:  cachedETag,
+				httpheader.CacheControl: "no-cache",
 			},
 			maxAgeSeconds:           300,
 			httpStatus:              uncachedHttpStatus,
@@ -115,13 +117,13 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfNoneMatch client header with stale cache, max age 300, returns new etag",
 			clientHeaders: map[string]string{
-				http.HeaderIfNoneMatch: uncachedETag,
+				httpheader.IfNoneMatch: uncachedETag,
 			},
 			maxAgeSeconds: 300,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag:         cachedETag,
-				http.HeaderCacheControl: "max-age=300",
+				httpheader.ETag:         cachedETag,
+				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
 			expectedResponseBody: uncachedResponse,
@@ -130,12 +132,12 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfMatch client header with fresh cache, no max age",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch: cachedETag,
+				httpheader.IfMatch: cachedETag,
 			},
 			maxAgeSeconds: 0,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag: cachedETag,
+				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
 			expectedResponseBody: uncachedResponse,
@@ -143,8 +145,8 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfMatch Cache-Control=no-cache client header with fresh cache, no max age",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch:      cachedETag,
-				http.HeaderCacheControl: "no-cache",
+				httpheader.IfMatch:      cachedETag,
+				httpheader.CacheControl: "no-cache",
 			},
 			maxAgeSeconds:           0,
 			httpStatus:              uncachedHttpStatus,
@@ -155,26 +157,26 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfMatch client header with stale cache, no max age",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch: uncachedETag,
+				httpheader.IfMatch: uncachedETag,
 			},
 			maxAgeSeconds: 0,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag: cachedETag,
+				httpheader.ETag: cachedETag,
 			},
-			expectedHttpStatus:   http.StatusPreconditionFailed,
+			expectedHttpStatus:   httpstatus.PreconditionFailed,
 			expectedResponseBody: nil,
 		},
 		{
 			description: "IfMatch client header with fresh cache, max age 300",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch: cachedETag,
+				httpheader.IfMatch: cachedETag,
 			},
 			maxAgeSeconds: 300,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag:         cachedETag,
-				http.HeaderCacheControl: "max-age=300",
+				httpheader.ETag:         cachedETag,
+				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
 			expectedResponseBody: uncachedResponse,
@@ -182,8 +184,8 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfMatch Cache-Control=no-cache client header with fresh cache, max age 300",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch:      cachedETag,
-				http.HeaderCacheControl: "no-cache",
+				httpheader.IfMatch:      cachedETag,
+				httpheader.CacheControl: "no-cache",
 			},
 			maxAgeSeconds:           300,
 			httpStatus:              uncachedHttpStatus,
@@ -194,21 +196,21 @@ func Test_handleETag(t *testing.T) {
 		{
 			description: "IfMatch client header with stale cache, max age 300",
 			clientHeaders: map[string]string{
-				http.HeaderIfMatch: uncachedETag,
+				httpheader.IfMatch: uncachedETag,
 			},
 			maxAgeSeconds: 300,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
-				http.HeaderETag:         cachedETag,
-				http.HeaderCacheControl: "max-age=300",
+				httpheader.ETag:         cachedETag,
+				httpheader.CacheControl: "max-age=300",
 			},
-			expectedHttpStatus:   http.StatusPreconditionFailed,
+			expectedHttpStatus:   httpstatus.PreconditionFailed,
 			expectedResponseBody: nil,
 		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			request, err := gohttp.NewRequest(http.MethodGet, "/", nil)
+			request, err := gohttp.NewRequest(httpmethod.Get, "/", nil)
 			assert.Nil(t, err)
 
 			for key, value := range testCase.clientHeaders {
@@ -226,13 +228,13 @@ func Test_handleETag(t *testing.T) {
 				assert.Equal(t, expectedValue, actualValue)
 			}
 
-			if httpStatus == http.StatusBadRequest {
-				_, exists := responseHeaders[http.HeaderETag]
+			if httpStatus == httpstatus.BadRequest {
+				_, exists := responseHeaders[httpheader.ETag]
 				assert.False(t, exists)
 			}
 
-			if testCase.maxAgeSeconds == 0 || httpStatus == http.StatusBadRequest {
-				_, exists := responseHeaders[http.HeaderCacheControl]
+			if testCase.maxAgeSeconds == 0 || httpStatus == httpstatus.BadRequest {
+				_, exists := responseHeaders[httpheader.CacheControl]
 				assert.False(t, exists)
 			}
 
