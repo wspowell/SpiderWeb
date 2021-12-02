@@ -53,20 +53,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/switchboard"
 )
 
-var (
-	noopFn = func(ctx context.Context, name string, value switchboard.Setter) {}
+func noopFn(ctx context.Context, name string, value switchboard.Setter) {}
 
-	updateFn = func(ctx context.Context, name string, value switchboard.Setter) {
-		ticker := time.NewTicker(time.Millisecond)
-		for {
-			<-ticker.C
-			value.Set(ctx, "new")
-		}
+func updateFn(ctx context.Context, name string, value switchboard.Setter) {
+	ticker := time.NewTicker(time.Millisecond)
+	for {
+		<-ticker.C
+		value.Set(ctx, "new")
 	}
-)
+}
 
 func Test_Value_Set(t *testing.T) {
 	t.Parallel()

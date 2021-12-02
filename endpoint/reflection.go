@@ -133,6 +133,7 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 						resourceType:     resourceType,
 						resourceFieldNum: i,
 					}
+
 					break
 				}
 
@@ -141,6 +142,7 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 					pathTagValue := strings.SplitN(tagValuePart, "=", 2)
 					pathVariable := pathTagValue[1]
 					pathParameters[pathVariable] = i
+
 					break
 				}
 
@@ -153,6 +155,7 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 					if tagValueParts[len(tagValueParts)-1] == tagValueRequired {
 						requiredQueryParameters[queryVariable] = struct{}{}
 					}
+
 					break
 				}
 
@@ -161,6 +164,7 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 					if strings.HasPrefix(tagValuePart, structTagMimeType+"=") {
 						mimeTagValue := strings.SplitN(tagValuePart, "=", 2)
 						mimeTypes = strings.Split(mimeTagValue[1], mimeTypeSeparator)
+
 						continue
 					}
 				}
@@ -169,6 +173,7 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 				if tagValueParts[0] == structTagValueResponse {
 					if tagValuePart == structTagETag {
 						eTagEnabled = true
+
 						continue
 					}
 					if strings.HasPrefix(tagValuePart, structTagMaxAge+"=") {
@@ -178,10 +183,10 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 						if err != nil {
 							log.Fatal(ctx, "invalid struct tag value for 'maxage' (%v): %v", maxAgeTagValue[1], err)
 						}
+
 						continue
 					}
 				}
-
 			}
 
 			switch tagValueParts[0] {
@@ -208,7 +213,6 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 				hasAuth = structFieldValue.IsValid()
 				authType = structFieldValue.Type()
 			}
-
 		}
 	}
 
@@ -244,15 +248,15 @@ func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeDat
 	}
 }
 
-func (self handlerTypeData) allocateHandler(ctx context.Context) *handlerAllocation {
+func (self handlerTypeData) allocateHandler() *handlerAllocation {
 	handlerValue := self.newHandlerValue()
 
 	return &handlerAllocation{
 		handlerValue: handlerValue,
 		handler:      handlerValue.Interface().(Handler),
-		requestBody:  self.newRequestBody(ctx, handlerValue),
-		responseBody: self.newResponseBody(ctx, handlerValue),
-		auth:         self.newAuth(ctx, handlerValue),
+		requestBody:  self.newRequestBody(handlerValue),
+		responseBody: self.newResponseBody(handlerValue),
+		auth:         self.newAuth(handlerValue),
 	}
 }
 
@@ -264,38 +268,41 @@ func (self handlerTypeData) newHandlerValue() reflect.Value {
 	}
 }
 
-func (self handlerTypeData) newRequestBody(ctx context.Context, handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
 	if self.hasRequestBody {
-		return self.newStruct(ctx, handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr).Interface()
+		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr).Interface()
 	}
+
 	return nil
 }
 
-func (self handlerTypeData) newResponseBody(ctx context.Context, handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
 	if self.hasResponseBody {
-		return self.newStruct(ctx, handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr).Interface()
+		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr).Interface()
 	}
+
 	return nil
 }
 
-func (self handlerTypeData) newAuth(ctx context.Context, handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newAuth(handlerValue reflect.Value) interface{} {
 	if self.hasAuth {
-		return self.newStruct(ctx, handlerValue, self.authType, self.authFieldNum, self.isAuthPtr).Elem().Interface()
+		return self.newStruct(handlerValue, self.authType, self.authFieldNum, self.isAuthPtr).Elem().Interface()
 	}
+
 	return nil
 }
 
-func (self handlerTypeData) newStruct(ctx context.Context, handlerValue reflect.Value, valueType reflect.Type, fieldNum int, isPtr bool) reflect.Value {
-
+func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType reflect.Type, fieldNum int, isPtr bool) reflect.Value {
 	newValue := handlerValue.Elem().Field(fieldNum)
 
 	// Only if the value is a pointer. Values will be zero initialized automatically.
 	if isPtr {
 		newValue.Set(reflect.New(valueType.Elem()))
-		log.Error(ctx, "type: %s, value: %+v", newValue.Type(), newValue.Interface())
+
 		return newValue.Addr()
 	} else {
 		newValue.Set(reflect.New(valueType).Elem())
+
 		return newValue.Addr()
 	}
 }
@@ -325,7 +332,6 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 
 func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, requester Requester) error {
 	for param, fieldNum := range self.pathParameters {
-
 		parameterValue := handlerValue.Elem().Field(fieldNum)
 
 		if !parameterValue.CanSet() {
@@ -376,12 +382,14 @@ func setValueFromString(variable reflect.Value, value string) error {
 	switch variable.Kind() {
 	case reflect.String:
 		variable.Set(reflect.ValueOf(value))
+
 		return nil
 	case reflect.Bool:
 		if parsedValue, err := strconv.ParseBool(value); err == nil {
 			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -390,6 +398,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(int(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -398,6 +407,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(int8(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -406,6 +416,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(int16(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -414,14 +425,16 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(int32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
 	case reflect.Int64:
 		if parsedValue, err := strconv.ParseInt(value, 10, 64); err == nil {
-			val := reflect.ValueOf(int64(parsedValue))
+			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -430,6 +443,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(uint(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -438,6 +452,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(uint8(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -446,6 +461,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(uint16(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -454,14 +470,16 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(uint32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
 	case reflect.Uint64:
 		if parsedValue, err := strconv.ParseUint(value, 10, 64); err == nil {
-			val := reflect.ValueOf(uint64(parsedValue))
+			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -470,6 +488,7 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(float32(parsedValue))
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
@@ -478,9 +497,14 @@ func setValueFromString(variable reflect.Value, value string) error {
 			val := reflect.ValueOf(parsedValue)
 			if val.Type().AssignableTo(variable.Type()) {
 				variable.Set(val)
+
 				return nil
 			}
 		}
+	case reflect.Array, reflect.Chan, reflect.Complex128, reflect.Complex64,
+		reflect.Func, reflect.Interface, reflect.Invalid, reflect.Map, reflect.Ptr,
+		reflect.Slice, reflect.Struct, reflect.Uintptr, reflect.UnsafePointer:
+		return errors.New(icInvalidTypeForStringConversion, "could not set value (%v) from string (%s) because due to invalid type (%s)", variable, value, variable.Kind())
 	}
 
 	return errors.New(icCannotSetValueFromString, "could not set value (%v) from string (%s)", variable, value)
@@ -491,6 +515,7 @@ func getFieldValue(structValue reflect.Value) reflect.Value {
 		newStructFieldValue := reflect.New(structValue.Type().Elem())
 		structValue.Set(newStructFieldValue)
 	}
+
 	return structValue
 }
 

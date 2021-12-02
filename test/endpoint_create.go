@@ -7,19 +7,20 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type CreateRequest struct {
-	MyString   string `json:"my_string"`
-	MyInt      int    `json:"my_int"`
-	ShouldFail bool   `json:"fail"`
+	MyString   string `json:"myString"`
+	MyInt      int    `json:"myInt"`
+	ShouldFail bool   `json:"shouldFail"`
 }
 
 type CreateResponse struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	OutputString string `json:"outputString"`
+	OutputInt    int    `json:"outputInt"`
 }
 
 type Create struct {
@@ -43,8 +44,8 @@ func (self *Create) Handle(ctx context.Context) (int, error) {
 	}
 
 	self.ResponseBody = &CreateResponse{
-		MyString: self.RequestBody.MyString,
-		MyInt:    self.RequestBody.MyInt,
+		OutputString: self.RequestBody.MyString,
+		OutputInt:    self.RequestBody.MyInt,
 	}
 
 	return httpstatus.Created, nil
@@ -55,6 +56,7 @@ func saveResource(ctx context.Context) {
 	defer profiling.Profile(ctx, "saveResource").Finish()
 
 	source := rand.NewSource(time.Now().UnixNano())
+	// nolint:gosec // reason: no need for secure random here
 	random := rand.New(source)
 
 	time.Sleep(time.Duration(random.Intn(500)) * time.Millisecond)

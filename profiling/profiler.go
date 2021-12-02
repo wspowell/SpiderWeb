@@ -4,12 +4,9 @@ import (
 	"time"
 
 	"github.com/wspowell/context"
-	"github.com/wspowell/log"
 )
 
-type contextKey struct{}
-
-var activeTimerKey = contextKey{}
+type activeTimerKey struct{}
 
 // Finisher interface for profiling timers.
 type Finisher interface {
@@ -34,7 +31,7 @@ type timing struct {
 
 func newTiming(ctx context.Context, name string) *timing {
 	var parentTimer *timing
-	if activeTimer, ok := ctx.Value(activeTimerKey).(*timing); ok {
+	if activeTimer, ok := ctx.Value(activeTimerKey{}).(*timing); ok {
 		parentTimer = activeTimer
 	}
 
@@ -46,7 +43,7 @@ func newTiming(ctx context.Context, name string) *timing {
 		start:               time.Now().UTC(),
 	}
 
-	context.WithLocalValue(ctx, activeTimerKey, timer)
+	context.WithLocalValue(ctx, activeTimerKey{}, timer)
 
 	return timer
 }
@@ -56,26 +53,25 @@ func (self *timing) Finish() {
 	if self.parent == nil {
 		// Dump profiling data.
 		// FIXME: This always prints profiling, even when LevelFatal is desired.
-		//logConfig := log.NewConfig(log.LevelDebug)
-		//logger := log.NewLogger(logConfig)
-
-		//printTimers(logger, self, 0)
+		// logConfig := log.NewConfig(log.LevelDebug)
+		// logger := log.NewLogger(logConfig)
+		// printTimers(logger, self, 0)
 	} else {
 		self.parent.finishedChildTimers = append(self.parent.finishedChildTimers, self)
 
-		context.WithLocalValue(self.ctx, activeTimerKey, self.parent)
+		context.WithLocalValue(self.ctx, activeTimerKey{}, self.parent)
 	}
 }
 
-func printTimers(logger log.Logger, timer *timing, paddingSize int) {
-	var padding string
-	for i := 0; i < paddingSize; i++ {
-		padding += " "
-	}
+// func printTimers(logger log.Logger, timer *timing, paddingSize int) {
+// 	var padding string
+// 	for i := 0; i < paddingSize; i++ {
+// 		padding += " "
+// 	}
 
-	logger.Debug("%v%v -> %v", padding, timer.name, timer.duration)
-	for _, childTimer := range timer.finishedChildTimers {
-		printTimers(logger, childTimer, paddingSize+2)
-	}
+// 	logger.Debug("%v%v -> %v", padding, timer.name, timer.duration)
+// 	for _, childTimer := range timer.finishedChildTimers {
+// 		printTimers(logger, childTimer, paddingSize+2)
+// 	}
 
-}
+// }

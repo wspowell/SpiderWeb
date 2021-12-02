@@ -1,4 +1,4 @@
-package endpoint
+package endpoint_test
 
 import (
 	"bytes"
@@ -9,13 +9,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wspowell/spiderweb/httpheader"
-	"github.com/wspowell/spiderweb/httpstatus"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
+
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/httpheader"
+	"github.com/wspowell/spiderweb/httpstatus"
 )
 
 type errorResponse struct {
@@ -34,10 +35,10 @@ type user struct {
 	userData string
 }
 
-func (self *user) Authorization(ctx context.Context, PeekHeader func(key string) []byte) (int, error) {
+func (self *user) Authorization(ctx context.Context, peekHeader func(key string) []byte) (int, error) {
 	var statusCode int
 
-	if !bytes.EqualFold([]byte("valid-token"), PeekHeader(httpheader.Authorization)) {
+	if !bytes.EqualFold([]byte("valid-token"), peekHeader(httpheader.Authorization)) {
 		return httpstatus.Unauthorized, errors.New("auth", "invalid auth token")
 	}
 
@@ -72,14 +73,14 @@ type Datastore interface {
 }
 
 type myRequestBodyModel struct {
-	MyString   string `json:"my_string"`
-	MyInt      int    `json:"my_int"`
-	ShouldFail bool   `json:"fail"`
+	MyString   string `json:"myString"`
+	MyInt      int    `json:"myInt"`
+	ShouldFail bool   `json:"shouldFail"`
 }
 
 type myResponseBodyModel struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	OutputString string `json:"outputString"`
+	OutputInt    int    `json:"outputInt"`
 }
 
 type myEndpoint struct {
@@ -145,14 +146,14 @@ func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 	}
 
 	self.ResponseBody = &myResponseBodyModel{
-		MyString: self.RequestBody.MyString,
-		MyInt:    self.RequestBody.MyInt,
+		OutputString: self.RequestBody.MyString,
+		OutputInt:    self.RequestBody.MyInt,
 	}
 
 	return httpstatus.OK, nil
 }
 
-func createTestEndpoint() *Endpoint {
+func createTestEndpoint() *endpoint.Endpoint {
 	ctx := context.Local()
 	log.WithContext(ctx, log.NewConfig(log.LevelError))
 
@@ -160,23 +161,23 @@ func createTestEndpoint() *Endpoint {
 		conn: "myconnection",
 	}
 
-	config := &Config{
+	config := &endpoint.Config{
 		LogConfig:         log.NewConfig(log.LevelError),
 		ErrorHandler:      myErrorHandler{},
 		RequestValidator:  myRequestValidator{},
 		ResponseValidator: myResponseValidator{},
-		MimeTypeHandlers: map[string]*MimeTypeHandler{
-			"application/json": jsonHandler(),
+		MimeTypeHandlers: map[string]*endpoint.MimeTypeHandler{
+			"application/json": endpoint.JsonHandler(),
 		},
 		Resources: map[string]interface{}{
 			"db": &dbClient,
 		},
 	}
 
-	return NewEndpoint(ctx, config, &myEndpoint{})
+	return endpoint.NewEndpoint(ctx, config, &myEndpoint{})
 }
 
-func createDefaultTestEndpoint() *Endpoint {
+func createDefaultTestEndpoint() *endpoint.Endpoint {
 	ctx := context.Local()
 	log.WithContext(ctx, log.NewConfig(log.LevelError))
 
@@ -184,76 +185,45 @@ func createDefaultTestEndpoint() *Endpoint {
 		conn: "myconnection",
 	}
 
-	config := &Config{
+	config := &endpoint.Config{
 		Resources: map[string]interface{}{
 			"db": &dbClient,
 		},
 	}
 
-	return NewEndpoint(ctx, config, &myEndpoint{})
+	return endpoint.NewEndpoint(ctx, config, &myEndpoint{})
 }
 
 func Test_Endpoint_Success(t *testing.T) {
 	t.Parallel()
 
-	endpoint := createTestEndpoint()
-
-	req, err := http.NewRequest(http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"my_string": "hello", "my_int": 5}`))
-	assert.Nil(t, err)
-
-	req.Header.Add(httpheader.ContentType, "application/json")
-	req.Header.Add(httpheader.Accept, "application/json")
-	req.Header.Add(httpheader.Authorization, "valid-token")
-
-	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
-
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
-	var httpStatus int
-	var responseBodyBytes []byte
-
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
-	}()
-	wg.Wait()
-
-	if httpstatus.OK != httpStatus {
-		t.Errorf("expected HTTP status code to be %v, but got %v", httpstatus.OK, httpStatus)
-	}
-
-	var responseBody myResponseBodyModel
-	if err := json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
-		t.Errorf("failed to unmarshal test response: %v", err)
-	}
-
-	if "hello" != responseBody.MyString {
-		t.Errorf("expected 'output_string' to be %v, but got %v", "hello", responseBody.MyString)
-	}
-
-	if 5 != responseBody.MyInt {
-		t.Errorf("expected 'output_int' to be %v, but got %v", 5, responseBody.MyInt)
-	}
+	testEndpoint := createTestEndpoint()
+	checkSuccessCase(t, testEndpoint)
 }
 
 func Test_Endpoint_Default_Success(t *testing.T) {
 	t.Parallel()
 
-	endpoint := createDefaultTestEndpoint()
+	testEndpoint := createDefaultTestEndpoint()
+	checkSuccessCase(t, testEndpoint)
+}
 
-	req, err := http.NewRequest(http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"my_string": "hello", "my_int": 5}`))
+func checkSuccessCase(t *testing.T, testEndpoint *endpoint.Endpoint) {
+	t.Helper()
+
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5}`))
 	assert.Nil(t, err)
 
 	req.Header.Add(httpheader.ContentType, "application/json")
 	req.Header.Add(httpheader.Accept, "application/json")
 	req.Header.Add(httpheader.Authorization, "valid-token")
 
-	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	requester, err := endpoint.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	assert.Nil(t, err)
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
 	var httpStatus int
 	var responseBodyBytes []byte
 
@@ -261,7 +231,7 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
+		httpStatus, responseBodyBytes = testEndpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -274,31 +244,33 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 		t.Errorf("failed to unmarshal test response: %v", err)
 	}
 
-	if "hello" != responseBody.MyString {
-		t.Errorf("expected 'output_string' to be %v, but got %v", "hello", responseBody.MyString)
+	if responseBody.OutputString != "hello" {
+		t.Errorf("expected 'outputString' to be %v, but got %v", "hello", responseBody.OutputString)
 	}
 
-	if 5 != responseBody.MyInt {
-		t.Errorf("expected 'output_int' to be %v, but got %v", 5, responseBody.MyInt)
+	if responseBody.OutputInt != 5 {
+		t.Errorf("expected 'outputInt' to be %v, but got %v", 5, responseBody.OutputInt)
 	}
 }
 
 func Test_Endpoint_Error(t *testing.T) {
 	t.Parallel()
 
-	endpoint := createTestEndpoint()
+	testEndpoint := createTestEndpoint()
 
-	req, err := http.NewRequest(http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"my_string": "hello", "my_int": 5, "fail": true}`))
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add(httpheader.Authorization, "valid-token")
 
-	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	requester, err := endpoint.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	assert.Nil(t, err)
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
 	var httpStatus int
 	var responseBodyBytes []byte
 
@@ -306,7 +278,7 @@ func Test_Endpoint_Error(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
+		httpStatus, responseBodyBytes = testEndpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -319,7 +291,7 @@ func Test_Endpoint_Error(t *testing.T) {
 		t.Errorf("failed to unmarshal test response: %v", err)
 	}
 
-	if "[APP1] invalid input" != responseBody.Message {
+	if responseBody.Message != "[APP1] invalid input" {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1] invalid input", responseBody.Message)
 	}
 }
@@ -327,19 +299,21 @@ func Test_Endpoint_Error(t *testing.T) {
 func Test_Endpoint_Default_Error(t *testing.T) {
 	t.Parallel()
 
-	endpoint := createDefaultTestEndpoint()
+	testEndpoint := createDefaultTestEndpoint()
 
-	req, err := http.NewRequest(http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"my_string": "hello", "my_int": 5, "fail": true}`))
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add(httpheader.Authorization, "valid-token")
 
-	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	requester, err := endpoint.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	assert.Nil(t, err)
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
 	var httpStatus int
 	var responseBodyBytes []byte
 
@@ -347,7 +321,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
+		httpStatus, responseBodyBytes = testEndpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -355,7 +329,7 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 		t.Errorf("expected HTTP status code to be %v, but got %v", httpstatus.OK, httpStatus)
 	}
 
-	if `{"message":"[APP1] invalid input"}` != string(responseBodyBytes) {
+	if string(responseBodyBytes) != `{"message":"[APP1] invalid input"}` {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1] invalid input", string(responseBodyBytes))
 	}
 }
@@ -363,18 +337,20 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 func Test_Endpoint_Auth_Error(t *testing.T) {
 	t.Parallel()
 
-	endpoint := createDefaultTestEndpoint()
+	testEndpoint := createDefaultTestEndpoint()
 
-	req, err := http.NewRequest(http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"my_string": "hello", "my_int": 5, "fail": true}`))
+	ctx := context.Local()
+	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 
-	requester := NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	requester, err := endpoint.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	assert.Nil(t, err)
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
 	var httpStatus int
 	var responseBodyBytes []byte
 
@@ -382,7 +358,7 @@ func Test_Endpoint_Auth_Error(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		httpStatus, responseBodyBytes = endpoint.Execute(ctx, requester)
+		httpStatus, responseBodyBytes = testEndpoint.Execute(ctx, requester)
 	}()
 	wg.Wait()
 
@@ -390,7 +366,7 @@ func Test_Endpoint_Auth_Error(t *testing.T) {
 		t.Errorf("expected HTTP status code to be %v, but got %v", httpstatus.OK, httpStatus)
 	}
 
-	if `{"message":"[auth] invalid auth token"}` != string(responseBodyBytes) {
+	if string(responseBodyBytes) != `{"message":"[auth] invalid auth token"}` {
 		t.Errorf("expected 'message' to be '%v', but got '%v'", "[auth] invalid auth token", string(responseBodyBytes))
 	}
 }

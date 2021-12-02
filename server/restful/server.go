@@ -3,21 +3,23 @@ package restful
 import (
 	"fmt"
 	"net/http"
-	_ "net/http/pprof" // FIXME: Do not include this for release builds.
+
+	// nolint:gosec // reason: FIXME: Do not include this for release builds.
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/httpstatus"
-	"github.com/wspowell/spiderweb/server/route"
-
 	"github.com/fasthttp/router"
+	"github.com/opentracing/opentracing-go"
 	"github.com/valyala/fasthttp"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
+
+	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/server/route"
 )
 
 // ServerConfig top level options.
@@ -77,12 +79,14 @@ func NewServer(serverConfig *ServerConfig) *Server {
 	ctx = context.Localize(ctx)
 	ctx = log.WithContext(ctx, serverConfig.LogConfig)
 
-	router := router.New()
-	router.SaveMatchedRoutePath = true
+	restfulRouter := router.New()
+	restfulRouter.SaveMatchedRoutePath = true
 
 	if serverConfig.EnablePprof {
 		go func() {
-			_ = http.ListenAndServe("localhost:6060", nil)
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				log.Info(ctx, "server shutdown: %s", err)
+			}
 		}()
 	}
 
@@ -90,7 +94,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		serverConfig: serverConfig,
 
 		server: httpServer,
-		router: router,
+		router: restfulRouter,
 
 		routes: map[string]*endpoint.Endpoint{},
 
@@ -158,6 +162,7 @@ func newServerContext(server *fasthttp.Server) (context.Context, <-chan bool) {
 // Useful for testing.
 func (self Server) Execute(fasthttpCtx *fasthttp.RequestCtx) (int, []byte) {
 	self.router.Handler(fasthttpCtx)
+
 	return fasthttpCtx.Response.StatusCode(), fasthttpCtx.Response.Body()
 }
 

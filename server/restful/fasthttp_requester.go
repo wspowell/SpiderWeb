@@ -5,6 +5,7 @@ import (
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
+
 	"github.com/wspowell/spiderweb/httpheader"
 )
 
@@ -39,7 +40,7 @@ func (self *fasthttpRequester) Accept() []byte {
 }
 
 func (self *fasthttpRequester) PeekHeader(key string) []byte {
-	return self.requestCtx.Request.Header.Peek(string(key))
+	return self.requestCtx.Request.Header.Peek(key)
 }
 
 func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
@@ -49,6 +50,7 @@ func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
 func matchedPath(requestCtx *fasthttp.RequestCtx) string {
 	var matchedPath string
 	matchedPath, _ = requestCtx.UserValue(router.MatchedRoutePathParam).(string)
+
 	return matchedPath
 }
 
@@ -58,11 +60,13 @@ func (self *fasthttpRequester) MatchedPath() string {
 
 func (self *fasthttpRequester) PathParam(param string) (string, bool) {
 	value, ok := self.requestCtx.UserValue(param).(string)
+
 	return value, ok
 }
 
 func (self *fasthttpRequester) QueryParam(param string) ([]byte, bool) {
 	value := self.requestCtx.URI().QueryArgs().Peek(param)
+
 	return value, value != nil
 }
 
@@ -87,5 +91,6 @@ func (self *fasthttpRequester) ResponseHeaders() map[string]string {
 	self.requestCtx.Response.Header.VisitAll(func(key []byte, value []byte) {
 		headers[string(key)] = string(value)
 	})
+
 	return headers
 }

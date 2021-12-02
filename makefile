@@ -5,6 +5,9 @@ build:
 	go build ./...
 
 test: build
+	# Run linter
+	golangci-lint run
+
 	# Run with benchmarks to ensure they have no race conditions
 	-FUZZ=$(FUZZ) $(CURRENT_DIR)/bin/gotestsum --format dots -- -bench=. -benchmem -count=1 -parallel 8 -race -v ./...
 	-FUZZ=$(FUZZ) $(CURRENT_DIR)/bin/gotestsum --format dots -- -bench=. -benchmem -count=1 -parallel 8 -race -v -tags release ./...

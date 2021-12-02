@@ -7,6 +7,7 @@ import (
 
 	"github.com/valyala/fasthttp"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/httpstatus"
@@ -60,7 +61,7 @@ func Benchmark_SpiderWeb_POST_latency(b *testing.B) {
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.SetBody([]byte(`{"output_string":"hello","output_int":5}`))
+	req.SetBody([]byte(`{"outputString":"hello","outputInt":5}`))
 
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
@@ -87,7 +88,7 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 		req.Header.Set(fasthttp.HeaderHost, "localhost")
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
-		req.SetBody([]byte(`{"output_string":"hello","output_int":5}`))
+		req.SetBody([]byte(`{"outputString":"hello","outputInt":5}`))
 
 		requestCtx := fasthttp.RequestCtx{}
 		requestCtx.Init(&req, nil, nil)
@@ -102,7 +103,6 @@ func Benchmark_SpiderWeb_POST_throughput(b *testing.B) {
 }
 
 func Benchmark_SpiderWeb_GET_latency(b *testing.B) {
-
 	sample := routes()
 
 	var req fasthttp.Request

@@ -1,4 +1,4 @@
-package endpoint
+package endpoint_test
 
 import (
 	gohttp "net/http"
@@ -6,22 +6,31 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
+
+	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/httpstatus"
 )
 
-var (
-	uncachedHttpStatus = httpstatus.OK
-	cachedHttpStatus   = httpstatus.NotModified
-	uncachedResponse   = []byte("response not cached")
-	cachedResponse     = []byte(nil)
-	uncachedETag       = "uncached"
-	cachedETag         = "19-2d477ab8aa9777a2f0c0275d17bd7647"
+const (
+	uncachedHttpStatus     = httpstatus.OK
+	cachedHttpStatus       = httpstatus.NotModified
+	uncachedResponseString = "response not cached"
+	uncachedETag           = "uncached"
+	cachedETag             = "19-f563cf34dff2daac8d8e37fc17bd28ff60f79a05ed055116f82130ce136fab80"
 )
 
+func uncachedResponse() []byte {
+	return []byte(uncachedResponseString)
+}
+
+func cachedResponse() []byte {
+	return []byte(nil)
+}
+
 func Test_handleETag(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
 
 	testCases := []struct {
 		description             string
@@ -39,7 +48,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              httpstatus.BadRequest,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      httpstatus.BadRequest,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description:             "no client headers, no max age, no etag",
@@ -48,7 +57,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description: "IfNoneMatch client header with fresh cache, no max age, returns new etag",
@@ -61,7 +70,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   cachedHttpStatus,
-			expectedResponseBody: cachedResponse,
+			expectedResponseBody: cachedResponse(),
 		},
 		{
 			description: "IfNoneMatch Cache-Control=no-cache client header with fresh cache, no max age, no etag",
@@ -73,7 +82,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description: "IfNoneMatch client header with stale cache, no max age, returns new etag",
@@ -86,7 +95,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
-			expectedResponseBody: uncachedResponse,
+			expectedResponseBody: uncachedResponse(),
 		},
 		{
 			description: "IfNoneMatch client header with fresh cache, max age 300, returns new etag",
@@ -100,7 +109,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   cachedHttpStatus,
-			expectedResponseBody: cachedResponse,
+			expectedResponseBody: cachedResponse(),
 		},
 		{
 			description: "IfNoneMatch Cache-Control=no-cache client header with fresh cache, max age 300, returns new etag",
@@ -112,7 +121,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description: "IfNoneMatch client header with stale cache, max age 300, returns new etag",
@@ -126,7 +135,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
-			expectedResponseBody: uncachedResponse,
+			expectedResponseBody: uncachedResponse(),
 		},
 
 		{
@@ -140,7 +149,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.ETag: cachedETag,
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
-			expectedResponseBody: uncachedResponse,
+			expectedResponseBody: uncachedResponse(),
 		},
 		{
 			description: "IfMatch Cache-Control=no-cache client header with fresh cache, no max age",
@@ -152,7 +161,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description: "IfMatch client header with stale cache, no max age",
@@ -179,7 +188,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.CacheControl: "max-age=300",
 			},
 			expectedHttpStatus:   uncachedHttpStatus,
-			expectedResponseBody: uncachedResponse,
+			expectedResponseBody: uncachedResponse(),
 		},
 		{
 			description: "IfMatch Cache-Control=no-cache client header with fresh cache, max age 300",
@@ -191,7 +200,7 @@ func Test_handleETag(t *testing.T) {
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
-			expectedResponseBody:    uncachedResponse,
+			expectedResponseBody:    uncachedResponse(),
 		},
 		{
 			description: "IfMatch client header with stale cache, max age 300",
@@ -208,18 +217,24 @@ func Test_handleETag(t *testing.T) {
 			expectedResponseBody: nil,
 		},
 	}
-	for _, testCase := range testCases {
+	for index := range testCases {
+		testCase := testCases[index]
 		t.Run(testCase.description, func(t *testing.T) {
-			request, err := gohttp.NewRequest(httpmethod.Get, "/", nil)
+			t.Parallel()
+
+			ctx := context.Local()
+
+			request, err := gohttp.NewRequestWithContext(ctx, httpmethod.Get, "/", nil)
 			assert.Nil(t, err)
 
 			for key, value := range testCase.clientHeaders {
 				request.Header[key] = []string{value}
 			}
 
-			requester := NewHttpRequester("/", request)
+			requester, err := endpoint.NewHttpRequester("/", request)
+			assert.Nil(t, err)
 
-			httpStatus, responseBody := handleETag(ctx, requester, testCase.maxAgeSeconds, testCase.httpStatus, uncachedResponse)
+			httpStatus, responseBody := endpoint.HandleETag(ctx, requester, testCase.maxAgeSeconds, testCase.httpStatus, uncachedResponse())
 
 			responseHeaders := requester.ResponseHeaders()
 			for key, expectedValue := range testCase.expectedResponseHeaders {

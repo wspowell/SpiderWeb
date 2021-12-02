@@ -29,8 +29,8 @@ func Test_EndpointTest(t *testing.T) {
 		Test:        "",
 		RequestBody: requestBody,
 		ResponseBody: &test.CreateResponse{
-			MyInt:    5,
-			MyString: "hello",
+			OutputInt:    5,
+			OutputString: "hello",
 		},
 	}
 

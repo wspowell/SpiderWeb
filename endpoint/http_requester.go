@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/wspowell/errors"
 )
 
 type Requester interface {
@@ -45,10 +47,14 @@ type HttpRequester struct {
 	bodyBytes   []byte
 }
 
-func NewHttpRequester(matchedPath string, request *http.Request) *HttpRequester {
+func NewHttpRequester(matchedPath string, request *http.Request) (*HttpRequester, error) {
 	var bodyBytes []byte
+	var err error
 	if request.Body != nil {
-		bodyBytes, _ = io.ReadAll(request.Body)
+		bodyBytes, err = io.ReadAll(request.Body)
+		if err != nil {
+			return nil, errors.Propagate(icNewHttpRequesterReadAllError, err)
+		}
 	}
 
 	request.Response = &http.Response{
@@ -59,7 +65,7 @@ func NewHttpRequester(matchedPath string, request *http.Request) *HttpRequester 
 		matchedPath: matchedPath,
 		request:     request,
 		bodyBytes:   bodyBytes,
-	}
+	}, nil
 }
 
 func (self *HttpRequester) RequestId() string {
@@ -86,6 +92,7 @@ func (self *HttpRequester) PeekHeader(key string) []byte {
 	if value, exists := self.request.Header[key]; exists {
 		return []byte(value[0])
 	}
+
 	return nil
 }
 
@@ -114,6 +121,7 @@ func (self *HttpRequester) PathParam(param string) (string, bool) {
 
 func (self *HttpRequester) QueryParam(param string) ([]byte, bool) {
 	value := self.request.URL.Query().Get(param)
+
 	return []byte(value), value != ""
 }
 

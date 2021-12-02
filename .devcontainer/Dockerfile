@@ -27,3 +27,5 @@ RUN wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli
 RUN unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
 RUN ./sam-installation/install
 RUN sam --version
+
+RUN go get github.com/daixiang0/gci

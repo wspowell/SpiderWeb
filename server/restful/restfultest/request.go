@@ -8,15 +8,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wspowell/spiderweb/server/restful"
-
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
+
+	"github.com/wspowell/spiderweb/server/restful"
 )
 
 var (
-	// FIXME: Remove the need for this by fixing runTest().
+	// nolint:gochecknoglobals // reason: Remove the need for this by fixing runTest().
+	// Tests alter the endpoint config for mocks, so these cannot run in parallel without locking.
 	mutex = &sync.Mutex{}
 )
 
@@ -64,16 +65,19 @@ func (self *testCase) GivenRequest(httpMethod string, path string) *requestTestC
 
 func (self *requestTestCase) WithHeader(header string, value string) *requestTestCase {
 	self.headers[header] = value
+
 	return self
 }
 
 func (self *requestTestCase) WithQueryParam(param string, value string) *requestTestCase {
 	self.queryParams[param] = value
+
 	return self
 }
 
 func (self *requestTestCase) WithPathParam(param string, value string) *requestTestCase {
 	self.pathParams[param] = value
+
 	return self
 }
 
@@ -82,11 +86,13 @@ func (self *requestTestCase) WithPathParam(param string, value string) *requestT
 func (self *requestTestCase) WithRequestBody(mimeType string, requestBody []byte) *requestTestCase {
 	self.requestMimeType = mimeType
 	self.requestBody = requestBody
+
 	return self
 }
 
-func (self *requestTestCase) WithResourceMock(resource string, mock Mocker) *requestTestCase {
-	self.resourceMocks[resource] = mock
+func (self *requestTestCase) WithResourceMock(resource string, resourceMock Mocker) *requestTestCase {
+	self.resourceMocks[resource] = resourceMock
+
 	return self
 }
 
@@ -113,11 +119,13 @@ type responseTestCase struct {
 
 func (self *responseTestCase) WithHeader(header string, value string) *responseTestCase {
 	self.headers[header] = value
+
 	return self
 }
 
 func (self *responseTestCase) WithEmptyBody() *responseTestCase {
 	self.emptyBody = true
+
 	return self
 }
 
@@ -125,50 +133,55 @@ func (self *responseTestCase) WithEmptyBody() *responseTestCase {
 func (self *responseTestCase) WithResponseBody(mimeType string, responseBody []byte) *responseTestCase {
 	self.responseMimeType = mimeType
 	self.responseBody = responseBody
+
 	return self
 }
 
 func (self *responseTestCase) Run(t *testing.T) {
+	t.Helper()
 	t.Run(self.name, func(t *testing.T) {
 		self.runTest(t)
 	})
 }
 
 func (self *responseTestCase) RunParallel(t *testing.T) {
+	t.Helper()
 	t.Run(self.name, func(t *testing.T) {
 		t.Parallel()
 		self.runTest(t)
 	})
 }
 
-func (testCase *responseTestCase) runTest(t *testing.T) {
+func (self *responseTestCase) runTest(t *testing.T) {
+	t.Helper()
+
 	// FIXME: Tests alter the endpoint config for mocks, so these cannot run in parallel without locking.
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	copyRequestBody := make([]byte, len(testCase.request.requestBody))
-	copy(copyRequestBody, testCase.request.requestBody)
+	copyRequestBody := make([]byte, len(self.request.requestBody))
+	copy(copyRequestBody, self.request.requestBody)
 
-	copyResponseBody := make([]byte, len(testCase.responseBody))
-	copy(copyResponseBody, testCase.responseBody)
+	copyResponseBody := make([]byte, len(self.responseBody))
+	copy(copyResponseBody, self.responseBody)
 
 	copyTestCase := responseTestCase{
 		request: &requestTestCase{
-			httpMethod:      testCase.request.httpMethod,
-			path:            testCase.request.path,
-			requestMimeType: testCase.request.requestMimeType,
+			httpMethod:      self.request.httpMethod,
+			path:            self.request.path,
+			requestMimeType: self.request.requestMimeType,
 			requestBody:     copyRequestBody,
-			headers:         testCase.request.headers,
-			queryParams:     testCase.request.queryParams,
-			pathParams:      testCase.request.pathParams,
-			resourceMocks:   testCase.request.resourceMocks,
+			headers:         self.request.headers,
+			queryParams:     self.request.queryParams,
+			pathParams:      self.request.pathParams,
+			resourceMocks:   self.request.resourceMocks,
 		},
 
-		httpStatus:       testCase.httpStatus,
-		responseMimeType: testCase.responseMimeType,
+		httpStatus:       self.httpStatus,
+		responseMimeType: self.responseMimeType,
 		responseBody:     copyResponseBody,
-		headers:          testCase.headers,
-		emptyBody:        testCase.emptyBody,
+		headers:          self.headers,
+		emptyBody:        self.emptyBody,
 	}
 
 	url := copyTestCase.request.path
@@ -201,13 +214,13 @@ func (testCase *responseTestCase) runTest(t *testing.T) {
 	requestCtx.Init(&req, nil, nil)
 
 	// Setup mock calls.
-	endpoint := testCase.server.Endpoint(copyTestCase.request.httpMethod, copyTestCase.request.path)
+	endpoint := self.server.Endpoint(copyTestCase.request.httpMethod, copyTestCase.request.path)
 	originalResources := map[string]interface{}{}
 	if endpoint != nil {
 		for name, resource := range endpoint.Config.Resources {
 			originalResources[name] = resource
-			if mock, ok := copyTestCase.request.resourceMocks[name]; ok {
-				endpoint.Config.Resources[name] = mock
+			if resourceMock, ok := copyTestCase.request.resourceMocks[name]; ok {
+				endpoint.Config.Resources[name] = resourceMock
 			} else {
 				// Do not call resources. Must be mocked.
 				endpoint.Config.Resources[name] = nil
@@ -215,13 +228,13 @@ func (testCase *responseTestCase) runTest(t *testing.T) {
 		}
 	}
 
-	actualHttpStatus, actualResponseBody := testCase.server.Execute(&requestCtx)
+	actualHttpStatus, actualResponseBody := self.server.Execute(&requestCtx)
 
 	if endpoint != nil {
 		// Put the resources back.
 		for name, originalResource := range originalResources {
-			if mock, ok := copyTestCase.request.resourceMocks[name]; ok {
-				mock.AssertExpectations(t)
+			if resourceMock, ok := copyTestCase.request.resourceMocks[name]; ok {
+				resourceMock.AssertExpectations(t)
 			}
 			endpoint.Config.Resources[name] = originalResource
 		}
@@ -254,10 +267,12 @@ func (testCase *responseTestCase) runTest(t *testing.T) {
 		}
 	}
 
-	requestFuzzTest(t, testCase.server, testCase.request.httpMethod, testCase.request.path)
+	requestFuzzTest(t, self.server, self.request.httpMethod, self.request.path)
 }
 
 func requestFuzzTest(t *testing.T, server *restful.Server, httpMethod string, path string) {
+	t.Helper()
+
 	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
 		return
 	}

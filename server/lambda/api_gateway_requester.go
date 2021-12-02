@@ -52,6 +52,7 @@ func (self *ApiGatewayRequester) PeekHeader(key string) []byte {
 	if value, exists := self.request.Headers[key]; exists {
 		return []byte(value)
 	}
+
 	return nil
 }
 
@@ -80,6 +81,7 @@ func (self *ApiGatewayRequester) PathParam(param string) (string, bool) {
 
 func (self *ApiGatewayRequester) QueryParam(param string) ([]byte, bool) {
 	value, exists := self.request.QueryStringParameters[param]
+
 	return []byte(value), exists
 }
 

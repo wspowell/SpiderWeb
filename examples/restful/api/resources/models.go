@@ -1,12 +1,12 @@
 package resources
 
 type MyRequestBodyModel struct {
-	MyString   string `json:"my_string"`
-	MyInt      int    `json:"my_int"`
-	ShouldFail bool   `json:"fail"`
+	MyString   string `json:"myString"`
+	MyInt      int    `json:"myInt"`
+	ShouldFail bool   `json:"shouldFail"`
 }
 
 type MyResponseBodyModel struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	MyString string `json:"outputString"`
+	MyInt    int    `json:"outputInt"`
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server/restful"
 	"github.com/wspowell/spiderweb/server/route"

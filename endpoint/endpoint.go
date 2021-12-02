@@ -10,8 +10,8 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/httpstatus"
-	_ "github.com/wspowell/spiderweb/profiling"
 )
 
 const (
@@ -25,9 +25,13 @@ const (
 	structTagAuth = "auth"
 )
 
-var (
-	nullBytes = []byte("null")
+const (
+	null = "null"
 )
+
+func nullBytes() []byte {
+	return []byte(null)
+}
 
 // Config defines the behavior of an endpoint.
 // Endpoint behavior is interface driven and can be completely modified by an application.
@@ -174,6 +178,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			if len(contentType) == 0 {
 				log.Debug(ctx, "header Content-Type not found")
 				mimeTypeSpan.Finish()
+
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeMissing, "Content-Type MIME type not provided"))
 			}
 
@@ -181,6 +186,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			if !ok {
 				log.Debug(ctx, "mime type handler not available: %s", contentType)
 				mimeTypeSpan.Finish()
+
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeUnsupported, "Content-Type MIME type not supported: %s", contentType))
 			}
 
@@ -194,6 +200,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if len(accept) == 0 {
 			log.Debug(ctx, "header Accept not found")
 			mimeTypeSpan.Finish()
+
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeMissing, "Accept MIME type not provided"))
 		}
 
@@ -201,6 +208,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if !ok {
 			log.Debug(ctx, "mime type handler not available: %s", accept)
 			mimeTypeSpan.Finish()
+
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
 		}
 		// All responses after this must be marshalable to the mime type.
@@ -215,20 +223,23 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	allocSpan, ctx := opentracing.StartSpanFromContext(ctx, "handler allocation")
 
-	handlerAlloc := self.handlerData.allocateHandler(ctx)
+	handlerAlloc := self.handlerData.allocateHandler()
 	if err = self.handlerData.setResources(handlerAlloc.handlerValue, self.Config.Resources); err != nil {
 		log.Debug(ctx, "failed to set resources")
 		allocSpan.Finish()
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.Propagate(icRequestResourcesError, ErrInternalServerError))
 	}
 	if err = self.handlerData.setPathParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set path parameters")
 		allocSpan.Finish()
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestPathParamsError, ErrBadRequest))
 	}
 	if err = self.handlerData.setQueryParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set query parameters")
 		allocSpan.Finish()
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestQueryParamsError, ErrBadRequest))
 	}
 
@@ -241,17 +252,18 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if handlerAlloc.auth != nil {
 			log.Trace(ctx, "processing auth handler")
 
-			log.Error(ctx, "auth type: %T", handlerAlloc.auth)
 			if asAuthorizer, ok := handlerAlloc.auth.(Authorizer); ok {
 				httpStatus, err = asAuthorizer.Authorization(ctx, requester.PeekHeader)
 				if err != nil {
 					log.Debug(ctx, "authorization failed")
 					authSpan.Finish()
+
 					return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
 				}
 			} else {
 				log.Debug(ctx, "authorization object does not implement Authorizer")
 				authSpan.Finish()
+
 				return self.processErrorResponse(ctx, requester, responseMimeType, httpstatus.InternalServerError, errors.Propagate(icAuthorizerInterfaceError, ErrInternalServerError))
 			}
 		}
@@ -272,6 +284,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			if err != nil {
 				log.Debug(ctx, "failed processing request body")
 				requestBodySpan.Finish()
+
 				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, err)
 			}
 
@@ -286,6 +299,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 					// Validation failures are not hard errors and should be passed through to the error handler.
 					// The failure is passed through since it is assumed this error contains information to be returned in the response.
 					requestBodySpan.Finish()
+
 					return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, validationFailure)
 				}
 			}
@@ -296,6 +310,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	if !ShouldContinue(ctx) {
 		log.Debug(ctx, "request canceled or timed out")
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout1, "request timeout"))
 	}
 
@@ -309,11 +324,13 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	log.Trace(ctx, "completed endpoint handler")
 	if err != nil {
 		log.Debug(ctx, "handler error")
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, err)
 	}
 
 	if !ShouldContinue(ctx) {
 		log.Debug(ctx, "request canceled or timed out")
+
 		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout2, "request timeout"))
 	}
 
@@ -325,6 +342,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if err != nil {
 			log.Debug(ctx, "failed processing response")
 			responseBodySpan.Finish()
+
 			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, err)
 		}
 
@@ -333,11 +351,12 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 			var validationFailure error
 			httpStatus, validationFailure = self.Config.ResponseValidator.ValidateResponse(ctx, httpStatus, responseBody)
-			if err != nil {
+			if validationFailure != nil {
 				log.Debug(ctx, "failed response validation")
 				// Validation failures are not hard errors and should be passed through to the error handler.
 				// The failure is passed through since it is assumed this error contains information to be returned in the response.
 				responseBodySpan.Finish()
+
 				return self.processErrorResponse(ctx, requester, responseMimeType, httpStatus, validationFailure)
 			}
 		}
@@ -349,8 +368,10 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 
 	if self.handlerData.eTagEnabled {
 		log.Trace(ctx, "eTagEnabled, handling etag")
-		return handleETag(ctx, requester, self.handlerData.maxAgeSeconds, httpStatus, responseBody)
+
+		return HandleETag(ctx, requester, self.handlerData.maxAgeSeconds, httpStatus, responseBody)
 	}
+
 	return httpStatus, responseBody
 }
 
@@ -379,6 +400,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 	if responseMimeType == nil {
 		requester.SetResponseContentType(mimeTypeTextPlain)
 		responseBody = []byte(fmt.Sprintf("%v", err))
+
 		return httpStatus, responseBody
 	}
 
@@ -389,6 +411,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 		err = errors.Propagate(icErrorParseFailure, ErrInternalServerError)
 		httpStatus = http.StatusInternalServerError
 		responseBody = []byte(fmt.Sprintf("%s", err))
+
 		return httpStatus, responseBody
 	}
 
@@ -401,9 +424,11 @@ func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *Mi
 
 		if err := mimeHandler.Unmarshal(requestBodyBytes, requestBody); err != nil {
 			log.Error(ctx, "failed to unmarshal request body: %v", err)
+
 			return errors.Propagate(icRequestBodyUnmarshalFailure, ErrBadRequest)
 		}
 	}
+
 	return nil
 }
 
@@ -415,12 +440,15 @@ func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requ
 		responseBodyBytes, err := mimeHandler.Marshal(responseBody)
 		if err != nil {
 			log.Error(ctx, "failed to marshal response: %v", err)
+
 			return nil, errors.Propagate(icResponseBodyMarshalFailure, ErrInternalServerError)
 		}
-		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes) {
+		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes()) {
 			log.Debug(ctx, "request body is null")
+
 			return nil, errors.Propagate(icResponseBodyNull, ErrInternalServerError)
 		}
+
 		return responseBodyBytes, nil
 	}
 
@@ -428,8 +456,9 @@ func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requ
 	return nil, nil
 }
 
-// ShouldContinue returns true if the underlying request has not been cancelled nor deadline exceeded.
+// ShouldContinue returns true if the underlying request has not been canceled nor deadline exceeded.
 func ShouldContinue(ctx context.Context) bool {
 	err := ctx.Err()
+
 	return !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }

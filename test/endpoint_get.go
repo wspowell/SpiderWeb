@@ -3,13 +3,14 @@ package test
 import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type fooResponseModel struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	OutputString string `json:"outputString"`
+	OutputInt    int    `json:"outputInt"`
 }
 
 type Get struct {
@@ -26,8 +27,8 @@ func (self *Get) Handle(ctx context.Context) (int, error) {
 	log.Info(ctx, "resource id: %v", self.ResourceId)
 
 	self.ResponseBody = &fooResponseModel{
-		MyString: self.Db.RetrieveValue(),
-		MyInt:    self.ResourceId,
+		OutputString: self.Db.RetrieveValue(),
+		OutputInt:    self.ResourceId,
 	}
 
 	return httpstatus.OK, nil

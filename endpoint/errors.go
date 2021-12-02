@@ -38,15 +38,20 @@ const (
 	icResponseBodyNull            = "SW204"
 )
 
+const (
+	icNewHttpRequesterReadAllError = "SW300"
+)
+
 // Reflection error codes.
 const (
-	icPathParamCannotSet       = "SW901"
-	icPathParamValueNotFound   = "SW902"
-	icCannotSetValueFromString = "SW903"
-	icPathParamSetFailure      = "SW904"
-	icQueryParamCannotSet      = "SW905"
-	icQueryParamValueNotFound  = "SW906"
-	icQueryParamSetFailure     = "SW907"
-	icResourceNotSet           = "SW908"
-	icResourceNotValid         = "SW909"
+	icPathParamCannotSet             = "SW901"
+	icPathParamValueNotFound         = "SW902"
+	icCannotSetValueFromString       = "SW903"
+	icPathParamSetFailure            = "SW904"
+	icQueryParamCannotSet            = "SW905"
+	icQueryParamValueNotFound        = "SW906"
+	icQueryParamSetFailure           = "SW907"
+	icResourceNotSet                 = "SW908"
+	icResourceNotValid               = "SW909"
+	icInvalidTypeForStringConversion = "SW910"
 )

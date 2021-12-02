@@ -1,4 +1,4 @@
-package endpoint
+package endpoint_test
 
 import (
 	"testing"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
+
+	"github.com/wspowell/spiderweb/endpoint"
 )
 
 func Test_Context_DeadlineExceeded(t *testing.T) {
@@ -16,7 +18,7 @@ func Test_Context_DeadlineExceeded(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	if ShouldContinue(ctx) {
+	if endpoint.ShouldContinue(ctx) {
 		t.Errorf("ShouldContinue() should have returned false")
 	}
 
@@ -36,7 +38,7 @@ func Test_Context_Canceled(t *testing.T) {
 
 	cancel()
 
-	if ShouldContinue(ctx) {
+	if endpoint.ShouldContinue(ctx) {
 		t.Errorf("ShouldContinue() should have returned false")
 	}
 

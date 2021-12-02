@@ -1,5 +1,5 @@
 {
-    "body": "{\"my_string\": \"hello\",\"my_int\": 10,\"fail\": false}",
+    "body": "{\"myString\": \"hello\",\"myInt\": 10,\"fail\": false}",
     "resource": "/{proxy+}",
     "path": "/path/to/resource",
     "httpMethod": "POST",

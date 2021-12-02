@@ -5,12 +5,13 @@ import (
 
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type fooResponseModel struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	MyString string `json:"outputString"`
+	MyInt    int    `json:"outputInt"`
 }
 
 type get struct {

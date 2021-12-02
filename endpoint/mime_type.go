@@ -21,7 +21,7 @@ type MimeTypeHandlers map[string]*MimeTypeHandler
 func NewMimeTypeHandlers() MimeTypeHandlers {
 	// Set default handlers.
 	return MimeTypeHandlers{
-		mimeTypeJson: jsonHandler(),
+		mimeTypeJson: JsonHandler(),
 	}
 }
 
@@ -54,7 +54,7 @@ type MimeTypeHandler struct {
 	Unmarshal Unmarshaler
 }
 
-func jsonHandler() *MimeTypeHandler {
+func JsonHandler() *MimeTypeHandler {
 	return &MimeTypeHandler{
 		MimeType:  mimeTypeJson,
 		Marshal:   jsonMarshal,
@@ -62,48 +62,10 @@ func jsonHandler() *MimeTypeHandler {
 	}
 }
 
-// var (
-// 	byteBufferPool = &sync.Pool{
-// 		New: func() interface{} {
-// 			// The Pool's New function should generally only return pointer
-// 			// types, since a pointer can be put into the return interface
-// 			// value without an allocation:
-// 			return new(bytes.Buffer)
-// 		},
-// 	}
-// )
-
 func jsonMarshal(value interface{}) ([]byte, error) {
-	// buffer := byteBufferPool.Get().(*bytes.Buffer)
-	// defer byteBufferPool.Put(buffer)
-	// buffer.Reset()
-
-	// encoder := json.NewEncoder(buffer)
-	// if err := encoder.Encode(value); err != nil {
-	// 	return nil, err
-	// }
-
-	// if buffer.Len() == 0 {
-	// 	return nil, nil
-	// }
-
-	// // Encoder appends a new line at the endpoint of the bytes.
-	// // This is useful for streaming, but breaks responses.
-	// // Trim it off.
-	// jsonBytes := make([]byte, buffer.Len()-1)
-	// copy(jsonBytes, buffer.Bytes())
-
-	// return jsonBytes, nil
-
 	return json.Marshal(value)
 }
 
 func jsonUnmarshal(data []byte, value interface{}) error {
-	// decoder := json.NewDecoder(bytes.NewReader(data))
-	// if err := decoder.Decode(value); err != nil {
-	// 	return err
-	// }
-	// return nil
-
 	return json.Unmarshal(data, value)
 }

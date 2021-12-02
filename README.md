@@ -259,7 +259,7 @@ func Test_RouteNotFound(t *testing.T) {
 
 	restfultest.TestCase(Routes(), "Route not found").
 		GivenRequest(http.MethodPost, "/not_found").
-		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
+		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusNotFound).
 		WithEmptyBody().
 		Run(t)
@@ -270,9 +270,9 @@ func Test_POST_sample(t *testing.T) {
 
 	restfultest.TestCase(Routes(), "Success POST /sample").
 		GivenRequest(http.MethodPost, "/sample").
-		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
+		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusCreated).
-		WithResponseBody("application/json", []byte(`{"output_string":"hello","output_int":5}`)).
+		WithResponseBody("application/json", []byte(`{"outputString":"hello","outputInt":5}`)).
 		Run(t)
 }
 
@@ -286,7 +286,7 @@ func Test_POST_sample_id_34(t *testing.T) {
 		WithPathParam("id", "34").
 		WithResourceMock("datastore", dbMock).
 		ExpectResponse(http.StatusOK).
-		WithResponseBody("application/json", []byte(`{"output_string":"test","output_int":34}`)).
+		WithResponseBody("application/json", []byte(`{"outputString":"test","outputInt":34}`)).
 		Run(t)
 }
 
@@ -324,4 +324,51 @@ time="2020-09-13T18:19:27-05:00" level=debug msg="    PostResource -> 56.27449ms
 time="2020-09-13T18:19:27-05:00" level=debug msg="      saveResource -> 56.164568ms"
 time="2020-09-13T18:19:27-05:00" level=debug msg="  MarshalResponseBody -> 250.414µs"
 time="2020-09-13T18:19:27-05:00" level=debug msg="  ValidateResponse -> 1.941µs"
+```
+
+# Benchmarks
+
+Benchmarks can be made to show whatever you want. These should show the overhead of the framework just to run the most basic hello world route.
+Take with a bucket of salt.
+
+Debug
+```
+go test -run=._bench_test.go -bench=. -benchmem -count=1 -parallel 8  ./...
+
+goos: linux
+goarch: amd64
+pkg: github.com/wspowell/spiderweb/endpoint
+cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
+Benchmark_Endpoint_Default_Success-8        8247            142237 ns/op            5540 B/op        106 allocs/op
+Benchmark_Endpoint_Default_Error-8          7868            147972 ns/op            5539 B/op        106 allocs/op
+
+goos: linux
+goarch: amd64
+pkg: github.com/wspowell/spiderweb/server/restful
+cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
+Benchmark_SpiderWeb_POST_latency-8                 12536             95519 ns/op            2482 B/op         63 allocs/op
+Benchmark_SpiderWeb_POST_throughput-8              10000            106077 ns/op            2485 B/op         63 allocs/op
+Benchmark_SpiderWeb_GET_latency-8                  10000            102461 ns/op            2298 B/op         61 allocs/op
+Benchmark_SpiderWeb_GET_throughput-8                9694            121209 ns/op            2300 B/op         61 allocs/op
+```
+
+Release
+```
+go test -run=._bench_test.go -bench=. -benchmem -count=1 -parallel 8 -tags release ./...
+
+goos: linux
+goarch: amd64
+pkg: github.com/wspowell/spiderweb/endpoint
+cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
+Benchmark_Endpoint_Default_Success-8      402723              2899 ns/op            5246 B/op        104 allocs/op
+Benchmark_Endpoint_Default_Error-8        411403              2797 ns/op            5247 B/op        104 allocs/op
+
+goos: linux
+goarch: amd64
+pkg: github.com/wspowell/spiderweb/server/restful
+cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
+Benchmark_SpiderWeb_POST_latency-8                 39235             28923 ns/op            2473 B/op         63 allocs/op
+Benchmark_SpiderWeb_POST_throughput-8             526909              2277 ns/op            2473 B/op         63 allocs/op
+Benchmark_SpiderWeb_GET_latency-8                  43779             26548 ns/op            2289 B/op         61 allocs/op
+Benchmark_SpiderWeb_GET_throughput-8              537186              2215 ns/op            2289 B/op         61 allocs/op
 ```

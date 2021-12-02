@@ -8,6 +8,17 @@ import (
 	"github.com/wspowell/context"
 )
 
+type myRequestBodyModel struct {
+	MyString   string `json:"myString"`
+	MyInt      int    `json:"myInt"`
+	ShouldFail bool   `json:"shouldFail"`
+}
+
+type myResponseBodyModel struct {
+	OutputString string `json:"outputString"`
+	OutputInt    int    `json:"outputInt"`
+}
+
 type testEndpointReqPtrResVal struct {
 	Test         string
 	RequestBody  *myRequestBodyModel `spiderweb:"request,mime=application/json,validate"`
@@ -18,6 +29,8 @@ func (self *testEndpointReqPtrResVal) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
+const testValue = "test"
+
 func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
 	t.Parallel()
 
@@ -25,43 +38,43 @@ func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
 
 	typeData := newHandlerTypeData(ctx, &testEndpointReqPtrResVal{})
 
-	handlerAlloc := typeData.allocateHandler(ctx)
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqPtrResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
 		if handler.RequestBody.MyInt != 0 {
 			t.Errorf("expected request body to be zero value")
 		}
 		handler.RequestBody.MyInt = 5
 
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(ctx)
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqPtrResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
 		if handler.RequestBody.MyInt != 0 {
 			t.Errorf("expected request body to be zero value")
 		}
 		handler.RequestBody.MyInt = 5
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 }
 
@@ -74,6 +87,7 @@ func (self *testEndpointNoReqResVal) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
+// nolint:dupl // reason: too complex to refactor due to concrete type conversions
 func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
 	t.Parallel()
 
@@ -81,34 +95,34 @@ func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
 
 	typeData := newHandlerTypeData(ctx, &testEndpointNoReqResVal{})
 
-	handlerAlloc := typeData.allocateHandler(ctx)
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointNoReqResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(ctx)
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointNoReqResVal); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 }
 
@@ -121,6 +135,7 @@ func (self *testEndpointReqValResPtr) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
+// nolint:dupl // reason: too complex to refactor due to concrete type conversions
 func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 	t.Parallel()
 
@@ -128,34 +143,34 @@ func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 
 	typeData := newHandlerTypeData(ctx, &testEndpointReqValResPtr{})
 
-	handlerAlloc := typeData.allocateHandler(ctx)
+	handlerAlloc := typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqValResPtr); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 
-	handlerAlloc = typeData.allocateHandler(ctx)
+	handlerAlloc = typeData.allocateHandler()
 	if handler, ok := handlerAlloc.handler.(*testEndpointReqValResPtr); !ok {
 		t.Errorf("handler is not the right type")
 	} else {
 		if handler.Test != "" {
 			t.Errorf("expected test value to be zero value")
 		}
-		handler.Test = "test"
+		handler.Test = testValue
 
-		if handler.ResponseBody.MyInt != 0 {
+		if handler.ResponseBody.OutputInt != 0 {
 			t.Errorf("expected response body to be zero value")
 		}
-		handler.ResponseBody.MyInt = 5
+		handler.ResponseBody.OutputInt = 5
 	}
 }
 

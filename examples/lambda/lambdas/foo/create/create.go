@@ -8,18 +8,19 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type createRequest struct {
-	MyString   string `json:"my_string"`
-	MyInt      int    `json:"my_int"`
-	ShouldFail bool   `json:"fail"`
+	MyString   string `json:"myString"`
+	MyInt      int    `json:"myInt"`
+	ShouldFail bool   `json:"shouldFail"`
 }
 
 type createResponse struct {
-	MyString string `json:"output_string"`
-	MyInt    int    `json:"output_int"`
+	MyString string `json:"outputString"`
+	MyInt    int    `json:"outputInt"`
 }
 
 type create struct {

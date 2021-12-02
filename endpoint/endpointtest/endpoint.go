@@ -7,14 +7,17 @@ import (
 	"runtime/debug"
 	"testing"
 
-	"github.com/wspowell/context"
-
 	fuzz "github.com/google/gofuzz"
 	"github.com/stretchr/testify/assert"
+	"github.com/wspowell/context"
+	"github.com/wspowell/errors"
+
 	"github.com/wspowell/spiderweb/endpoint"
 )
 
 func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
+	t.Helper()
+
 	if doFuzz, exists := os.LookupEnv("FUZZ"); !exists || doFuzz != "true" {
 		return
 	}
@@ -39,7 +42,7 @@ func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
 func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handler, expectedHttpStatus int, expectedError error) {
 	httpStatus, err := input.Handle(context.Local())
 
-	if expectedError != err {
+	if !errors.Is(err, expectedError) {
 		t.Errorf("expected error %v, but got %v", expectedError, err)
 	}
 

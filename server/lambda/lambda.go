@@ -1,15 +1,14 @@
 package lambda
 
 import (
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/server/route"
-
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // FIXME: Should be able to handle any event, not just API Gateway.

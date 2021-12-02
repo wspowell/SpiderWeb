@@ -64,6 +64,7 @@ func (self *liveValue) Set(ctx context.Context, value interface{}) bool {
 
 		return true
 	}
+
 	return false
 }
 

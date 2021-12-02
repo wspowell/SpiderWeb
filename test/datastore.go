@@ -25,6 +25,7 @@ func (_m *MockDatastore) RetrieveValue() string {
 	if rf, ok := ret.Get(0).(func() string); ok {
 		r0 = rf()
 	} else {
+		// nolint:forcetypeassert // reason: generated code
 		r0 = ret.Get(0).(string)
 	}
 

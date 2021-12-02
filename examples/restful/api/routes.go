@@ -5,6 +5,7 @@ import (
 
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
+
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/examples/restful/api/resources"
 	"github.com/wspowell/spiderweb/examples/restful/middleware"

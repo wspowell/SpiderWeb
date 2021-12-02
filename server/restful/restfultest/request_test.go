@@ -13,7 +13,7 @@ func Test_RouteNotFound(t *testing.T) {
 
 	restfultest.TestCase(Routes(), "Route not found").
 		GivenRequest(http.MethodPost, "/not_found").
-		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
+		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusNotFound).
 		WithEmptyBody().
 		Run(t)
@@ -24,9 +24,9 @@ func Test_POST_sample(t *testing.T) {
 
 	restfultest.TestCase(Routes(), "Success POST /sample").
 		GivenRequest(http.MethodPost, "/sample").
-		WithRequestBody("application/json", []byte(`{"my_string": "hello","my_int": 5}`)).
+		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusCreated).
-		WithResponseBody("application/json", []byte(`{"output_string":"hello","output_int":5}`)).
+		WithResponseBody("application/json", []byte(`{"outputString":"hello","outputInt":5}`)).
 		Run(t)
 }
 
@@ -40,7 +40,7 @@ func Test_POST_sample_id_34(t *testing.T) {
 		WithPathParam("id", "34").
 		WithResourceMock("datastore", dbMock).
 		ExpectResponse(http.StatusOK).
-		WithResponseBody("application/json", []byte(`{"output_string":"test","output_int":34}`)).
+		WithResponseBody("application/json", []byte(`{"outputString":"test","outputInt":34}`)).
 		Run(t)
 }
 
