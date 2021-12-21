@@ -53,7 +53,7 @@ func (self *timing) Finish() {
 	if self.parent == nil {
 		// Dump profiling data.
 		// FIXME: This always prints profiling, even when LevelFatal is desired.
-		// logConfig := log.NewConfig(log.LevelDebug)
+		// logConfig := log.NewConfig().WithLevel(log.LevelDebug)
 		// logger := log.NewLogger(logConfig)
 		// printTimers(logger, self, 0)
 	} else {

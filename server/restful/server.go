@@ -29,7 +29,7 @@ type ServerConfig struct {
 	Port         int
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
-	LogConfig    log.Configer
+	LogConfig    log.LoggerConfig
 	EnablePprof  bool
 }
 
@@ -53,7 +53,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		serverConfig = &ServerConfig{}
 	}
 	if serverConfig.LogConfig == nil {
-		serverConfig.LogConfig = log.NewConfig(log.LevelInfo)
+		serverConfig.LogConfig = log.NewConfig()
 	}
 	if serverConfig.ReadTimeout == 0 {
 		serverConfig.ReadTimeout = 30 * time.Second
@@ -71,12 +71,11 @@ func NewServer(serverConfig *ServerConfig) *Server {
 	httpServer := &fasthttp.Server{}
 	httpServer.Name = "spiderweb"
 	httpServer.NoDefaultContentType = true
-	httpServer.Logger = serverConfig.LogConfig.Logger()
+	httpServer.Logger = log.NewLog(serverConfig.LogConfig)
 	httpServer.ReadTimeout = serverConfig.ReadTimeout
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
 
 	ctx, shutdownComplete := newServerContext(httpServer)
-	ctx = context.Localize(ctx)
 	ctx = log.WithContext(ctx, serverConfig.LogConfig)
 
 	restfulRouter := router.New()

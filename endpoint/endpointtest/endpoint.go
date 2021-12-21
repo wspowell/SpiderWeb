@@ -33,14 +33,14 @@ func handlerFuzzTest(t *testing.T, handler endpoint.Handler) {
 
 	for i := 0; i < 100; i++ {
 		f.Fuzz(handler)
-		_, err := handler.Handle(context.Local())
+		_, err := handler.Handle(context.Background())
 		assert.Nil(t, err)
 	}
 }
 
 // TestEndpoint for business logic.
 func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handler, expectedHttpStatus int, expectedError error) {
-	httpStatus, err := input.Handle(context.Local())
+	httpStatus, err := input.Handle(context.Background())
 
 	if !errors.Is(err, expectedError) {
 		t.Errorf("expected error %v, but got %v", expectedError, err)

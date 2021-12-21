@@ -26,9 +26,9 @@ const (
 type handlerAllocation struct {
 	handlerValue reflect.Value
 	handler      Handler
-	requestBody  any
-	responseBody any
-	auth         any
+	requestBody  interface{}
+	responseBody interface{}
+	auth         interface{}
 }
 
 type resourceTypeData struct {
@@ -77,7 +77,7 @@ type handlerTypeData struct {
 	maxAgeSeconds int
 }
 
-func newHandlerTypeData(ctx context.Context, handler any) handlerTypeData {
+func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeData {
 	var structValue reflect.Value
 	var requestBodyValue reflect.Value
 	var responseBodyValue reflect.Value
@@ -268,7 +268,7 @@ func (self handlerTypeData) newHandlerValue() reflect.Value {
 	}
 }
 
-func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) any {
+func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
 	if self.hasRequestBody {
 		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr).Interface()
 	}
@@ -276,7 +276,7 @@ func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) any {
 	return nil
 }
 
-func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) any {
+func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
 	if self.hasResponseBody {
 		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr).Interface()
 	}
@@ -284,7 +284,7 @@ func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) any {
 	return nil
 }
 
-func (self handlerTypeData) newAuth(handlerValue reflect.Value) any {
+func (self handlerTypeData) newAuth(handlerValue reflect.Value) interface{} {
 	if self.hasAuth {
 		return self.newStruct(handlerValue, self.authType, self.authFieldNum, self.isAuthPtr).Elem().Interface()
 	}
@@ -307,7 +307,7 @@ func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType refl
 	}
 }
 
-func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]any) error {
+func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) error {
 	for resourceName, resourceData := range self.resources {
 		if resource, exists := resources[resourceName]; exists {
 			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)
@@ -317,13 +317,13 @@ func (self handlerTypeData) setResources(handlerValue reflect.Value, resources m
 				}
 				value := reflect.ValueOf(resource)
 				if !value.IsValid() {
-					return errors.New(icResourceNotValid, "failed to set resource: %s", resourceName)
+					return errors.New("failed to set resource: %s", resourceName)
 				}
 
 				resourceValue.Set(value)
 			}
 		} else {
-			return errors.New(icResourceNotSet, "failed to set resource: %s", resourceName)
+			return errors.New("failed to set resource: %s", resourceName)
 		}
 	}
 
@@ -335,16 +335,16 @@ func (self handlerTypeData) setPathParameters(handlerValue reflect.Value, reques
 		parameterValue := handlerValue.Elem().Field(fieldNum)
 
 		if !parameterValue.CanSet() {
-			return errors.New(icPathParamCannotSet, "cannot set path param: %s", param)
+			return errors.New("cannot set path param: %s", param)
 		}
 
 		value, ok := requester.PathParam(param)
 		if !ok {
-			return errors.New(icPathParamValueNotFound, "path param value not found: %s", param)
+			return errors.New("path param value not found: %s", param)
 		}
 
 		if err := setValueFromString(parameterValue, value); err != nil {
-			return errors.Propagate(icPathParamSetFailure, err)
+			return err
 		}
 	}
 
@@ -356,14 +356,14 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 		queryValue := handlerValue.Elem().Field(fieldNum)
 
 		if !queryValue.CanSet() {
-			return errors.New(icQueryParamCannotSet, "cannot set query param: %s", query)
+			return errors.New("cannot set query param: %s", query)
 		}
 
 		_, isRequired := self.requiredQueryParameters[query]
 		queryBytes, ok := requester.QueryParam(query)
 		if !ok {
 			if isRequired {
-				return errors.New(icQueryParamValueNotFound, "query param value not found: %s", query)
+				return errors.New("query param value not found: %s", query)
 			} else {
 				// Query param not required. Leave the value at the zero value.
 				continue
@@ -371,7 +371,7 @@ func (self handlerTypeData) setQueryParameters(handlerValue reflect.Value, reque
 		}
 
 		if err := setValueFromString(queryValue, string(queryBytes)); err != nil {
-			return errors.Propagate(icQueryParamSetFailure, err)
+			return err
 		}
 	}
 
@@ -504,10 +504,10 @@ func setValueFromString(variable reflect.Value, value string) error {
 	case reflect.Array, reflect.Chan, reflect.Complex128, reflect.Complex64,
 		reflect.Func, reflect.Interface, reflect.Invalid, reflect.Map, reflect.Ptr,
 		reflect.Slice, reflect.Struct, reflect.Uintptr, reflect.UnsafePointer:
-		return errors.New(icInvalidTypeForStringConversion, "could not set value (%v) from string (%s) because due to invalid type (%s)", variable, value, variable.Kind())
+		return errors.New("could not set value (%v) from string (%s) because due to invalid type (%s)", variable, value, variable.Kind())
 	}
 
-	return errors.New(icCannotSetValueFromString, "could not set value (%v) from string (%s)", variable, value)
+	return errors.New("could not set value (%v) from string (%s)", variable, value)
 }
 
 func getFieldValue(structValue reflect.Value) reflect.Value {

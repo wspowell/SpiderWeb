@@ -14,8 +14,8 @@ import (
 func Benchmark_Endpoint_Default_Success(b *testing.B) {
 	endpointRunner := createTestEndpoint()
 
-	ctx := context.Local()
-	log.WithContext(ctx, log.NewConfig(log.LevelFatal))
+	ctx := context.Background()
+	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelFatal))
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -41,8 +41,8 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 func Benchmark_Endpoint_Default_Error(b *testing.B) {
 	endpointRunner := createTestEndpoint()
 
-	ctx := context.Local()
-	log.WithContext(ctx, log.NewConfig(log.LevelFatal))
+	ctx := context.Background()
+	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelFatal))
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {

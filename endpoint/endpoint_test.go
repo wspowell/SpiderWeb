@@ -27,7 +27,7 @@ type myErrorHandler struct{}
 
 func (self myErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, any) {
 	return httpStatus, errorResponse{
-		Message: fmt.Sprintf("%v", err),
+		Message: fmt.Sprintf("%s", err),
 	}
 }
 
@@ -39,7 +39,7 @@ func (self *user) Authorization(ctx context.Context, peekHeader func(key string)
 	var statusCode int
 
 	if !bytes.EqualFold([]byte("valid-token"), peekHeader(httpheader.Authorization)) {
-		return httpstatus.Unauthorized, errors.New("auth", "invalid auth token")
+		return httpstatus.Unauthorized, errors.New("invalid auth token")
 	}
 
 	self.userData = "myUserData"
@@ -102,47 +102,47 @@ func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling myEndpoint")
 
 	if self.User.userData != "myUserData" {
-		return httpstatus.Forbidden, errors.New("APP0", "invalid auth")
+		return httpstatus.Forbidden, errors.New("invalid auth")
 	}
 
 	if self.RequestBody.ShouldFail {
-		return httpstatus.UnprocessableEntity, errors.New("APP1", "invalid input")
+		return httpstatus.UnprocessableEntity, errors.New("invalid input")
 	}
 
 	if self.MyStringQuery != "me" {
-		return httpstatus.InternalServerError, errors.New("APP2", "string query param not set")
+		return httpstatus.InternalServerError, errors.New("string query param not set")
 	}
 
 	if self.MyIntQuery != 13 {
-		return httpstatus.InternalServerError, errors.New("APP3", "int query param not set")
+		return httpstatus.InternalServerError, errors.New("int query param not set")
 	}
 
 	if self.MyBoolQuery != true {
-		return httpstatus.InternalServerError, errors.New("APP4", "bool query param not set")
+		return httpstatus.InternalServerError, errors.New("bool query param not set")
 	}
 
 	if self.MyStringParam != "myid" {
-		return httpstatus.InternalServerError, errors.New("APP5", "string path param not set")
+		return httpstatus.InternalServerError, errors.New("string path param not set")
 	}
 
 	if self.MyIntParam != 5 {
-		return httpstatus.InternalServerError, errors.New("APP6", "int path param not set")
+		return httpstatus.InternalServerError, errors.New("int path param not set")
 	}
 
 	if self.MyFlagParam != true {
-		return httpstatus.InternalServerError, errors.New("APP7", "bool path param not set")
+		return httpstatus.InternalServerError, errors.New("bool path param not set")
 	}
 
 	if self.MyDatabase == nil {
-		return httpstatus.InternalServerError, errors.New("APP8", "database not set")
+		return httpstatus.InternalServerError, errors.New("database not set")
 	}
 
 	if self.MyDatabase.Conn() != "myconnection" {
-		return httpstatus.InternalServerError, errors.New("APP9", "database connection error")
+		return httpstatus.InternalServerError, errors.New("database connection error")
 	}
 
 	if self.MyOptionalQuery != "" {
-		return httpstatus.InternalServerError, errors.New("APP10", "optional path param shoulde not be set")
+		return httpstatus.InternalServerError, errors.New("optional path param shoulde not be set")
 	}
 
 	self.ResponseBody = &myResponseBodyModel{
@@ -154,15 +154,15 @@ func (self *myEndpoint) Handle(ctx context.Context) (int, error) {
 }
 
 func createTestEndpoint() *endpoint.Endpoint {
-	ctx := context.Local()
-	log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	dbClient := myDbClient{
 		conn: "myconnection",
 	}
 
 	config := &endpoint.Config{
-		LogConfig:         log.NewConfig(log.LevelError),
+		LogConfig:         log.NewConfig().WithLevel(log.LevelError),
 		ErrorHandler:      myErrorHandler{},
 		RequestValidator:  myRequestValidator{},
 		ResponseValidator: myResponseValidator{},
@@ -178,8 +178,8 @@ func createTestEndpoint() *endpoint.Endpoint {
 }
 
 func createDefaultTestEndpoint() *endpoint.Endpoint {
-	ctx := context.Local()
-	log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	dbClient := myDbClient{
 		conn: "myconnection",
@@ -211,8 +211,8 @@ func Test_Endpoint_Default_Success(t *testing.T) {
 func checkSuccessCase(t *testing.T, testEndpoint *endpoint.Endpoint) {
 	t.Helper()
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	ctx = log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5}`))
 	assert.Nil(t, err)
@@ -258,8 +258,8 @@ func Test_Endpoint_Error(t *testing.T) {
 
 	testEndpoint := createTestEndpoint()
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	ctx = log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
@@ -291,8 +291,8 @@ func Test_Endpoint_Error(t *testing.T) {
 		t.Errorf("failed to unmarshal test response: %v", err)
 	}
 
-	if responseBody.Message != "[APP1] invalid input" {
-		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1] invalid input", responseBody.Message)
+	if responseBody.Message != "invalid input" {
+		t.Errorf("expected 'message' to be '%v', but got '%v'", "invalid input", responseBody.Message)
 	}
 }
 
@@ -301,8 +301,8 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 
 	testEndpoint := createDefaultTestEndpoint()
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	ctx = log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
@@ -329,8 +329,8 @@ func Test_Endpoint_Default_Error(t *testing.T) {
 		t.Errorf("expected HTTP status code to be %v, but got %v", httpstatus.OK, httpStatus)
 	}
 
-	if string(responseBodyBytes) != `{"message":"[APP1] invalid input"}` {
-		t.Errorf("expected 'message' to be '%v', but got '%v'", "[APP1] invalid input", string(responseBodyBytes))
+	if string(responseBodyBytes) != `{"message":"invalid input"}` {
+		t.Errorf("expected 'message' to be '%v', but got '%v'", "invalid input", string(responseBodyBytes))
 	}
 }
 
@@ -339,8 +339,8 @@ func Test_Endpoint_Auth_Error(t *testing.T) {
 
 	testEndpoint := createDefaultTestEndpoint()
 
-	ctx := context.Local()
-	ctx = log.WithContext(ctx, log.NewConfig(log.LevelError))
+	ctx := context.Background()
+	ctx = log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelError))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=13&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5, "shouldFail": true}`))
 	assert.Nil(t, err)
@@ -366,7 +366,7 @@ func Test_Endpoint_Auth_Error(t *testing.T) {
 		t.Errorf("expected HTTP status code to be %v, but got %v", httpstatus.OK, httpStatus)
 	}
 
-	if string(responseBodyBytes) != `{"message":"[auth] invalid auth token"}` {
-		t.Errorf("expected 'message' to be '%v', but got '%v'", "[auth] invalid auth token", string(responseBodyBytes))
+	if string(responseBodyBytes) != `{"message":"invalid auth token"}` {
+		t.Errorf("expected 'message' to be '%v', but got '%v'", "invalid auth token", string(responseBodyBytes))
 	}
 }

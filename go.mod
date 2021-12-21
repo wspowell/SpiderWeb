@@ -9,9 +9,9 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.30.0
-	github.com/wspowell/context v0.0.6
-	github.com/wspowell/errors v0.2.0
-	github.com/wspowell/log v0.0.7
+	github.com/wspowell/context v0.0.7
+	github.com/wspowell/errors v0.3.0
+	github.com/wspowell/log v0.0.9
 )
 
 require (
@@ -21,11 +21,10 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rs/zerolog v1.26.1 // indirect
 	github.com/savsgio/gotils v0.0.0-20210907153846-c06938798b52 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/stretchr/objx v0.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )

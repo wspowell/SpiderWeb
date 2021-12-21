@@ -34,7 +34,7 @@ const testValue = "test"
 func Test_handlerTypeData_StructPtr_ReqPtr_ResVal(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &testEndpointReqPtrResVal{})
 
@@ -91,7 +91,7 @@ func (self *testEndpointNoReqResVal) Handle(ctx context.Context) (int, error) {
 func Test_handlerTypeData_StructPtr_NoReq_ResVal(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &testEndpointNoReqResVal{})
 
@@ -139,7 +139,7 @@ func (self *testEndpointReqValResPtr) Handle(ctx context.Context) (int, error) {
 func Test_handlerTypeData_StructPtr_ReqVal_ResPtr(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &testEndpointReqValResPtr{})
 
@@ -181,7 +181,7 @@ func Test_handlerTypeData_no_etag(t *testing.T) {
 		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json"`
 	}
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &endpoint{})
 
@@ -196,7 +196,7 @@ func Test_handlerTypeData_etag(t *testing.T) {
 		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,etag"`
 	}
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &endpoint{})
 
@@ -211,7 +211,7 @@ func Test_handlerTypeData_maxage(t *testing.T) {
 		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,max-age=300"`
 	}
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &endpoint{})
 
@@ -226,7 +226,7 @@ func Test_handlerTypeData_etag_maxage(t *testing.T) {
 		ResponseBody *myResponseBodyModel `spiderweb:"response,mime=application/json,etag,max-age=300"`
 	}
 
-	ctx := context.Local()
+	ctx := context.Background()
 
 	typeData := newHandlerTypeData(ctx, &endpoint{})
 

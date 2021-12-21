@@ -37,7 +37,7 @@ func nullBytes() []byte {
 // Endpoint behavior is interface driven and can be completely modified by an application.
 // The values in the config must never be modified by an endpoint.
 type Config struct {
-	LogConfig         log.Configer
+	LogConfig         log.LoggerConfig
 	ErrorHandler      ErrorHandler
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
@@ -62,7 +62,7 @@ func NewEndpoint(ctx context.Context, config *Config, handler Handler) *Endpoint
 	// Set defaults, if not set.
 
 	if config.LogConfig == nil {
-		configClone.LogConfig = log.NewConfig(log.LevelInfo)
+		configClone.LogConfig = log.NewConfig()
 	} else {
 		configClone.LogConfig = config.LogConfig
 	}
@@ -132,7 +132,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		if err := errors.Recover(recover()); err != nil {
 			log.Error(ctx, "panic: %+v", err)
 			// Convert the panic error to an internal server error. Never expose panics directly.
-			err = errors.Convert(icPanic, errors.Panic, ErrInternalServerError)
+			err = errors.Wrap(err, ErrInternalServerError)
 			httpStatus, responseBody = self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, err)
 		}
 	}()
@@ -179,7 +179,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 				log.Debug(ctx, "header Content-Type not found")
 				mimeTypeSpan.Finish()
 
-				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeMissing, "Content-Type MIME type not provided"))
+				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.Wrap(ErrInvalidMimeType, errors.New("Content-Type MIME type not provided")))
 			}
 
 			requestMimeType, ok = self.Config.MimeTypeHandlers.Get(contentType, self.handlerData.requestMimeTypes)
@@ -187,7 +187,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 				log.Debug(ctx, "mime type handler not available: %s", contentType)
 				mimeTypeSpan.Finish()
 
-				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icRequestMimeTypeUnsupported, "Content-Type MIME type not supported: %s", contentType))
+				return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.Wrap(ErrInvalidMimeType, errors.New("Content-Type MIME type not supported: %s", contentType)))
 			}
 
 			log.Trace(ctx, "found request mime type handler: %s", contentType)
@@ -201,7 +201,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			log.Debug(ctx, "header Accept not found")
 			mimeTypeSpan.Finish()
 
-			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeMissing, "Accept MIME type not provided"))
+			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.Wrap(ErrInvalidMimeType, errors.New("Accept MIME type not provided")))
 		}
 
 		responseMimeType, ok = self.Config.MimeTypeHandlers.Get(accept, self.handlerData.responseMimeTypes)
@@ -209,7 +209,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 			log.Debug(ctx, "mime type handler not available: %s", accept)
 			mimeTypeSpan.Finish()
 
-			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.New(icResponseMimeTypeUnsupported, "Accept MIME type not supported: %s", accept))
+			return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusUnsupportedMediaType, errors.Wrap(ErrInvalidMimeType, errors.New("Accept MIME type not supported: %s", accept)))
 		}
 		// All responses after this must be marshalable to the mime type.
 		requester.SetResponseContentType(responseMimeType.MimeType)
@@ -228,19 +228,19 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 		log.Debug(ctx, "failed to set resources")
 		allocSpan.Finish()
 
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.Propagate(icRequestResourcesError, ErrInternalServerError))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusInternalServerError, errors.Wrap(err, ErrInternalServerError))
 	}
 	if err = self.handlerData.setPathParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set path parameters")
 		allocSpan.Finish()
 
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestPathParamsError, ErrBadRequest))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Wrap(err, ErrBadRequest))
 	}
 	if err = self.handlerData.setQueryParameters(handlerAlloc.handlerValue, requester); err != nil {
 		log.Debug(ctx, "failed to set query parameters")
 		allocSpan.Finish()
 
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Propagate(icRequestQueryParamsError, ErrBadRequest))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusBadRequest, errors.Wrap(err, ErrBadRequest))
 	}
 
 	allocSpan.Finish()
@@ -264,7 +264,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 				log.Debug(ctx, "authorization object does not implement Authorizer")
 				authSpan.Finish()
 
-				return self.processErrorResponse(ctx, requester, responseMimeType, httpstatus.InternalServerError, errors.Propagate(icAuthorizerInterfaceError, ErrInternalServerError))
+				return self.processErrorResponse(ctx, requester, responseMimeType, httpstatus.InternalServerError, errors.Wrap(err, ErrInternalServerError))
 			}
 		}
 
@@ -311,7 +311,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	if !ShouldContinue(ctx) {
 		log.Debug(ctx, "request canceled or timed out")
 
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout1, "request timeout"))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, ErrRequestTimeout)
 	}
 
 	// Run the endpoint handler.
@@ -331,7 +331,7 @@ func (self *Endpoint) Execute(ctx context.Context, requester Requester) (httpSta
 	if !ShouldContinue(ctx) {
 		log.Debug(ctx, "request canceled or timed out")
 
-		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, errors.New(icRequestTimeout2, "request timeout"))
+		return self.processErrorResponse(ctx, requester, responseMimeType, http.StatusRequestTimeout, ErrRequestTimeout)
 	}
 
 	// Handle Response Body
@@ -408,7 +408,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 	responseBody, err = responseMimeType.Marshal(errStruct)
 	if err != nil {
 		requester.SetResponseContentType(mimeTypeTextPlain)
-		err = errors.Propagate(icErrorParseFailure, ErrInternalServerError)
+		err = errors.Wrap(err, ErrInternalServerError)
 		httpStatus = http.StatusInternalServerError
 		responseBody = []byte(fmt.Sprintf("%s", err))
 
@@ -425,7 +425,7 @@ func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *Mi
 		if err := mimeHandler.Unmarshal(requestBodyBytes, requestBody); err != nil {
 			log.Error(ctx, "failed to unmarshal request body: %v", err)
 
-			return errors.Propagate(icRequestBodyUnmarshalFailure, ErrBadRequest)
+			return errors.Wrap(err, ErrBadRequest)
 		}
 	}
 
@@ -441,12 +441,12 @@ func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requ
 		if err != nil {
 			log.Error(ctx, "failed to marshal response: %v", err)
 
-			return nil, errors.Propagate(icResponseBodyMarshalFailure, ErrInternalServerError)
+			return nil, errors.Wrap(err, ErrInternalServerError)
 		}
 		if len(responseBodyBytes) == 4 && bytes.Equal(responseBodyBytes, nullBytes()) {
 			log.Debug(ctx, "request body is null")
 
-			return nil, errors.Propagate(icResponseBodyNull, ErrInternalServerError)
+			return nil, errors.Wrap(err, ErrInternalServerError)
 		}
 
 		return responseBodyBytes, nil

@@ -16,7 +16,7 @@ func Test_trace(t *testing.T) {
 }
 
 func runProcess() {
-	ctx := context.Local()
+	ctx := context.Background()
 	defer profiling.Profile(ctx, "runProcesses").Finish()
 
 	timer := profiling.Profile(ctx, "manualDoOne")

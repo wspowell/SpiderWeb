@@ -35,7 +35,7 @@ func (self *Create) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling PostResource")
 
 	if self.RequestBody.ShouldFail {
-		return httpstatus.UnprocessableEntity, errors.New("APP1234", "invalid input")
+		return httpstatus.UnprocessableEntity, errors.New("invalid input")
 	}
 
 	// If running benchmarks, do not add randomness.

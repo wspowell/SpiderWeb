@@ -12,7 +12,7 @@ import (
 
 func main() {
 	config := &endpoint.Config{
-		LogConfig: log.NewConfig(log.LevelDebug),
+		LogConfig: log.NewConfig().WithLevel(log.LevelDebug),
 		Timeout:   30 * time.Second,
 	}
 

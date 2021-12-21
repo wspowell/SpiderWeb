@@ -11,7 +11,7 @@ package switchboard_test
 // )
 
 // func Test_LiveValue_Value(t *testing.T) {
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	// Create a new value.
 // 	baseValue := switchboard.NewLiveValue("Test_LiveValue_Value")
@@ -25,7 +25,7 @@ package switchboard_test
 // }
 
 // func Test_LiveValue_Listen(t *testing.T) {
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	// Create a new value.
 // 	baseValue := switchboard.NewLiveValue("Test_LiveValue_Value")
@@ -70,7 +70,7 @@ func updateFn(ctx context.Context, name string, value switchboard.Setter) {
 func Test_Value_Set(t *testing.T) {
 	t.Parallel()
 
-	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 	// Create a new value.
 	value := switchboard.NewValue(ctx, "test", "Test_Value_Set", noopFn)
@@ -83,7 +83,7 @@ func Test_Value_Set(t *testing.T) {
 func Test_Value_Set_no_change(t *testing.T) {
 	t.Parallel()
 
-	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 	// Create a new value.
 	value := switchboard.NewValue(ctx, "test", "Test_Value_Set", noopFn)
@@ -96,7 +96,7 @@ func Test_Value_Set_no_change(t *testing.T) {
 func Test_Value_UpdateFunc(t *testing.T) {
 	t.Parallel()
 
-	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 	// Create a new value.
 	value := switchboard.NewValue(ctx, "test", "Test_Value_UpdateFunc", updateFn)
@@ -108,7 +108,7 @@ func Test_Value_UpdateFunc(t *testing.T) {
 func Test_Value_Listen(t *testing.T) {
 	t.Parallel()
 
-	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 	// Create a new value.
 	value := switchboard.NewValue(ctx, "test", "Test_Value_Listen", noopFn)

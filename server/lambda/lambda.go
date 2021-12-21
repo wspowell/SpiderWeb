@@ -22,7 +22,7 @@ type Lambda struct {
 }
 
 func New(endpointConfig *endpoint.Config, routeDefinition route.Route) *Lambda {
-	ctx := context.Local()
+	ctx := context.Background()
 	log.WithContext(ctx, endpointConfig.LogConfig)
 
 	return &Lambda{

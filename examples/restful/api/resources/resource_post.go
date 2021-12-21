@@ -23,7 +23,7 @@ func (self *postResource) Handle(ctx context.Context) (int, error) {
 	log.Debug(ctx, "handling PostResource")
 
 	if self.RequestBody.ShouldFail {
-		return http.StatusUnprocessableEntity, errors.New("APP1234", "invalid input")
+		return http.StatusUnprocessableEntity, errors.New("invalid input")
 	}
 
 	saveResource(ctx)

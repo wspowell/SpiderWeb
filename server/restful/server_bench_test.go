@@ -19,7 +19,7 @@ import (
 func routes() *restful.Server {
 	serverConfig := &restful.ServerConfig{
 		LogConfig: &test.NoopLogConfig{
-			Config: log.NewConfig(log.LevelFatal),
+			Config: log.NewConfig().WithLevel(log.LevelFatal),
 		},
 		Host:         "localhost",
 		Port:         8080,
@@ -38,7 +38,7 @@ func routes() *restful.Server {
 func sampleRoutes(sample *restful.Server) {
 	config := &endpoint.Config{
 		LogConfig: &test.NoopLogConfig{
-			Config: log.NewConfig(log.LevelFatal),
+			Config: log.NewConfig().WithLevel(log.LevelFatal),
 		},
 		Resources: map[string]any{
 			"datastore": &test.Database{},

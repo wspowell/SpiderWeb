@@ -53,7 +53,7 @@ func NewHttpRequester(matchedPath string, request *http.Request) (*HttpRequester
 	if request.Body != nil {
 		bodyBytes, err = io.ReadAll(request.Body)
 		if err != nil {
-			return nil, errors.Propagate(icNewHttpRequesterReadAllError, err)
+			return nil, errors.Wrap(err, ErrInvalidBody)
 		}
 	}
 

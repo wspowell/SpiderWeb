@@ -51,6 +51,6 @@ func Test_resource_not_mocked(t *testing.T) {
 	restfultest.TestCase(Routes(), "Failure, not mocked").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		ExpectResponse(http.StatusInternalServerError).
-		WithResponseBody("application/json", []byte(`{"message":"[SW001] internal server error"}`)).
+		WithResponseBody("application/json", []byte(`{"message":"internal server error"}`)).
 		Run(t)
 }

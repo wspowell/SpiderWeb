@@ -13,7 +13,7 @@ package switchboard_test
 // )
 
 // func Test_EnvValue_Value(t *testing.T) {
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	// Create a new value.
 // 	envValue := switchboard.NewEnvValue(ctx, "Test_EnvValue_Value", "default", time.Millisecond)
@@ -28,7 +28,7 @@ package switchboard_test
 // }
 
 // func Test_EnvValue_Wait(t *testing.T) {
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	// Create a new value.
 // 	envValue := switchboard.NewEnvValue(ctx, "Test_EnvValue_Wait", "default", time.Millisecond)
@@ -52,7 +52,7 @@ package switchboard_test
 // }
 
 // func Test_EnvValue_context_cancel(t *testing.T) {
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	ctx, cancel := context.WithCancel(ctx)
 
@@ -72,7 +72,7 @@ package switchboard_test
 // 		zar *switchboard.EnvValue
 // 	}
 
-// 	ctx := log.WithContext(context.Local(), log.NewConfig(log.LevelDebug))
+// 	ctx := log.WithContext(context.Background(), log.NewConfig().WithLevel(log.LevelDebug))
 
 // 	cfg := &config{
 // 		foo: switchboard.NewEnvValue(ctx, "foo", "foo_default", time.Millisecond),

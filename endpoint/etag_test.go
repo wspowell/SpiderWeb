@@ -222,7 +222,7 @@ func Test_handleETag(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Local()
+			ctx := context.Background()
 
 			request, err := gohttp.NewRequestWithContext(ctx, httpmethod.Get, "/", nil)
 			assert.Nil(t, err)

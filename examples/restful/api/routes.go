@@ -17,7 +17,7 @@ import (
 func Routes(custom *restful.Server) {
 	endpointConfig := &endpoint.Config{
 		ErrorHandler:      middleware.ErrorJsonWithCodeResponse{},
-		LogConfig:         log.NewConfig(log.LevelDebug),
+		LogConfig:         log.NewConfig().WithLevel(log.LevelDebug),
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  middleware.ValidateNoopRequest{},
 		ResponseValidator: middleware.ValidateNoopResponse{},

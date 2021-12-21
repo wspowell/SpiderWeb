@@ -10,7 +10,7 @@ import (
 
 func Routes(custom *restful.Server, config *endpoint.Config) {
 	getConfig := config
-	getConfig.LogConfig = log.NewConfig(log.LevelDebug)
+	getConfig.LogConfig = log.NewConfig().WithLevel(log.LevelDebug)
 
 	custom.Handle(config, route.Post("/resources", &postResource{}))
 	custom.Handle(getConfig, route.Get("/resources/{id}", &getResource{}))
