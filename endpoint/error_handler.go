@@ -7,7 +7,7 @@ import (
 )
 
 type ErrorHandler interface {
-	HandleError(ctx context.Context, httpStatus int, err error) (int, interface{})
+	HandleError(ctx context.Context, httpStatus int, err error) (int, any)
 }
 
 type defaultErrorResponse struct {
@@ -16,7 +16,7 @@ type defaultErrorResponse struct {
 
 type defaultErrorHandler struct{}
 
-func (self defaultErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, interface{}) {
+func (self defaultErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, any) {
 	return httpStatus, defaultErrorResponse{
 		Message: fmt.Sprintf("%v", err),
 	}

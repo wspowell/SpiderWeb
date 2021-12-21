@@ -1,13 +1,7 @@
 # See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.163.1/containers/go/.devcontainer/base.Dockerfile
 
 # [Choice] Go version: 1, 1.16, 1.15
-ARG VARIANT="1"
-FROM mcr.microsoft.com/vscode/devcontainers/go:0-${VARIANT}
-
-# [Option] Install Node.js
-ARG INSTALL_NODE="true"
-ARG NODE_VERSION="lts/*"
-RUN if [ "${INSTALL_NODE}" = "true" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
+FROM golang:1.18beta1
 
 # [Optional] Uncomment this section to install additional OS packages.
 # RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
@@ -28,4 +22,4 @@ RUN unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
 RUN ./sam-installation/install
 RUN sam --version
 
-RUN go get github.com/daixiang0/gci
+RUN go install github.com/daixiang0/gci@latest

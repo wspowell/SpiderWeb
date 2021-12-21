@@ -42,7 +42,7 @@ type Config struct {
 	RequestValidator  RequestValidator
 	ResponseValidator ResponseValidator
 	MimeTypeHandlers  MimeTypeHandlers
-	Resources         map[string]interface{}
+	Resources         map[string]any
 	Timeout           time.Duration
 	Tracer            opentracing.Tracer
 }
@@ -87,7 +87,7 @@ func NewEndpoint(ctx context.Context, config *Config, handler Handler) *Endpoint
 	}
 
 	if config.Resources == nil {
-		configClone.Resources = map[string]interface{}{}
+		configClone.Resources = map[string]any{}
 	} else {
 		configClone.Resources = config.Resources
 	}
@@ -380,7 +380,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 	defer span.Finish()
 
 	var responseBody []byte
-	var errStruct interface{}
+	var errStruct any
 
 	defer func() {
 		// Print the actual error response returned to the caller.
@@ -418,7 +418,7 @@ func (self *Endpoint) processErrorResponse(ctx context.Context, requester Reques
 	return httpStatus, responseBody
 }
 
-func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *MimeTypeHandler, requestBody interface{}, requestBodyBytes []byte) error {
+func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *MimeTypeHandler, requestBody any, requestBodyBytes []byte) error {
 	if requestBody != nil {
 		log.Trace(ctx, "non-empty request body")
 
@@ -432,7 +432,7 @@ func (self *Endpoint) setHandlerRequestBody(ctx context.Context, mimeHandler *Mi
 	return nil
 }
 
-func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requester, mimeHandler *MimeTypeHandler, responseBody interface{}) ([]byte, error) {
+func (self *Endpoint) getHandlerResponseBody(ctx context.Context, requester Requester, mimeHandler *MimeTypeHandler, responseBody any) ([]byte, error) {
 	if responseBody != nil {
 		log.Trace(ctx, "non-empty response body")
 

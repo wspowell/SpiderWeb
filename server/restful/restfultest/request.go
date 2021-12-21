@@ -215,7 +215,7 @@ func (self *responseTestCase) runTest(t *testing.T) {
 
 	// Setup mock calls.
 	endpoint := self.server.Endpoint(copyTestCase.request.httpMethod, copyTestCase.request.path)
-	originalResources := map[string]interface{}{}
+	originalResources := map[string]any{}
 	if endpoint != nil {
 		for name, resource := range endpoint.Config.Resources {
 			originalResources[name] = resource

@@ -35,7 +35,7 @@ package switchboard_test
 
 // 	wg := &sync.WaitGroup{}
 // 	wg.Add(1)
-// 	value.Listen(func(value interface{}) {
+// 	value.Listen(func(value any) {
 // 		defer wg.Done()
 // 		assert.Equal(t, "new", value)
 // 	})
@@ -117,7 +117,7 @@ func Test_Value_Listen(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	value.Listen(func(ctx context.Context, name string, value interface{}) {
+	value.Listen(func(ctx context.Context, name string, value any) {
 		defer wg.Done()
 
 		assert.Equal(t, "test", name)

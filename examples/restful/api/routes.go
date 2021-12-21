@@ -21,7 +21,7 @@ func Routes(custom *restful.Server) {
 		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
 		RequestValidator:  middleware.ValidateNoopRequest{},
 		ResponseValidator: middleware.ValidateNoopResponse{},
-		Resources: map[string]interface{}{
+		Resources: map[string]any{
 			"datastore": db.NewDatabase(),
 		},
 		Timeout: 30 * time.Second,

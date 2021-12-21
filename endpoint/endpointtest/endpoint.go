@@ -57,7 +57,7 @@ func TestEndpoint(t *testing.T, input endpoint.Handler, expected endpoint.Handle
 	handlerFuzzTest(t, input)
 }
 
-func deepPrintStruct(v interface{}, indentLevel int) string {
+func deepPrintStruct(v any, indentLevel int) string {
 	var output string
 
 	var indent string

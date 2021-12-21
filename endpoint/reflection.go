@@ -26,9 +26,9 @@ const (
 type handlerAllocation struct {
 	handlerValue reflect.Value
 	handler      Handler
-	requestBody  interface{}
-	responseBody interface{}
-	auth         interface{}
+	requestBody  any
+	responseBody any
+	auth         any
 }
 
 type resourceTypeData struct {
@@ -77,7 +77,7 @@ type handlerTypeData struct {
 	maxAgeSeconds int
 }
 
-func newHandlerTypeData(ctx context.Context, handler interface{}) handlerTypeData {
+func newHandlerTypeData(ctx context.Context, handler any) handlerTypeData {
 	var structValue reflect.Value
 	var requestBodyValue reflect.Value
 	var responseBodyValue reflect.Value
@@ -268,7 +268,7 @@ func (self handlerTypeData) newHandlerValue() reflect.Value {
 	}
 }
 
-func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) any {
 	if self.hasRequestBody {
 		return self.newStruct(handlerValue, self.requestBodyType, self.requestFieldNum, self.isRequestPtr).Interface()
 	}
@@ -276,7 +276,7 @@ func (self handlerTypeData) newRequestBody(handlerValue reflect.Value) interface
 	return nil
 }
 
-func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) any {
 	if self.hasResponseBody {
 		return self.newStruct(handlerValue, self.responseBodyType, self.responseFieldNum, self.isResponsePtr).Interface()
 	}
@@ -284,7 +284,7 @@ func (self handlerTypeData) newResponseBody(handlerValue reflect.Value) interfac
 	return nil
 }
 
-func (self handlerTypeData) newAuth(handlerValue reflect.Value) interface{} {
+func (self handlerTypeData) newAuth(handlerValue reflect.Value) any {
 	if self.hasAuth {
 		return self.newStruct(handlerValue, self.authType, self.authFieldNum, self.isAuthPtr).Elem().Interface()
 	}
@@ -307,7 +307,7 @@ func (self handlerTypeData) newStruct(handlerValue reflect.Value, valueType refl
 	}
 }
 
-func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]interface{}) error {
+func (self handlerTypeData) setResources(handlerValue reflect.Value, resources map[string]any) error {
 	for resourceName, resourceData := range self.resources {
 		if resource, exists := resources[resourceName]; exists {
 			resourceValue := handlerValue.Elem().Field(resourceData.resourceFieldNum)

@@ -35,7 +35,7 @@ func sampleRoutes(sample *restful.Server) {
 		LogConfig: &test.NoopLogConfig{
 			Config: log.NewConfig(log.LevelFatal),
 		},
-		Resources: map[string]interface{}{
+		Resources: map[string]any{
 			"datastore": &test.Database{},
 		},
 		Timeout: 30 * time.Second,

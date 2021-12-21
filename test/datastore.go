@@ -19,7 +19,7 @@ type MockDatastore struct {
 
 // RetreiveValue provides a mock function with given fields:
 func (_m *MockDatastore) RetrieveValue() string {
-	ret := _m.Called()
+	ret := _m.Mock.Called()
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {

@@ -41,7 +41,7 @@ package switchboard_test
 // 	wg := &sync.WaitGroup{}
 // 	wg.Add(1)
 
-// 	value.Listen(func(value interface{}) {
+// 	value.Listen(func(value any) {
 // 		defer wg.Done()
 // 		assert.Equal(t, "new", value.(string))
 // 	})
@@ -83,15 +83,15 @@ package switchboard_test
 // 	wg := &sync.WaitGroup{}
 // 	wg.Add(3)
 
-// 	cfg.foo.Listen(func(value interface{}) {
+// 	cfg.foo.Listen(func(value any) {
 // 		defer wg.Done()
 // 		assert.Equal(t, "foo_new", value)
 // 	})
-// 	cfg.bar.Listen(func(value interface{}) {
+// 	cfg.bar.Listen(func(value any) {
 // 		defer wg.Done()
 // 		assert.Equal(t, "bar_new", value)
 // 	})
-// 	cfg.zar.Listen(func(value interface{}) {
+// 	cfg.zar.Listen(func(value any) {
 // 		defer wg.Done()
 // 		assert.Equal(t, "zar_new", value)
 // 	})

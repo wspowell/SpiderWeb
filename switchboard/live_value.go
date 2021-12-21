@@ -8,28 +8,28 @@ import (
 	"github.com/wspowell/log"
 )
 
-type ListenFunc func(ctx context.Context, name string, value interface{})
+type ListenFunc func(ctx context.Context, name string, value any)
 type UpdateFunc func(ctx context.Context, name string, value Setter)
 
 type Value interface {
 	Setter
 
-	Value() interface{}
+	Value() any
 	Listen(listenFn ListenFunc)
 }
 
 type Setter interface {
-	Set(ctx context.Context, value interface{}) bool
+	Set(ctx context.Context, value any) bool
 }
 
 type liveValue struct {
 	mutex     *sync.RWMutex
 	name      string
-	value     interface{}
+	value     any
 	listeners []ListenFunc
 }
 
-func NewValue(ctx context.Context, name string, defaultValue interface{}, updateFn UpdateFunc) Value {
+func NewValue(ctx context.Context, name string, defaultValue any, updateFn UpdateFunc) Value {
 	value := &liveValue{
 		mutex:     &sync.RWMutex{},
 		name:      name,
@@ -47,7 +47,7 @@ func NewValue(ctx context.Context, name string, defaultValue interface{}, update
 	return value
 }
 
-func (self *liveValue) Set(ctx context.Context, value interface{}) bool {
+func (self *liveValue) Set(ctx context.Context, value any) bool {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
@@ -68,7 +68,7 @@ func (self *liveValue) Set(ctx context.Context, value interface{}) bool {
 	return false
 }
 
-func (self *liveValue) Value() interface{} {
+func (self *liveValue) Value() any {
 	self.mutex.RLock()
 	defer self.mutex.RUnlock()
 

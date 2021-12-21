@@ -25,7 +25,7 @@ type errorResponse struct {
 
 type myErrorHandler struct{}
 
-func (self myErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, interface{}) {
+func (self myErrorHandler) HandleError(ctx context.Context, httpStatus int, err error) (int, any) {
 	return httpStatus, errorResponse{
 		Message: fmt.Sprintf("%v", err),
 	}
@@ -169,7 +169,7 @@ func createTestEndpoint() *endpoint.Endpoint {
 		MimeTypeHandlers: map[string]*endpoint.MimeTypeHandler{
 			"application/json": endpoint.JsonHandler(),
 		},
-		Resources: map[string]interface{}{
+		Resources: map[string]any{
 			"db": &dbClient,
 		},
 	}
@@ -186,7 +186,7 @@ func createDefaultTestEndpoint() *endpoint.Endpoint {
 	}
 
 	config := &endpoint.Config{
-		Resources: map[string]interface{}{
+		Resources: map[string]any{
 			"db": &dbClient,
 		},
 	}

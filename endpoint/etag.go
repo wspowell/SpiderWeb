@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	noCache = "no-cache"
-	comma   = ","
-	any     = "*"
+	noCache  = "no-cache"
+	comma    = ","
+	anything = "*"
 )
 
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
@@ -89,7 +89,7 @@ func trimTags(tags [][]byte) [][]byte {
 
 func checkEtagNoneMatch(etagsToNoneMatch [][]byte, eTagValue []byte) bool {
 	for _, etagToNoneMatch := range etagsToNoneMatch {
-		if bytes.Equal(etagToNoneMatch, []byte(any)) || bytes.Equal(etagToNoneMatch, eTagValue) {
+		if bytes.Equal(etagToNoneMatch, []byte(anything)) || bytes.Equal(etagToNoneMatch, eTagValue) {
 			return true
 		}
 	}
@@ -99,7 +99,7 @@ func checkEtagNoneMatch(etagsToNoneMatch [][]byte, eTagValue []byte) bool {
 
 func checkEtagMatch(etagsToMatch [][]byte, eTagValue []byte) bool {
 	for _, etagToMatch := range etagsToMatch {
-		if bytes.Equal(etagToMatch, []byte(any)) {
+		if bytes.Equal(etagToMatch, []byte(anything)) {
 			return false
 		}
 

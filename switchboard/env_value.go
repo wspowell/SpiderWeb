@@ -16,7 +16,7 @@ package switchboard
 // 	*LiveValue
 // }
 
-// func NewEnvValue(ctx context.Context, name string, defaultValue interface{}, updateInterval time.Duration) *EnvValue {
+// func NewEnvValue(ctx context.Context, name string, defaultValue any, updateInterval time.Duration) *EnvValue {
 // 	os.Setenv(name, fmt.Sprintf("%v", defaultValue))
 
 // 	envValue := &EnvValue{

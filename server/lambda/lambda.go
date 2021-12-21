@@ -3,7 +3,7 @@ package lambda
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 

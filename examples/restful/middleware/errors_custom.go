@@ -31,7 +31,7 @@ type ErrorJsonWithCodeResponse struct {
 	Message      string `json:"message"`
 }
 
-func (self ErrorJsonWithCodeResponse) HandleError(ctx context.Context, httpStatus int, err error) (int, interface{}) {
+func (self ErrorJsonWithCodeResponse) HandleError(ctx context.Context, httpStatus int, err error) (int, any) {
 	var myErr ErrorWithCodes
 	if errors.As(err, &myErr) {
 		return httpStatus, ErrorJsonWithCodeResponse{

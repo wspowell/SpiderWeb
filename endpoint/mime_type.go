@@ -13,8 +13,8 @@ const (
 	mimeTypeSeparator = ";"
 )
 
-type Marshaler func(v interface{}) ([]byte, error)
-type Unmarshaler func(data []byte, v interface{}) error
+type Marshaler func(v any) ([]byte, error)
+type Unmarshaler func(data []byte, v any) error
 
 type MimeTypeHandlers map[string]*MimeTypeHandler
 
@@ -62,10 +62,10 @@ func JsonHandler() *MimeTypeHandler {
 	}
 }
 
-func jsonMarshal(value interface{}) ([]byte, error) {
+func jsonMarshal(value any) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func jsonUnmarshal(data []byte, value interface{}) error {
+func jsonUnmarshal(data []byte, value any) error {
 	return json.Unmarshal(data, value)
 }

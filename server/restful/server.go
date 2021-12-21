@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/fasthttp/router"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/valyala/fasthttp"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
