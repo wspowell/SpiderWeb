@@ -3,59 +3,59 @@ package route
 import (
 	"net/http"
 
-	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/handler"
 )
 
 type Route struct {
 	HttpMethod string
 	Path       string
-	Handler    endpoint.Handler
+	Run        handler.Runner
 }
 
-func New(httpMethod string, path string, handler endpoint.Handler) Route {
+func New(httpMethod string, path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: httpMethod,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }
 
-func Get(path string, handler endpoint.Handler) Route {
+func Get(path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: http.MethodGet,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }
 
-func Post(path string, handler endpoint.Handler) Route {
+func Post(path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: http.MethodPost,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }
 
-func Put(path string, handler endpoint.Handler) Route {
+func Put(path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: http.MethodPut,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }
 
-func Patch(path string, handler endpoint.Handler) Route {
+func Patch(path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: http.MethodPatch,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }
 
-func Delete(path string, handler endpoint.Handler) Route {
+func Delete(path string, run handler.Runner) Route {
 	return Route{
 		HttpMethod: http.MethodDelete,
 		Path:       path,
-		Handler:    handler,
+		Run:        run,
 	}
 }

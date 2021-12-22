@@ -12,6 +12,7 @@ require (
 	github.com/wspowell/context v0.0.7
 	github.com/wspowell/errors v0.3.0
 	github.com/wspowell/log v0.0.9
+	golang.org/x/tools v0.1.7
 )
 
 require (
@@ -25,6 +26,7 @@ require (
 	github.com/savsgio/gotils v0.0.0-20210907153846-c06938798b52 // indirect
 	github.com/stretchr/objx v0.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )

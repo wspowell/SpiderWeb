@@ -35,6 +35,7 @@ type Requester interface {
 
 	SetResponseHeader(header string, value string)
 	SetResponseContentType(contentType string)
+
 	ResponseContentType() string
 	ResponseHeaders() map[string]string
 }

@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/fasthttp/router"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/valyala/fasthttp"
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/mime"
 	"github.com/wspowell/spiderweb/server/route"
 )
 
@@ -40,7 +41,8 @@ type Server struct {
 	server *fasthttp.Server
 	router *router.Router
 
-	routes map[string]*endpoint.Endpoint
+	mimeTypes map[string]mime.Handler
+	routes    map[string]handler.Runner
 
 	serverContext    context.Context
 	shutdownComplete <-chan bool
@@ -95,7 +97,10 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		server: httpServer,
 		router: restfulRouter,
 
-		routes: map[string]*endpoint.Endpoint{},
+		mimeTypes: map[string]mime.Handler{
+			"application/json": &mime.Json{},
+		},
+		routes: map[string]handler.Runner{},
 
 		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
@@ -122,7 +127,7 @@ func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endp
 // Handle the given route to the provided endpoint handler.
 // This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
 func (self *Server) Handle(endpointConfig *endpoint.Config, routeDefinition route.Route) {
-	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, routeDefinition.HttpMethod, routeDefinition.Path, routeDefinition.Handler)
+	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, routeDefinition.HttpMethod, routeDefinition.Path, routeDefinition.Run)
 	self.router.Handle(routeDefinition.HttpMethod, routeDefinition.Path, wrappedHandler)
 }
 
@@ -196,21 +201,22 @@ func (self *Server) listenForever() {
 	log.Info(self.serverContext, "server stopped")
 }
 
-func (self *Server) Endpoint(httpMethod string, path string) *endpoint.Endpoint {
+func (self *Server) Endpoint(httpMethod string, path string) any {
 	return self.routes[path+" "+httpMethod]
 }
 
-func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, handler endpoint.Handler) fasthttp.RequestHandler {
-	routeEndpoint := endpoint.NewEndpoint(self.serverContext, endpointConfig, handler)
-	self.routes[path+" "+httpMethod] = routeEndpoint
+func (server *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, run handler.Runner) fasthttp.RequestHandler {
+	//routeEndpoint := endpoint.NewEndpoint(self.serverContext, endpointConfig, handler)
+	server.routes[path+" "+httpMethod] = run
 
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
-		span, ctx := opentracing.StartSpanFromContextWithTracer(requestCtx, routeEndpoint.Config.Tracer, string(requestCtx.Method())+" "+matchedPath(requestCtx))
-		defer span.Finish()
+		// span, ctx := opentracing.StartSpanFromContextWithTracer(requestCtx, routeEndpoint.Config.Tracer, string(requestCtx.Method())+" "+matchedPath(requestCtx))
+		// defer span.Finish()
+		ctx := context.Localize(requestCtx)
 
-		httpStatus, responseBody := routeEndpoint.Execute(ctx, newFasthttpRequester(requestCtx))
+		httpStatus, responseBody := run(ctx, newFasthttpRequester(requestCtx), server.mimeTypes)
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)

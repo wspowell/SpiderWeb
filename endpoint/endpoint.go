@@ -462,3 +462,83 @@ func ShouldContinue(ctx context.Context) bool {
 
 	return !(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }
+
+type Value[T any] struct {
+	Value T
+}
+
+func (self *Value[T]) Set(value T) {
+	self.Value = value
+}
+
+type Getter[T any] interface {
+	Get() T
+}
+
+type AnyGetter[T any] interface {
+	any
+	Getter[T]
+}
+
+type Resource[T any] struct {
+	Value T
+}
+
+// func (self Resource[T]) isInterface() bool {
+// 	return reflect.TypeOf(self.value).Kind() == reflect.Interface
+// }
+
+type Body[T any] struct {
+	value     T
+	MimeTypes MimeTypeHandlers
+}
+
+type ReqBody[T any] struct {
+	RequestBody T
+}
+
+func (self *ReqBody[T]) GetRequestBody() any {
+	return &self.RequestBody
+}
+
+type ResBody[T any] struct {
+	ResponseBody T
+}
+
+func (self *ResBody[T]) GetResponseBody() any {
+	return &self.ResponseBody
+}
+
+type Definition[Req any, Res any] struct {
+	RequestBody  Body[Req]
+	ResponseBody Body[Res]
+}
+
+type Auth[T any] struct {
+	AuthedUser T
+}
+
+type QueryParam[V any] struct {
+	Key   string
+	Value V
+}
+
+type EndpointHandler[Req any, Res any] struct {
+	RequestBody  Req
+	ResponseBody Res
+	QueryParams  []any
+}
+
+func WithQueryParam[Req any, Res any, V any](handler *EndpointHandler[Req, Res], key string, defaultValue V) {
+	queryParam := QueryParam[V]{
+		Key:   key,
+		Value: defaultValue,
+	}
+	handler.QueryParams = append(handler.QueryParams, queryParam)
+}
+
+type FnHandler[Req any, Res any] func(ctx context.Context, endpoint EndpointHandler[Req, Res])
+
+type Expected[P any, T any] func(P) Expected[P, T]
+
+type With[T any] func(T)
