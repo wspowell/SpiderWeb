@@ -3,6 +3,7 @@ package response_test
 import (
 	gohttp "net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
@@ -36,7 +37,7 @@ func Test_handleETag(t *testing.T) {
 	testCases := []struct {
 		description             string
 		clientHeaders           map[string]string
-		maxAgeSeconds           int
+		maxAgeSeconds           time.Duration
 		httpStatus              int
 		expectedResponseHeaders map[string]string
 		expectedHttpStatus      int
@@ -45,7 +46,7 @@ func Test_handleETag(t *testing.T) {
 		{
 			description:             "non-success, no cache",
 			clientHeaders:           map[string]string{},
-			maxAgeSeconds:           0,
+			maxAgeSeconds:           0 * time.Second,
 			httpStatus:              httpstatus.BadRequest,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      httpstatus.BadRequest,
@@ -54,7 +55,7 @@ func Test_handleETag(t *testing.T) {
 		{
 			description:             "no client headers, no max age, no etag",
 			clientHeaders:           map[string]string{},
-			maxAgeSeconds:           0,
+			maxAgeSeconds:           0 * time.Second,
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
@@ -65,7 +66,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfNoneMatch: cachedETag,
 			},
-			maxAgeSeconds: 0,
+			maxAgeSeconds: 0 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag: cachedETag,
@@ -79,7 +80,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.IfNoneMatch:  cachedETag,
 				httpheader.CacheControl: "no-cache",
 			},
-			maxAgeSeconds:           0,
+			maxAgeSeconds:           0 * time.Second,
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
@@ -90,7 +91,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfNoneMatch: uncachedETag,
 			},
-			maxAgeSeconds: 0,
+			maxAgeSeconds: 0 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag: cachedETag,
@@ -103,7 +104,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfNoneMatch: cachedETag,
 			},
-			maxAgeSeconds: 300,
+			maxAgeSeconds: 300 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag:         cachedETag,
@@ -118,7 +119,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.IfNoneMatch:  cachedETag,
 				httpheader.CacheControl: "no-cache",
 			},
-			maxAgeSeconds:           300,
+			maxAgeSeconds:           300 * time.Second,
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
@@ -129,7 +130,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfNoneMatch: uncachedETag,
 			},
-			maxAgeSeconds: 300,
+			maxAgeSeconds: 300 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag:         cachedETag,
@@ -144,7 +145,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfMatch: cachedETag,
 			},
-			maxAgeSeconds: 0,
+			maxAgeSeconds: 0 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag: cachedETag,
@@ -158,7 +159,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.IfMatch:      cachedETag,
 				httpheader.CacheControl: "no-cache",
 			},
-			maxAgeSeconds:           0,
+			maxAgeSeconds:           0 * time.Second,
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
@@ -169,7 +170,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfMatch: uncachedETag,
 			},
-			maxAgeSeconds: 0,
+			maxAgeSeconds: 0 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag: cachedETag,
@@ -182,7 +183,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfMatch: cachedETag,
 			},
-			maxAgeSeconds: 300,
+			maxAgeSeconds: 300 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag:         cachedETag,
@@ -197,7 +198,7 @@ func Test_handleETag(t *testing.T) {
 				httpheader.IfMatch:      cachedETag,
 				httpheader.CacheControl: "no-cache",
 			},
-			maxAgeSeconds:           300,
+			maxAgeSeconds:           300 * time.Second,
 			httpStatus:              uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{},
 			expectedHttpStatus:      uncachedHttpStatus,
@@ -208,7 +209,7 @@ func Test_handleETag(t *testing.T) {
 			clientHeaders: map[string]string{
 				httpheader.IfMatch: uncachedETag,
 			},
-			maxAgeSeconds: 300,
+			maxAgeSeconds: 300 * time.Second,
 			httpStatus:    uncachedHttpStatus,
 			expectedResponseHeaders: map[string]string{
 				httpheader.ETag:         cachedETag,

@@ -1,34 +1,22 @@
 package api
 
 import (
-	"time"
-
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/examples/restful/api/resources"
-	"github.com/wspowell/spiderweb/examples/restful/middleware"
 	"github.com/wspowell/spiderweb/examples/restful/resources/db"
+	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/server/restful"
 )
 
 func Routes(custom *restful.Server) {
-	endpointConfig := &endpoint.Config{
-		ErrorHandler:      middleware.ErrorJsonWithCodeResponse{},
-		LogConfig:         log.NewConfig().WithLevel(log.LevelDebug),
-		MimeTypeHandlers:  endpoint.NewMimeTypeHandlers(),
-		RequestValidator:  middleware.ValidateNoopRequest{},
-		ResponseValidator: middleware.ValidateNoopResponse{},
-		Resources: map[string]any{
-			"datastore": db.NewDatabase(),
-		},
-		Timeout: 30 * time.Second,
-	}
+	database := db.NewDatabase()
 
-	custom.HandleNotFound(endpointConfig, &noRoute{})
-	resources.Routes(custom, endpointConfig)
+	custom.HandleNotFound(handler.NewHandle(noRoute{}).
+		WithLogConfig(log.NewConfig().WithLevel(log.LevelDebug)))
+	resources.Routes(custom, database)
 }
 
 type noRoute struct{}

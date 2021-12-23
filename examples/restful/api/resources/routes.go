@@ -1,17 +1,19 @@
 package resources
 
 import (
-	"github.com/wspowell/log"
+	"time"
 
-	"github.com/wspowell/spiderweb/endpoint"
+	"github.com/wspowell/spiderweb/examples/restful/middleware"
+	"github.com/wspowell/spiderweb/examples/restful/resources"
+	"github.com/wspowell/spiderweb/handler"
+	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/server/restful"
-	"github.com/wspowell/spiderweb/server/route"
 )
 
-func Routes(custom *restful.Server, config *endpoint.Config) {
-	getConfig := config
-	getConfig.LogConfig = log.NewConfig().WithLevel(log.LevelDebug)
-
-	custom.Handle(config, route.Post("/resources", &postResource{}))
-	custom.Handle(getConfig, route.Get("/resources/{id}", &getResource{}))
+func Routes(custom *restful.Server, database resources.Datastore) {
+	custom.Handle(httpmethod.Post, "/resources", handler.NewHandle(postResource{}).
+		WithErrorResponse(middleware.AllErrorsTeapot))
+	custom.Handle(httpmethod.Get, "/resources/{id}", handler.NewHandle(getResource{
+		Db: database,
+	}).WithETag(30*time.Second))
 }

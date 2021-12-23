@@ -13,10 +13,12 @@ import (
 )
 
 func Benchmark_Endpoint_Default_Success(b *testing.B) {
-	handle := handler.NewHandle(testHandler{})
+	handle := handler.NewHandle(testHandler{}).
+		WithLogConfig(log.NewConfig().WithLevel(log.LevelFatal))
 
 	ctx := context.Background()
-	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelFatal))
+
+	runner := handle.Runner()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -35,16 +37,18 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 
 		for pb.Next() {
 			ctx := context.Localize(ctx)
-			handle.Run(ctx, requester)
+			runner.Run(ctx, requester)
 		}
 	})
 }
 
 func Benchmark_Endpoint_Default_Error(b *testing.B) {
-	handle := handler.NewHandle(testHandler{})
+	handle := handler.NewHandle(testHandler{}).
+		WithLogConfig(log.NewConfig().WithLevel(log.LevelFatal))
 
 	ctx := context.Background()
-	log.WithContext(ctx, log.NewConfig().WithLevel(log.LevelFatal))
+
+	runner := handle.Runner()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -63,7 +67,7 @@ func Benchmark_Endpoint_Default_Error(b *testing.B) {
 
 		for pb.Next() {
 			ctx := context.Localize(ctx)
-			handle.Run(ctx, requester)
+			runner.Run(ctx, requester)
 		}
 	})
 }

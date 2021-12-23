@@ -3,12 +3,9 @@ package lambda
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
-	"github.com/wspowell/log"
 
-	"github.com/wspowell/spiderweb/endpoint"
-	"github.com/wspowell/spiderweb/server/route"
+	"github.com/wspowell/spiderweb/handler"
 )
 
 // FIXME: Should be able to handle any event, not just API Gateway.
@@ -16,24 +13,19 @@ import (
 type HandlerAPIGateway func(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error)
 
 type Lambda struct {
-	endpointConfig *endpoint.Config
-	matchedPath    string
-	routeEndpoint  *endpoint.Endpoint
+	matchedPath string
+	handle      *handler.Handle
 }
 
-func New(endpointConfig *endpoint.Config, routeDefinition route.Route) *Lambda {
-	ctx := context.Background()
-	log.WithContext(ctx, endpointConfig.LogConfig)
-
+func New(path string, handle *handler.Handle) *Lambda {
 	return &Lambda{
-		endpointConfig: endpointConfig,
-		matchedPath:    routeDefinition.Path,
-		routeEndpoint:  endpoint.NewEndpoint(ctx, endpointConfig, routeDefinition.Handler),
+		matchedPath: path,
+		handle:      handle,
 	}
 }
 
 func (self *Lambda) Start() {
-	wrappedHandler := self.wrapLambdaHandler(self.routeEndpoint)
+	wrappedHandler := self.wrapLambdaHandler(self.handle.Runner())
 
 	lambda.Start(wrappedHandler)
 }
@@ -48,21 +40,21 @@ func (self *Lambda) Start() {
 
 // }
 
-func (self *Lambda) wrapLambdaHandler(routeEndpoint *endpoint.Endpoint) HandlerAPIGateway {
+func (self *Lambda) wrapLambdaHandler(runner *handler.Runner) HandlerAPIGateway {
 	return func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-		span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, routeEndpoint.Config.Tracer, request.HTTPMethod+" "+self.matchedPath)
-		defer span.Finish()
+		// span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, handle.Config.Tracer, request.HTTPMethod+" "+self.matchedPath)
+		// defer span.Finish()
 
 		response := events.APIGatewayProxyResponse{}
 		requester := NewApiGatewayRequester(self.matchedPath, &request)
 
-		ctx, cancel := context.WithTimeout(ctx, self.endpointConfig.Timeout)
+		ctx, cancel := context.WithTimeout(ctx, runner.Timeout())
 		go func() {
 			<-ctx.Done()
 			cancel()
 		}()
 
-		httpStatus, responseBody := routeEndpoint.Execute(ctx, requester)
+		httpStatus, responseBody := runner.Run(ctx, requester)
 
 		response.Body = string(responseBody)
 		response.StatusCode = httpStatus

@@ -6,14 +6,24 @@ import (
 	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 
+	"github.com/wspowell/spiderweb/body"
+	"github.com/wspowell/spiderweb/examples/restful/resources"
 	"github.com/wspowell/spiderweb/profiling"
+	"github.com/wspowell/spiderweb/request"
 )
 
 type getResource struct {
-	Test         string
-	Db           Datastore            `spiderweb:"resource=datastore"`
-	ResourceId   int                  `spiderweb:"path=id"`
-	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate,etag"`
+	body.Response[MyResponseBodyModel]
+	ResourceId   int
+	ResponseBody *MyResponseBodyModel
+
+	Db resources.Datastore
+}
+
+func (self *getResource) PathParameters() []request.Parameter {
+	return []request.Parameter{
+		request.NewParam("id", &self.ResourceId),
+	}
 }
 
 func (self *getResource) Handle(ctx context.Context) (int, error) {
@@ -32,11 +42,7 @@ func (self *getResource) Handle(ctx context.Context) (int, error) {
 	return http.StatusOK, nil
 }
 
-type Datastore interface {
-	RetrieveValue() string
-}
-
-var _ Datastore = (*Database)(nil)
+var _ resources.Datastore = (*Database)(nil)
 
 type Database struct{}
 

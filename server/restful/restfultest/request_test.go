@@ -11,7 +11,7 @@ import (
 func Test_RouteNotFound(t *testing.T) {
 	t.Parallel()
 
-	restfultest.TestCase(Routes(), "Route not found").
+	restfultest.TestCase(RoutesTest(nil), "Route not found").
 		GivenRequest(http.MethodPost, "/not_found").
 		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusNotFound).
@@ -22,7 +22,7 @@ func Test_RouteNotFound(t *testing.T) {
 func Test_POST_sample(t *testing.T) {
 	t.Parallel()
 
-	restfultest.TestCase(Routes(), "Success POST /sample").
+	restfultest.TestCase(RoutesTest(nil), "Success POST /sample").
 		GivenRequest(http.MethodPost, "/sample").
 		WithRequestBody("application/json", []byte(`{"myString": "hello","myInt": 5}`)).
 		ExpectResponse(http.StatusCreated).
@@ -35,7 +35,7 @@ func Test_POST_sample_id_34(t *testing.T) {
 
 	dbMock := &test.MockDatastore{}
 	dbMock.On("RetrieveValue").Return("test")
-	restfultest.TestCase(Routes(), "Success GET /sample/{id}").
+	restfultest.TestCase(RoutesTest(dbMock), "Success GET /sample/{id}").
 		GivenRequest(http.MethodGet, "/sample/{id}").
 		WithPathParam("id", "34").
 		WithResourceMock("datastore", dbMock).
@@ -48,9 +48,10 @@ func Test_resource_not_mocked(t *testing.T) {
 	t.Parallel()
 
 	// Not mocked, so it returns 500.
-	restfultest.TestCase(Routes(), "Failure, not mocked").
+	restfultest.TestCase(RoutesTest(nil), "Failure, not mocked").
 		GivenRequest(http.MethodGet, "/sample/{id}").
+		WithPathParam("id", "34").
 		ExpectResponse(http.StatusInternalServerError).
-		WithResponseBody("application/json", []byte(`{"message":"internal server error"}`)).
+		WithResponseBody("application/json", []byte(`{"error":"internal server error"}`)).
 		Run(t)
 }

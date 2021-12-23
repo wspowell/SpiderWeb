@@ -95,10 +95,10 @@ func Test_foo(t *testing.T) {
 
 	handle := handler.NewHandle(handlerStruct)
 
-	statusCode, responseBytes := handle.Run(ctx, request)
+	statusCode, responseBytes := handle.Runner().Run(ctx, request)
 	fmt.Println(statusCode, string(responseBytes))
 
-	statusCode, responseBytes = handle.Run(ctx, request)
+	statusCode, responseBytes = handle.Runner().Run(ctx, request)
 	fmt.Println(statusCode, string(responseBytes))
 
 	assert.Equal(t, handlerStructCopy, handlerStruct)

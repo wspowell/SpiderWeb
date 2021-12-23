@@ -40,7 +40,7 @@ type Server struct {
 	router *router.Router
 
 	mimeTypes map[string]mime.Handler
-	routes    map[string]*handler.Handle
+	routes    map[string]*handler.Runner
 
 	serverContext    context.Context
 	shutdownComplete <-chan bool
@@ -99,7 +99,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		mimeTypes: map[string]mime.Handler{
 			"application/json": &mime.Json{},
 		},
-		routes: map[string]*handler.Handle{},
+		routes: map[string]*handler.Runner{},
 
 		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
@@ -107,7 +107,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 }
 
 func (self *Server) HandleNotFound(handler *handler.Handle) {
-	requestHandler := self.wrapFasthttpHandler(handler)
+	requestHandler := self.wrapFasthttpHandler(handler.Runner())
 
 	self.router.NotFound = requestHandler
 }
@@ -119,8 +119,9 @@ func (self *Server) Handle(httpMethod string, path string, handle *handler.Handl
 	handle.WithMimeTypes(self.mimeTypes)
 	handle.WithLogConfig(self.serverConfig.LogConfig)
 
-	self.routes[path+" "+httpMethod] = handle
-	wrappedHandler := self.wrapFasthttpHandler(handle)
+	runner := handle.Runner()
+	self.routes[path+" "+httpMethod] = runner
+	wrappedHandler := self.wrapFasthttpHandler(runner)
 	self.router.Handle(httpMethod, path, wrappedHandler)
 }
 
@@ -194,11 +195,11 @@ func (self *Server) listenForever() {
 	log.Info(self.serverContext, "server stopped")
 }
 
-func (self *Server) Handler(httpMethod string, path string) *handler.Handle {
+func (self *Server) Handler(httpMethod string, path string) *handler.Runner {
 	return self.routes[path+" "+httpMethod]
 }
 
-func (self *Server) wrapFasthttpHandler(handle *handler.Handle) fasthttp.RequestHandler {
+func (self *Server) wrapFasthttpHandler(runner *handler.Runner) fasthttp.RequestHandler {
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
 	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
@@ -207,7 +208,7 @@ func (self *Server) wrapFasthttpHandler(handle *handler.Handle) fasthttp.Request
 
 		ctx := context.Localize(requestCtx)
 
-		httpStatus, responseBody := handle.Run(ctx, newFasthttpRequester(requestCtx))
+		httpStatus, responseBody := runner.Run(ctx, newFasthttpRequester(requestCtx))
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)
@@ -215,5 +216,5 @@ func (self *Server) wrapFasthttpHandler(handle *handler.Handle) fasthttp.Request
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.
 		requestCtx.Response.SetConnectionClose()
-	}, handle.Timeout(), "", httpstatus.RequestTimeout)
+	}, runner.Timeout(), "", httpstatus.RequestTimeout)
 }

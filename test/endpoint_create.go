@@ -8,26 +8,42 @@ import (
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
 
+	"github.com/wspowell/spiderweb/body"
 	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/mime"
 	"github.com/wspowell/spiderweb/profiling"
+	"github.com/wspowell/spiderweb/request"
 )
 
 type CreateRequest struct {
+	mime.Json
+
 	MyString   string `json:"myString"`
 	MyInt      int    `json:"myInt"`
 	ShouldFail bool   `json:"shouldFail"`
 }
 
 type CreateResponse struct {
+	mime.Json
+
 	OutputString string `json:"outputString"`
 	OutputInt    int    `json:"outputInt"`
 }
 
+type createQueryParams struct {
+	ForBench bool
+}
+
+func (self *createQueryParams) QueryParameters() []request.Parameter {
+	return []request.Parameter{
+		request.NewParam("for_bench", &self.ForBench),
+	}
+}
+
 type Create struct {
-	Test         string
-	ForBench     bool            `spiderweb:"query=for_bench"`
-	RequestBody  *CreateRequest  `spiderweb:"request,mime=application/json,validate"`
-	ResponseBody *CreateResponse `spiderweb:"response,mime=application/json,validate"`
+	body.Request[CreateRequest]
+	body.Response[CreateResponse]
+	createQueryParams
 }
 
 func (self *Create) Handle(ctx context.Context) (int, error) {
@@ -43,7 +59,7 @@ func (self *Create) Handle(ctx context.Context) (int, error) {
 		saveResource(ctx)
 	}
 
-	self.ResponseBody = &CreateResponse{
+	self.ResponseBody = CreateResponse{
 		OutputString: self.RequestBody.MyString,
 		OutputInt:    self.RequestBody.MyInt,
 	}

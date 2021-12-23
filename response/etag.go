@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strconv"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/wspowell/context"
@@ -23,7 +24,7 @@ const (
 
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
 // If the cache is fresh and a success case with non-empty body, this will return 304 Not Modified with an empty body.
-func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds int, httpStatus int, responseBody []byte) (int, []byte) {
+func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds time.Duration, httpStatus int, responseBody []byte) (int, []byte) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
 	defer span.Finish()
 
@@ -51,7 +52,7 @@ func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds 
 	requester.SetResponseHeader(httpheader.ETag, eTagValue)
 	if maxAgeSeconds != 0 {
 		log.Trace(ctx, "etag max age seconds: %v", maxAgeSeconds)
-		requester.SetResponseHeader(httpheader.CacheControl, "max-age="+strconv.Itoa(maxAgeSeconds))
+		requester.SetResponseHeader(httpheader.CacheControl, "max-age="+strconv.Itoa(int(maxAgeSeconds.Seconds())))
 	} else {
 		log.Trace(ctx, "etag max age: indefinite")
 	}

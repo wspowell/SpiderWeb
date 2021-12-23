@@ -9,13 +9,13 @@ import (
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
 
+	"github.com/wspowell/spiderweb/body"
 	"github.com/wspowell/spiderweb/profiling"
 )
 
 type postResource struct {
-	Test         string
-	RequestBody  *MyRequestBodyModel  `spiderweb:"request,mime=application/json,validate"`
-	ResponseBody *MyResponseBodyModel `spiderweb:"response,mime=application/json,validate"`
+	body.Request[MyRequestBodyModel]
+	body.Response[MyResponseBodyModel]
 }
 
 func (self *postResource) Handle(ctx context.Context) (int, error) {
@@ -28,7 +28,7 @@ func (self *postResource) Handle(ctx context.Context) (int, error) {
 
 	saveResource(ctx)
 
-	self.ResponseBody = &MyResponseBodyModel{
+	self.ResponseBody = MyResponseBodyModel{
 		MyString: self.RequestBody.MyString,
 		MyInt:    self.RequestBody.MyInt,
 	}
