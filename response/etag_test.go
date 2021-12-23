@@ -1,4 +1,4 @@
-package endpoint_test
+package response_test
 
 import (
 	gohttp "net/http"
@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
 
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/request"
+	"github.com/wspowell/spiderweb/response"
 )
 
 const (
@@ -224,17 +225,17 @@ func Test_handleETag(t *testing.T) {
 
 			ctx := context.Background()
 
-			request, err := gohttp.NewRequestWithContext(ctx, httpmethod.Get, "/", nil)
+			req, err := gohttp.NewRequestWithContext(ctx, httpmethod.Get, "/", nil)
 			assert.Nil(t, err)
 
 			for key, value := range testCase.clientHeaders {
-				request.Header[key] = []string{value}
+				req.Header[key] = []string{value}
 			}
 
-			requester, err := endpoint.NewHttpRequester("/", request)
+			requester, err := request.NewHttpRequester("/", req)
 			assert.Nil(t, err)
 
-			httpStatus, responseBody := endpoint.HandleETag(ctx, requester, testCase.maxAgeSeconds, testCase.httpStatus, uncachedResponse())
+			httpStatus, responseBody := response.HandleETag(ctx, requester, testCase.maxAgeSeconds, testCase.httpStatus, uncachedResponse())
 
 			responseHeaders := requester.ResponseHeaders()
 			for key, expectedValue := range testCase.expectedResponseHeaders {

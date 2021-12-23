@@ -4,6 +4,11 @@ import (
 	"github.com/wspowell/errors"
 )
 
+const (
+	MimeTypeJson      = "application/json"
+	MimeTypeTextPlain = "text/plain"
+)
+
 var (
 	ErrNotSupported = errors.New("mime type not supported")
 	ErrMarshal      = errors.New("mime type could not be marshaled")

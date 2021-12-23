@@ -12,7 +12,6 @@ import (
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/body"
-	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/httpstatus"
@@ -143,19 +142,9 @@ func routes() *restful.Server {
 }
 
 func sampleRoutes(sample *restful.Server) {
-	config := &endpoint.Config{
-		LogConfig: &test.NoopLogConfig{
-			Config: log.NewConfig().WithLevel(log.LevelFatal),
-		},
-		Resources: map[string]any{
-			"datastore": &test.Database{},
-		},
-		Timeout: 30 * time.Second,
-	}
-
-	sample.HandleNotFound(config, &test.NoRoute{})
-	sample.Handle(config, httpmethod.Post, "/sample", handler.NewHandle(testCreate{}))
-	sample.Handle(config, httpmethod.Get, "/sample/{id}", handler.NewHandle(testGet{
+	sample.HandleNotFound(handler.NewHandle(test.NoRoute{}))
+	sample.Handle(httpmethod.Post, "/sample", handler.NewHandle(testCreate{}))
+	sample.Handle(httpmethod.Get, "/sample/{id}", handler.NewHandle(testGet{
 		Db: &test.Database{},
 	}))
 }

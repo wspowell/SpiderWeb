@@ -1,4 +1,4 @@
-package endpoint
+package response
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/httpheader"
+	"github.com/wspowell/spiderweb/request"
 )
 
 const (
@@ -22,7 +23,7 @@ const (
 
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
 // If the cache is fresh and a success case with non-empty body, this will return 304 Not Modified with an empty body.
-func HandleETag(ctx context.Context, requester Requester, maxAgeSeconds int, httpStatus int, responseBody []byte) (int, []byte) {
+func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds int, httpStatus int, responseBody []byte) (int, []byte) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
 	defer span.Finish()
 
