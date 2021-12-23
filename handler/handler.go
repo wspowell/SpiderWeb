@@ -10,95 +10,119 @@ import (
 	"github.com/wspowell/spiderweb/request"
 )
 
-type Handler[T any] interface {
+type HandlerValue[T any] interface {
 	*T // Essentially forces any Handler to be a value rather than a reference.
+	Handler
+}
+
+type Handler interface {
 	body.Responder
 	Handle(ctx context.Context) (int, error)
 }
 
-type Runner func(ctx context.Context, request endpoint.Requester, mimeTypes map[string]mime.Handler) (int, []byte)
+type Handle struct {
+	newHandler    func() Handler
+	mimeTypes     map[string]mime.Handler
+	errorResponse ErrorResponse
+}
 
-func New[T any, H Handler[T]](handler T) Runner {
-	return func(ctx context.Context, request endpoint.Requester, mimeTypes map[string]mime.Handler) (int, []byte) {
-		var err error
-
-		// Allocate a new handler object.
-		handlerCopy := handler             // Copies the Handler. Since it is contrained to be a *T, this SHOULD be a value, not a reference.
-		handlerInstance := H(&handlerCopy) // Cast to a Handler.
-
-		if asBodyRequester, ok := any(handlerInstance).(body.Requester); ok {
-			if err = ProcessRequest(request, asBodyRequester, mimeTypes); err != nil {
-				return httpstatus.InternalServerError, errorToBytes(err)
-			}
-		}
-
-		if err = ProcessParameters(request, handlerInstance); err != nil {
-			return httpstatus.InternalServerError, errorToBytes(err)
-		}
-
-		// Run the endpoint
-		var statusCode int
-		statusCode, err = handlerInstance.Handle(ctx)
-
-		// Handle the response.
-		var responseBytes []byte
-		if responseBytes, err = ProcessResponse(request, handlerInstance, mimeTypes); err != nil {
-			return httpstatus.InternalServerError, errorToBytes(err)
-		}
-
-		return statusCode, responseBytes
+func NewHandle[T any, H HandlerValue[T]](handler T) *Handle {
+	return &Handle{
+		newHandler: func() Handler {
+			// Allocate a new handler object.
+			handlerCopy := handler // Copies the Handler. Since Handler is contrained to be a *T, this SHOULD be a value, not a reference.
+			return H(&handlerCopy) // Cast to a Handler.
+		},
+		mimeTypes: map[string]mime.Handler{
+			"application/json": &mime.Json{},
+		},
+		errorResponse: func(statusCode int, err error) (int, []byte) {
+			return statusCode, []byte(`{"error":"` + err.Error() + `"}`)
+		},
 	}
 }
 
-// FIXME: this needs to be a better handler that formats into a valid body
-func errorToBytes(err error) []byte {
-	return []byte(err.Error())
+func (self *Handle) WithMimeTypes(mimeTypes map[string]mime.Handler) *Handle {
+	for mimeType, mimeTypeHandler := range mimeTypes {
+		if _, exists := self.mimeTypes[mimeType]; !exists {
+			self.mimeTypes[mimeType] = mimeTypeHandler
+		}
+	}
+	return self
 }
 
-type Request struct {
-	Body        []byte
-	ContentType string
-	Accept      string
-	PathParams  map[string]string
-	QueryParams map[string]string
+type ErrorResponse func(statusCode int, err error) (int, []byte)
+
+func (self *Handle) WithErrorResponse(errorResponse ErrorResponse) *Handle {
+	self.errorResponse = errorResponse
+	return self
 }
 
-func ProcessRequest(request endpoint.Requester, e body.Requester, mimeTypes map[string]mime.Handler) error {
-	if mimeTypeHandler, exists := mimeTypes[string(request.ContentType())]; exists {
+func (self *Handle) Run(ctx context.Context, request endpoint.Requester) (int, []byte) {
+	var err error
+	handlerInstance := self.newHandler()
+
+	if asBodyRequester, ok := any(handlerInstance).(body.Requester); ok {
+		if err = self.processRequest(request, asBodyRequester); err != nil {
+			return self.errorResponse(httpstatus.InternalServerError, err)
+		}
+	}
+
+	if err = self.processParameters(request, handlerInstance); err != nil {
+		return self.errorResponse(httpstatus.InternalServerError, err)
+	}
+
+	// Run the endpoint
+	var statusCode int
+	if statusCode, err = handlerInstance.Handle(ctx); err != nil {
+		return self.errorResponse(statusCode, err)
+	}
+
+	// Handle the response.
+	var responseBytes []byte
+	if responseBytes, err = self.processResponse(request, handlerInstance); err != nil {
+		return self.errorResponse(httpstatus.InternalServerError, err)
+	}
+
+	return statusCode, responseBytes
+}
+
+func (self *Handle) processRequest(request endpoint.Requester, e body.Requester) error {
+	if mimeTypeHandler, exists := self.mimeTypes[string(request.ContentType())]; exists {
 		return e.UnmarshalRequestBody(request.RequestBody(), mimeTypeHandler)
 	}
 	return errors.New("Content-Type mime type not supported: %s", request.ContentType) // FIXME: wrap error
 }
 
-func ProcessResponse(request endpoint.Requester, e body.Responder, mimeTypes map[string]mime.Handler) ([]byte, error) {
-	if mimeTypeHandler, exists := mimeTypes[string(request.Accept())]; exists {
+func (self *Handle) processResponse(request endpoint.Requester, e body.Responder) ([]byte, error) {
+	if mimeTypeHandler, exists := self.mimeTypes[string(request.Accept())]; exists {
 		return e.MarshalResponseBody(mimeTypeHandler)
 	}
 	return nil, errors.New("Accept mime type not supported: %s", request.ContentType) // FIXME: wrap error
 }
 
-func ProcessParameters(req endpoint.Requester, e any) error {
-	if asPathParams, ok := e.(interface{ PathParameters() []request.Parameter }); ok {
+func (self *Handle) processParameters(req endpoint.Requester, e any) error {
+	if asPathParams, ok := e.(request.PathParameters); ok {
 		for _, pathParam := range asPathParams.PathParameters() {
-			if pathParamValue, exists := req.PathParam(pathParam.Name()); exists {
+			if pathParamValue, exists := req.PathParam(pathParam.ParamName()); exists {
 				if err := pathParam.SetParam(pathParamValue); err != nil {
 					return err // FIXME: wrap error
 				}
 				continue
 			}
-			return errors.New("request does not have path parameter: %s", pathParam.Name()) // FIXME: wrap error
+			return errors.New("request does not have path parameter: %s", pathParam.ParamName()) // FIXME: wrap error
 		}
 	}
 
-	if asQueryParams, ok := e.(interface{ QueryParameters() []request.Parameter }); ok {
+	if asQueryParams, ok := e.(request.QueryParameters); ok {
 		for _, queryParam := range asQueryParams.QueryParameters() {
-			if queryParamValue, exists := req.QueryParam(queryParam.Name()); exists {
+			if queryParamValue, exists := req.QueryParam(queryParam.ParamName()); exists {
 				if err := queryParam.SetParam(string(queryParamValue)); err != nil {
 					return err // FIXME: wrap error
 				}
 				continue
 			}
-			return errors.New("request does not have path parameter: %s", queryParam.Name()) // FIXME: wrap error
+			return errors.New("request does not have path parameter: %s", queryParam.ParamName()) // FIXME: wrap error
 		}
 	}
 

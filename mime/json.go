@@ -18,7 +18,7 @@ func (self Json) UnmarshalMimeType(data []byte, value any) error {
 		return nil
 	}
 
-	return ErrNotSupported
+	return errors.Wrap(ErrNotSupported, errors.New("mime.Json is not implemented for type '%T'", value))
 }
 
 func (self *Json) UnmarshalMimeTypeJson(data []byte, value any) error {
@@ -36,7 +36,7 @@ func (self Json) MarshalMimeType(value any) ([]byte, error) {
 		return bytes, nil
 	}
 
-	return nil, ErrNotSupported
+	return nil, errors.Wrap(ErrNotSupported, errors.New("mime.Json is not implemented for type '%T'", value))
 }
 
 func (self *Json) MarshalMimeTypeJson(value any) ([]byte, error) {

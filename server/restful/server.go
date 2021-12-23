@@ -20,7 +20,6 @@ import (
 	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/mime"
-	"github.com/wspowell/spiderweb/server/route"
 )
 
 // ServerConfig top level options.
@@ -42,7 +41,7 @@ type Server struct {
 	router *router.Router
 
 	mimeTypes map[string]mime.Handler
-	routes    map[string]handler.Runner
+	routes    map[string]*handler.Handle
 
 	serverContext    context.Context
 	shutdownComplete <-chan bool
@@ -100,7 +99,7 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		mimeTypes: map[string]mime.Handler{
 			"application/json": &mime.Json{},
 		},
-		routes: map[string]handler.Runner{},
+		routes: map[string]*handler.Handle{},
 
 		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
@@ -126,9 +125,10 @@ func (self *Server) HandleNotFound(endpointConfig *endpoint.Config, handler endp
 
 // Handle the given route to the provided endpoint handler.
 // This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
-func (self *Server) Handle(endpointConfig *endpoint.Config, routeDefinition route.Route) {
-	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, routeDefinition.HttpMethod, routeDefinition.Path, routeDefinition.Run)
-	self.router.Handle(routeDefinition.HttpMethod, routeDefinition.Path, wrappedHandler)
+func (self *Server) Handle(endpointConfig *endpoint.Config, httpMethod string, path string, handle *handler.Handle) {
+	handle.WithMimeTypes(self.mimeTypes)
+	wrappedHandler := self.wrapFasthttpHandler(endpointConfig, httpMethod, path, handle)
+	self.router.Handle(httpMethod, path, wrappedHandler)
 }
 
 // newServerContext that will be canceled when the process receives an interrupt.
@@ -201,13 +201,12 @@ func (self *Server) listenForever() {
 	log.Info(self.serverContext, "server stopped")
 }
 
-func (self *Server) Endpoint(httpMethod string, path string) any {
+func (self *Server) Endpoint(httpMethod string, path string) *handler.Handle {
 	return self.routes[path+" "+httpMethod]
 }
 
-func (server *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, run handler.Runner) fasthttp.RequestHandler {
-	//routeEndpoint := endpoint.NewEndpoint(self.serverContext, endpointConfig, handler)
-	server.routes[path+" "+httpMethod] = run
+func (self *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpMethod string, path string, handle *handler.Handle) fasthttp.RequestHandler {
+	self.routes[path+" "+httpMethod] = handle
 
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
@@ -216,7 +215,7 @@ func (server *Server) wrapFasthttpHandler(endpointConfig *endpoint.Config, httpM
 		// defer span.Finish()
 		ctx := context.Localize(requestCtx)
 
-		httpStatus, responseBody := run(ctx, newFasthttpRequester(requestCtx), server.mimeTypes)
+		httpStatus, responseBody := handle.Run(ctx, newFasthttpRequester(requestCtx))
 
 		requestCtx.SetStatusCode(httpStatus)
 		requestCtx.SetBody(responseBody)

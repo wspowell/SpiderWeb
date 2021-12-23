@@ -20,7 +20,6 @@ import (
 	"github.com/wspowell/spiderweb/profiling"
 	"github.com/wspowell/spiderweb/request"
 	"github.com/wspowell/spiderweb/server/restful"
-	"github.com/wspowell/spiderweb/server/route"
 	"github.com/wspowell/spiderweb/test"
 )
 
@@ -45,10 +44,7 @@ type createQueryParams struct {
 
 func (self *createQueryParams) QueryParameters() []request.Parameter {
 	return []request.Parameter{
-		request.Param[bool]{
-			Param: "for_bench",
-			Value: &self.ForBench,
-		},
+		request.NewParam("for_bench", &self.ForBench),
 	}
 }
 
@@ -103,10 +99,7 @@ type getPathParams struct {
 
 func (self *getPathParams) PathParameters() []request.Parameter {
 	return []request.Parameter{
-		request.Param[int]{
-			Param: "id",
-			Value: &self.ResourceId,
-		},
+		request.NewParam("id", &self.ResourceId),
 	}
 }
 
@@ -161,10 +154,10 @@ func sampleRoutes(sample *restful.Server) {
 	}
 
 	sample.HandleNotFound(config, &test.NoRoute{})
-	sample.Handle(config, route.Post("/sample", handler.New(testCreate{})))
-	sample.Handle(config, route.Get("/sample/{id}", handler.New(testGet{
+	sample.Handle(config, httpmethod.Post, "/sample", handler.NewHandle(testCreate{}))
+	sample.Handle(config, httpmethod.Get, "/sample/{id}", handler.NewHandle(testGet{
 		Db: &test.Database{},
-	})))
+	}))
 }
 
 func Benchmark_SpiderWeb_POST_latency(b *testing.B) {

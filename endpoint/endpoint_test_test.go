@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
+	"github.com/wspowell/errors"
 	"github.com/wspowell/spiderweb/body"
 	"github.com/wspowell/spiderweb/endpoint"
 	"github.com/wspowell/spiderweb/handler"
@@ -55,22 +56,22 @@ type testPathParams struct {
 	Param3 bool
 }
 
-func (self *testPathParams) PathParameters() []request.Parameter {
-	return []request.Parameter{
-		request.Param[string]{
-			Param: "param1",
-			Value: &self.Param1,
-		},
-		request.Param[int]{
-			Param: "param2",
-			Value: &self.Param2,
-		},
-		request.Param[bool]{
-			Param: "param3",
-			Value: &self.Param3,
-		},
-	}
-}
+// func (self *testPathParams) PathParameters() []request.Parameter {
+// 	return []request.Parameter{
+// 		request.Param[string]{
+// 			Param: "param1",
+// 			Value: &self.Param1,
+// 		},
+// 		request.Param[int]{
+// 			Param: "param2",
+// 			Value: &self.Param2,
+// 		},
+// 		request.Param[bool]{
+// 			Param: "param3",
+// 			Value: &self.Param3,
+// 		},
+// 	}
+// }
 
 type testQueryParams struct {
 	Param1 string
@@ -78,21 +79,123 @@ type testQueryParams struct {
 	Param3 bool
 }
 
-func (self *testQueryParams) QueryParameters() []request.Parameter {
+// func (self *testQueryParams) QueryParameters() []request.Parameter {
+// 	return []request.Parameter{
+// 		request.Param[string]{
+// 			Param: "param1",
+// 			Value: &self.Param1,
+// 		},
+// 		request.Param[int]{
+// 			Param: "param2",
+// 			Value: &self.Param2,
+// 		},
+// 		request.Param[bool]{
+// 			Param: "param3",
+// 			Value: &self.Param3,
+// 		},
+// 	}
+// }
+
+// func (self *Endpoint) PathParameters() []request.Parameter {
+// 	return []request.Parameter{
+// 		request.Param[string]{
+// 			Param: "param1",
+// 			Value: &self.Param1,
+// 		},
+// 		request.Param[int]{
+// 			Param: "param2",
+// 			Value: &self.Param2,
+// 		},
+// 		request.Param[bool]{
+// 			Param: "param3",
+// 			Value: &self.Param3,
+// 		},
+// 	}
+// }
+
+// type PathParam[T any] struct {
+// 	Name  string
+// 	Value T
+// }
+
+// func NewPathParam[T any](name string) PathParam[T] {
+// 	var zero T
+// 	return PathParam[T]{
+// 		Name:  name,
+// 		Value: zero,
+// 	}
+// }
+
+// func (self *PathParam[T]) PathParameter() request.Parameter {
+// 	return request.Param[T]{
+// 		Param: self.Name,
+// 		Value: &self.Value,
+// 	}
+// }
+
+// type PathParamUserId      PathParam[string]("user_id")
+// type PathParamResourceId  PathParam[int]("resource_id")
+
+// type ResourceId request.Param[string]
+
+// func (self *ResourceId) Name() string {
+// 	return "resource_id"
+// }
+
+type Auth[T any] struct {
+}
+
+type foo struct {
+	body.Request[requestBodyModel]
+	body.Response[responseBodyModel]
+	Param1 string
+	Param2 int
+	Param3 bool
+}
+
+func (self *foo) PathParameters() []request.Parameter {
 	return []request.Parameter{
-		request.Param[string]{
-			Param: "param1",
-			Value: &self.Param1,
-		},
-		request.Param[int]{
-			Param: "param2",
-			Value: &self.Param2,
-		},
-		request.Param[bool]{
-			Param: "param3",
-			Value: &self.Param3,
-		},
+		request.NewParam("param1", &self.Param1),
+		request.NewParam("param2", &self.Param2),
+		request.NewParam("param3", &self.Param3),
 	}
+}
+
+func (self *foo) Handle(ctx context.Context) (int, error) {
+	// if self.Param1 != "value1" {
+	// 	return httpstatus.InternalServerError, errors.New("param1 != value1")
+	// }
+	if self.Param2 != 13 {
+		return httpstatus.InternalServerError, errors.New("param2 != 13")
+	}
+	if !self.Param3 {
+		return httpstatus.InternalServerError, errors.New("param3 != true")
+	}
+
+	self.ResponseBody.OutputInt = 11
+	self.ResponseBody.OutputString = "goodbye!"
+	return httpstatus.OK, nil
+}
+
+func Test_foo(t *testing.T) {
+	ctx := context.Background()
+
+	e := foo{}
+	eCopy := e
+
+	request := testRequest(ctx)
+
+	handle := handler.NewHandle(e)
+
+	statusCode, responseBytes := handle.Run(ctx, request)
+	fmt.Println(statusCode, string(responseBytes))
+
+	statusCode, responseBytes = handle.Run(ctx, request)
+	fmt.Println(statusCode, string(responseBytes))
+
+	assert.Equal(t, eCopy, e)
+	assert.Equal(t, httpstatus.OK, statusCode)
+	assert.Equal(t, string(`{"outputString":"goodbye!","outputInt":11}`), string(responseBytes))
 }
 
 type testEndpoint struct {
@@ -129,55 +232,55 @@ func testRequest(ctx context.Context) endpoint.Requester {
 	return requester
 }
 
-func Test_test(t *testing.T) {
-	ctx := context.Background()
+// func Test_test(t *testing.T) {
+// 	ctx := context.Background()
 
-	e := testEndpoint{
-		Resources: Resources{},
-	}
+// 	e := testEndpoint{
+// 		Resources: Resources{},
+// 	}
 
-	eCopy := e
+// 	eCopy := e
 
-	registeredMimeTypes := map[string]mime.Handler{
-		"application/json": &mime.Json{},
-	}
+// 	registeredMimeTypes := map[string]mime.Handler{
+// 		"application/json": &mime.Json{},
+// 	}
 
-	request := testRequest(ctx)
+// 	request := testRequest(ctx)
 
-	executeHandler := handler.New(e)
+// 	executeHandler := handler.New(e)
 
-	statusCode, responseBytes := executeHandler(ctx, request, registeredMimeTypes)
-	fmt.Println(statusCode, string(responseBytes))
+// 	statusCode, responseBytes := executeHandler(ctx, request, registeredMimeTypes)
+// 	fmt.Println(statusCode, string(responseBytes))
 
-	statusCode, responseBytes = executeHandler(ctx, request, registeredMimeTypes)
-	fmt.Println(statusCode, string(responseBytes))
+// 	statusCode, responseBytes = executeHandler(ctx, request, registeredMimeTypes)
+// 	fmt.Println(statusCode, string(responseBytes))
 
-	assert.Equal(t, eCopy, e)
-	assert.Equal(t, httpstatus.OK, statusCode)
-	assert.Equal(t, string(`{"outputString":"goodbye!","outputInt":11}`), string(responseBytes))
-}
+// 	assert.Equal(t, eCopy, e)
+// 	assert.Equal(t, httpstatus.OK, statusCode)
+// 	assert.Equal(t, string(`{"outputString":"goodbye!","outputInt":11}`), string(responseBytes))
+// }
 
-func Benchmark_test_test(b *testing.B) {
-	ctx := context.Background()
+// func Benchmark_test_test(b *testing.B) {
+// 	ctx := context.Background()
 
-	e := testEndpoint{
-		Resources: Resources{},
-	}
+// 	e := testEndpoint{
+// 		Resources: Resources{},
+// 	}
 
-	registeredMimeTypes := map[string]mime.Handler{
-		"application/json": &mime.Json{},
-	}
+// 	registeredMimeTypes := map[string]mime.Handler{
+// 		"application/json": &mime.Json{},
+// 	}
 
-	request := testRequest(ctx)
+// 	request := testRequest(ctx)
 
-	run := handler.New(e)
+// 	run := handler.New(e)
 
-	b.ResetTimer()
+// 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		statusCode, responseBytes := run(ctx, request, registeredMimeTypes)
-		if statusCode == httpstatus.InternalServerError {
-			panic(string(responseBytes))
-		}
-	}
-}
+// 	for i := 0; i < b.N; i++ {
+// 		statusCode, responseBytes := run(ctx, request, registeredMimeTypes)
+// 		if statusCode == httpstatus.InternalServerError {
+// 			panic(string(responseBytes))
+// 		}
+// 	}
+// }

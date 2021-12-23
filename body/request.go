@@ -21,3 +21,13 @@ func (self *Request[T]) UnmarshalRequestBody(bodyBytes []byte, mimeType mime.Han
 	}
 	return nil
 }
+
+type NoBody struct{}
+
+func (self *NoBody) GetRequestBody() any {
+	return nil
+}
+
+func (self *NoBody) UnmarshalRequestBody(bodyBytes []byte, mimeType mime.Handler) error {
+	return nil
+}
