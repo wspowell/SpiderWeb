@@ -9,9 +9,9 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.30.0
-	github.com/wspowell/context v0.0.7
+	github.com/wspowell/context v0.0.8
 	github.com/wspowell/errors v0.3.0
-	github.com/wspowell/log v0.0.9
+	github.com/wspowell/log v0.0.10
 )
 
 require (
