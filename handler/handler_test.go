@@ -1,6 +1,8 @@
 package handler_test
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -23,9 +25,11 @@ func testRequest(ctx context.Context) request.Requester {
 		panic(err)
 	}
 
+	authHeader := base64.StdEncoding.EncodeToString([]byte("user:password"))
+
 	req.Header.Add(httpheader.ContentType, "application/json")
 	req.Header.Add(httpheader.Accept, "application/json")
-	req.Header.Add(httpheader.Authorization, "valid-token")
+	req.Header.Add(httpheader.Authorization, "Basic "+authHeader)
 
 	requester, err := request.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
 	if err != nil {
@@ -53,7 +57,33 @@ type ResponseBodyModel struct {
 	OutputInt    int    `json:"outputInt"`
 }
 
+type BasicAuth struct{}
+
+func (self *BasicAuth) Authorize(requester request.Requester) error {
+	authHeader := requester.PeekHeader(httpheader.Authorization)
+
+	if bytes.HasPrefix(authHeader, handler.AuthBasic) {
+		authHeader = bytes.TrimPrefix(authHeader, handler.AuthBasic)
+		credentials := make([]byte, len(authHeader))
+		length, err := base64.StdEncoding.Decode(credentials, authHeader)
+		if err != nil {
+			requester.SetResponseHeader(httpheader.WwwAuthenticate, string(handler.AuthBasic))
+			return errors.Wrap(err, handler.ErrInvalidAuthFormat)
+		}
+
+		if bytes.Equal(credentials[:length], []byte("user:password")) {
+			return nil
+		}
+
+		return handler.ErrUnauthorized
+	}
+
+	requester.SetResponseHeader(httpheader.WwwAuthenticate, string(handler.AuthBasic))
+	return handler.ErrInvalidAuthFormat
+}
+
 type testHandler struct {
+	BasicAuth
 	body.Request[RequestBodyModel]
 	body.Response[ResponseBodyModel]
 	Param1 string

@@ -61,6 +61,12 @@ func (self *Runner) run(ctx context.Context, requester request.Requester) (int, 
 		return self.errorResponse(httpstatus.InternalServerError, err)
 	}
 
+	if asAuthorizer, ok := handlerInstance.(Authorizer); ok {
+		if err := asAuthorizer.Authorize(requester); err != nil {
+			return self.errorResponse(httpstatus.Unauthorized, err)
+		}
+	}
+
 	if err = ctx.Err(); err != nil {
 		return self.errorResponse(httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
 	}
