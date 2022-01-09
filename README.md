@@ -339,17 +339,17 @@ goos: linux
 goarch: amd64
 pkg: github.com/wspowell/spiderweb/handler
 cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
-Benchmark_Endpoint_Default_Success-8        6110            204383 ns/op            3678 B/op         62 allocs/op
-Benchmark_Endpoint_Default_Error-8          5976            200292 ns/op            4021 B/op         65 allocs/op
+Benchmark_Endpoint_Default_Success-8        5730            200774 ns/op            3774 B/op         65 allocs/op
+Benchmark_Endpoint_Default_Error-8          5750            201979 ns/op            3774 B/op         65 allocs/op
 
 goos: linux
 goarch: amd64
 pkg: github.com/wspowell/spiderweb/server/restful
 cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
-Benchmark_SpiderWeb_POST_latency-8                 10000            109290 ns/op            2986 B/op         45 allocs/op
-Benchmark_SpiderWeb_POST_throughput-8               8283            144324 ns/op            2991 B/op         45 allocs/op
-Benchmark_SpiderWeb_GET_latency-8                   9290            120294 ns/op            2866 B/op         46 allocs/op
-Benchmark_SpiderWeb_GET_throughput-8                7170            167318 ns/op            2870 B/op         46 allocs/op
+Benchmark_SpiderWeb_POST_latency-8                  8968            129280 ns/op            3432 B/op         51 allocs/op
+Benchmark_SpiderWeb_POST_throughput-8               5744            209375 ns/op            3436 B/op         51 allocs/op
+Benchmark_SpiderWeb_GET_latency-8                   7464            149540 ns/op            3464 B/op         54 allocs/op
+Benchmark_SpiderWeb_GET_throughput-8                4454            242470 ns/op            3469 B/op         54 allocs/op
 ```
 
 Release
@@ -360,15 +360,15 @@ goos: linux
 goarch: amd64
 pkg: github.com/wspowell/spiderweb/handler
 cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
-Benchmark_Endpoint_Default_Success-8      526225              2119 ns/op            3657 B/op         62 allocs/op
-Benchmark_Endpoint_Default_Error-8        566277              2115 ns/op            3721 B/op         63 allocs/op
+Benchmark_Endpoint_Default_Success-8     1037964              1053 ns/op            3752 B/op         65 allocs/op
+Benchmark_Endpoint_Default_Error-8        952372              1100 ns/op            3752 B/op         65 allocs/op
 
 goos: linux
 goarch: amd64
 pkg: github.com/wspowell/spiderweb/server/restful
 cpu: AMD Ryzen 9 4900HS with Radeon Graphics         
-Benchmark_SpiderWeb_POST_latency-8                 53672             23101 ns/op            2969 B/op         45 allocs/op
-Benchmark_SpiderWeb_POST_throughput-8             566179              2208 ns/op            2969 B/op         45 allocs/op
-Benchmark_SpiderWeb_GET_latency-8                  54252             21051 ns/op            2849 B/op         46 allocs/op
-Benchmark_SpiderWeb_GET_throughput-8              577689              2048 ns/op            2849 B/op         46 allocs/op
+Benchmark_SpiderWeb_POST_latency-8                209103              5559 ns/op            3416 B/op         51 allocs/op
+Benchmark_SpiderWeb_POST_throughput-8            1294929               975.5 ns/op          3416 B/op         51 allocs/op
+Benchmark_SpiderWeb_GET_latency-8                 224551              5332 ns/op            3448 B/op         54 allocs/op
+Benchmark_SpiderWeb_GET_throughput-8             1000000              1076 ns/op            3448 B/op         54 allocs/op
 ```
