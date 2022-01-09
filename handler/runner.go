@@ -73,6 +73,13 @@ func (self *Runner) run(ctx context.Context, reqRes httptrip.RoundTripper) {
 		return
 	}
 
+	if asAuthorizer, ok := handlerInstance.(Authorizer); ok {
+		if err := asAuthorizer.Authorize(reqRes); err != nil {
+			self.processError(reqRes, httpstatus.Unauthorized, err)
+			return
+		}
+	}
+
 	if err = ctx.Err(); err != nil {
 		self.processError(reqRes, httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
 		return
