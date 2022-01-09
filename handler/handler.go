@@ -53,8 +53,9 @@ func NewHandle[T any, H HandlerValue[T]](handler T) *Handle {
 		mimeTypes: map[string]mime.Handler{
 			"application/json": &mime.Json{},
 		},
-		errorResponse: func(statusCode int, err error) (int, []byte) {
-			return statusCode, []byte(`{"error":"` + err.Error() + `"}`)
+		errorResponse: func(statusCode *int, responseBody *[]byte, err error) {
+			*responseBody = (*responseBody)[:0]
+			*responseBody = append(*responseBody, []byte(`{"error":"`+err.Error()+`"}`)...)
 		},
 	}
 }
@@ -108,7 +109,7 @@ func (self *Handle) MimeTypes() map[string]mime.Handler {
 	return mimeTypes
 }
 
-type ErrorResponse func(statusCode int, err error) (int, []byte)
+type ErrorResponse func(statusCode *int, responseBody *[]byte, err error)
 
 func (self *Handle) WithErrorResponse(errorResponse ErrorResponse) *Handle {
 	self.errorResponse = errorResponse

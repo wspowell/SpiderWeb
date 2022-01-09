@@ -13,11 +13,12 @@ import (
 	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/httptrip"
 	"github.com/wspowell/spiderweb/mime"
 	"github.com/wspowell/spiderweb/request"
 )
 
-func testRequest(ctx context.Context) request.Requester {
+func testRequest(ctx context.Context) *httptrip.HttpRoundTrip {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/resources/myid/5/true?id=me&num=5&flag=true", strings.NewReader(`{"myString": "hello", "myInt": 5}`))
 	if err != nil {
 		panic(err)
@@ -27,12 +28,12 @@ func testRequest(ctx context.Context) request.Requester {
 	req.Header.Add(httpheader.Accept, "application/json")
 	req.Header.Add(httpheader.Authorization, "valid-token")
 
-	requester, err := request.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+	reqRes, err := httptrip.NewHttpRoundTrip("/resources/{id}/{num}/{flag}", req)
 	if err != nil {
 		panic(err)
 	}
 
-	return requester
+	return reqRes
 }
 
 type Auth[T any] struct {
@@ -91,19 +92,24 @@ func Test_foo(t *testing.T) {
 	handlerStruct := testHandler{}
 	handlerStructCopy := handlerStruct
 
-	request := testRequest(ctx)
+	reqRes := testRequest(ctx)
 
 	handle := handler.NewHandle(handlerStruct)
 
-	statusCode, responseBytes := handle.Runner().Run(ctx, request)
-	fmt.Println(statusCode, string(responseBytes))
+	handle.Runner().Run(ctx, reqRes)
+	fmt.Println(reqRes.StatusCode(), string(reqRes.ResponseBody()))
 
-	statusCode, responseBytes = handle.Runner().Run(ctx, request)
-	fmt.Println(statusCode, string(responseBytes))
+	reqRes.Close()
+	reqRes = testRequest(ctx)
+
+	handle.Runner().Run(ctx, reqRes)
+	fmt.Println(reqRes.StatusCode(), string(reqRes.ResponseBody()))
 
 	assert.Equal(t, handlerStructCopy, handlerStruct)
-	assert.Equal(t, httpstatus.OK, statusCode)
-	assert.Equal(t, string(`{"outputString":"goodbye!","outputInt":11}`), string(responseBytes))
+	assert.Equal(t, httpstatus.OK, reqRes.StatusCode())
+	assert.Equal(t, string(`{"outputString":"goodbye!","outputInt":11}`), string(reqRes.ResponseBody()))
+
+	reqRes.Close()
 }
 
 // func Test_test(t *testing.T) {

@@ -12,11 +12,11 @@ var (
 	ErrParamInvalidType  = errors.New("parameter type is not supported")
 )
 
-type PathParameters interface {
+type Path interface {
 	PathParameters() []Parameter
 }
 
-type QueryParameters interface {
+type Query interface {
 	QueryParameters() []Parameter
 }
 

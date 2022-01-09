@@ -1,8 +1,9 @@
 package api
 
 import (
-	"context"
 	"net/http"
+
+	"github.com/wspowell/context"
 )
 
 type notFoundResource struct{}

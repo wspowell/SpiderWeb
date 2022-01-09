@@ -39,5 +39,5 @@ type Marshaler interface {
 	// Errors:
 	//   * ErrMarshal
 	//   * ErrNotSupported
-	MarshalMimeType(value any) ([]byte, error)
+	MarshalMimeType(data *[]byte, value any) error
 }

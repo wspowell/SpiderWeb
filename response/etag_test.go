@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/httpmethod"
 	"github.com/wspowell/spiderweb/httpstatus"
-	"github.com/wspowell/spiderweb/request"
+	"github.com/wspowell/spiderweb/httptrip"
 	"github.com/wspowell/spiderweb/response"
 )
 
@@ -233,30 +234,33 @@ func Test_handleETag(t *testing.T) {
 				req.Header[key] = []string{value}
 			}
 
-			requester, err := request.NewHttpRequester("/", req)
+			reqRes, err := httptrip.NewHttpRoundTrip("/", req)
 			assert.Nil(t, err)
+			defer reqRes.Close()
 
-			httpStatus, responseBody := response.HandleETag(ctx, requester, testCase.maxAgeSeconds, testCase.httpStatus, uncachedResponse())
+			reqRes.SetResponseBody(uncachedResponse())
 
-			responseHeaders := requester.ResponseHeaders()
+			response.HandleETag(ctx, reqRes, testCase.maxAgeSeconds, testCase.httpStatus)
+
+			responseHeaders := reqRes.ResponseHeaders()
 			for key, expectedValue := range testCase.expectedResponseHeaders {
 				actualValue, exists := responseHeaders[key]
 				assert.True(t, exists, "header does not exist: %v", key)
 				assert.Equal(t, expectedValue, actualValue)
 			}
 
-			if httpStatus == httpstatus.BadRequest {
+			if reqRes.StatusCode() == httpstatus.BadRequest {
 				_, exists := responseHeaders[httpheader.ETag]
 				assert.False(t, exists)
 			}
 
-			if testCase.maxAgeSeconds == 0 || httpStatus == httpstatus.BadRequest {
+			if testCase.maxAgeSeconds == 0 || reqRes.StatusCode() == httpstatus.BadRequest {
 				_, exists := responseHeaders[httpheader.CacheControl]
 				assert.False(t, exists)
 			}
 
-			assert.Equal(t, testCase.expectedHttpStatus, httpStatus)
-			assert.Equal(t, testCase.expectedResponseBody, responseBody)
+			assert.Equal(t, testCase.expectedHttpStatus, reqRes.StatusCode())
+			assert.Equal(t, testCase.expectedResponseBody, reqRes.ResponseBody())
 		})
 	}
 }

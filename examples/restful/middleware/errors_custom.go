@@ -4,6 +4,6 @@ import (
 	"github.com/wspowell/spiderweb/httpstatus"
 )
 
-func AllErrorsTeapot(statusCode int, err error) (int, []byte) {
-	return httpstatus.Teapot, nil
+func AllErrorsTeapot(statusCode *int, responseBody *[]byte, err error) {
+	*statusCode = httpstatus.Teapot
 }

@@ -2,6 +2,7 @@ package restful
 
 import (
 	"strconv"
+	"sync"
 
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
@@ -9,14 +10,35 @@ import (
 	"github.com/wspowell/spiderweb/httpheader"
 )
 
+var (
+	bytesPool = sync.Pool{
+		New: func() interface{} {
+			// The Pool's New function should generally only return pointer
+			// types, since a pointer can be put into the return interface
+			// value without an allocation:
+			return []byte{}
+		},
+	}
+)
+
 type fasthttpRequester struct {
-	requestCtx *fasthttp.RequestCtx
+	requestCtx        *fasthttp.RequestCtx
+	statusCode        int
+	responseBodyBytes []byte
 }
 
 func newFasthttpRequester(requestCtx *fasthttp.RequestCtx) *fasthttpRequester {
+	responseBodyBytes := bytesPool.Get().([]byte)
+	responseBodyBytes = responseBodyBytes[:0]
+
 	return &fasthttpRequester{
-		requestCtx: requestCtx,
+		requestCtx:        requestCtx,
+		responseBodyBytes: responseBodyBytes,
 	}
+}
+
+func (self *fasthttpRequester) Close() {
+	bytesPool.Put(self.responseBodyBytes)
 }
 
 func (self *fasthttpRequester) RequestId() string {
@@ -74,6 +96,22 @@ func (self *fasthttpRequester) RequestBody() []byte {
 	return self.requestCtx.Request.Body()
 }
 
+func (self *fasthttpRequester) ResponseBody() []byte {
+	return self.responseBodyBytes
+}
+
+func (self *fasthttpRequester) StatusCode() int {
+	return self.statusCode
+}
+
+func (self *fasthttpRequester) SetStatusCode(statusCode int) {
+	self.statusCode = statusCode
+}
+
+func (self *fasthttpRequester) SetResponseBody(body []byte) {
+	self.responseBodyBytes = body
+}
+
 func (self *fasthttpRequester) SetResponseHeader(header string, value string) {
 	self.requestCtx.Response.Header.Set(header, value)
 }
@@ -93,4 +131,9 @@ func (self *fasthttpRequester) ResponseHeaders() map[string]string {
 	})
 
 	return headers
+}
+
+func (self *fasthttpRequester) WriteResponse() {
+	self.requestCtx.Response.SetStatusCode(self.statusCode)
+	self.requestCtx.Response.SetBody(self.responseBodyBytes)
 }

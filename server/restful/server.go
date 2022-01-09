@@ -208,10 +208,10 @@ func (self *Server) wrapFasthttpHandler(runner *handler.Runner) fasthttp.Request
 
 		ctx := context.Localize(requestCtx)
 
-		httpStatus, responseBody := runner.Run(ctx, newFasthttpRequester(requestCtx))
+		reqRes := newFasthttpRequester(requestCtx)
+		defer reqRes.Close()
 
-		requestCtx.SetStatusCode(httpStatus)
-		requestCtx.SetBody(responseBody)
+		runner.Run(ctx, reqRes)
 
 		// Set the Connection header to "close".
 		// Closes the connection after this function returns.

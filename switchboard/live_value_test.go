@@ -5,7 +5,7 @@ package switchboard_test
 // 	"testing"
 
 // 	"github.com/stretchr/testify/assert"
-// 	"github.com/wspowell/context"
+// 	"contexxt"
 // 	"github.com/wspowell/log"
 // 	"github.com/wspowell/spiderweb/switchboard"
 // )
@@ -50,8 +50,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/context"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/switchboard"

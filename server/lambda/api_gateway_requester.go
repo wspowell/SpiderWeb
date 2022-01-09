@@ -2,8 +2,20 @@ package lambda
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-lambda-go/events"
+)
+
+var (
+	bytesPool = sync.Pool{
+		New: func() interface{} {
+			// The Pool's New function should generally only return pointer
+			// types, since a pointer can be put into the return interface
+			// value without an allocation:
+			return []byte{}
+		},
+	}
 )
 
 type ApiGatewayRequester struct {
@@ -11,7 +23,10 @@ type ApiGatewayRequester struct {
 	request     *events.APIGatewayProxyRequest
 	bodyBytes   []byte
 
-	responseHeaders map[string]string
+	response          events.APIGatewayProxyResponse
+	responseHeaders   map[string]string
+	statusCode        int
+	responseBodyBytes []byte
 }
 
 func NewApiGatewayRequester(matchedPath string, request *events.APIGatewayProxyRequest) *ApiGatewayRequester {
@@ -20,12 +35,21 @@ func NewApiGatewayRequester(matchedPath string, request *events.APIGatewayProxyR
 		bodyBytes = []byte(request.Body)
 	}
 
+	responseBodyBytes := bytesPool.Get().([]byte)
+	responseBodyBytes = responseBodyBytes[:0]
+
 	return &ApiGatewayRequester{
-		matchedPath:     matchedPath,
-		request:         request,
-		bodyBytes:       bodyBytes,
-		responseHeaders: map[string]string{},
+		matchedPath:       matchedPath,
+		request:           request,
+		bodyBytes:         bodyBytes,
+		response:          events.APIGatewayProxyResponse{},
+		responseHeaders:   map[string]string{},
+		responseBodyBytes: responseBodyBytes,
 	}
+}
+
+func (self *ApiGatewayRequester) Close() {
+	bytesPool.Put(self.responseBodyBytes)
 }
 
 func (self *ApiGatewayRequester) RequestId() string {
@@ -89,8 +113,24 @@ func (self *ApiGatewayRequester) RequestBody() []byte {
 	return self.bodyBytes
 }
 
+func (self *ApiGatewayRequester) ResponseBody() []byte {
+	return self.responseBodyBytes
+}
+
+func (self *ApiGatewayRequester) StatusCode() int {
+	return self.statusCode
+}
+
+func (self *ApiGatewayRequester) SetStatusCode(statusCode int) {
+	self.statusCode = statusCode
+}
+
 func (self *ApiGatewayRequester) SetResponseHeader(header string, value string) {
 	self.responseHeaders[header] = value
+}
+
+func (self *ApiGatewayRequester) SetResponseBody(body []byte) {
+	self.responseBodyBytes = body
 }
 
 func (self *ApiGatewayRequester) SetResponseContentType(contentType string) {
@@ -103,4 +143,10 @@ func (self *ApiGatewayRequester) ResponseContentType() string {
 
 func (self *ApiGatewayRequester) ResponseHeaders() map[string]string {
 	return self.responseHeaders
+}
+
+func (self *ApiGatewayRequester) WriteResponse() {
+	self.response.Body = string(self.responseBodyBytes)
+	self.response.StatusCode = self.statusCode
+	self.response.Headers = self.responseHeaders
 }

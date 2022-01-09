@@ -2,10 +2,12 @@ package handler
 
 import (
 	"github.com/wspowell/context"
+
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/body"
 	"github.com/wspowell/spiderweb/httpstatus"
+	"github.com/wspowell/spiderweb/httptrip"
 	"github.com/wspowell/spiderweb/request"
 	"github.com/wspowell/spiderweb/response"
 )
@@ -14,109 +16,123 @@ type Runner struct {
 	Handle
 }
 
-func (self *Runner) Run(ctx context.Context, requester request.Requester) (int, []byte) {
+func (self *Runner) Run(ctx context.Context, reqRes httptrip.RoundTripper) {
 	ctx, cancel := context.WithTimeout(ctx, self.timeout)
 	defer cancel()
 
-	// Every invocation of an endpoint creates its own logger instance.
+	// Every invocation creates its own logger instance.
 	ctx = log.WithContext(ctx, self.logConfig)
 
-	var statusCode int
-	var responseBytes []byte
-
 	err := errors.Catch(func() {
-		statusCode, responseBytes = self.run(ctx, requester)
+		self.run(ctx, reqRes)
 	})
 
 	if err != nil {
 		log.Error(ctx, "%s", err)
 		log.Debug(ctx, "%+v", err)
 
-		return self.errorResponse(httpstatus.InternalServerError, errors.Wrap(err, ErrInternalServerError))
+		statusCode := httpstatus.InternalServerError
+		responseBytes := reqRes.ResponseBody()
+		self.errorResponse(&statusCode, &responseBytes, errors.Wrap(err, ErrInternalServerError))
+
+		reqRes.SetStatusCode(statusCode)
+		reqRes.SetResponseBody(responseBytes)
 	}
 
-	return statusCode, responseBytes
+	reqRes.WriteResponse()
 }
 
-func (self *Runner) run(ctx context.Context, requester request.Requester) (int, []byte) {
+func (self *Runner) run(ctx context.Context, reqRes httptrip.RoundTripper) {
 	var err error
 
 	if err = ctx.Err(); err != nil {
-		return self.errorResponse(httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
+		statusCode := httpstatus.RequestTimeout
+		responseBytes := reqRes.ResponseBody()
+		self.errorResponse(&statusCode, &responseBytes, errors.Wrap(err, ErrTimeout))
+		reqRes.SetStatusCode(statusCode)
+		reqRes.SetResponseBody(responseBytes)
 	}
 
 	handlerInstance := self.newHandler()
 
-	self.setLogTags(ctx, requester)
-	requester.SetResponseContentType(string(requester.Accept())) // FIXME: should set a default for when not set on request.
-	requester.SetResponseHeader("X-Request-Id", requester.RequestId())
+	self.setLogTags(ctx, reqRes)
+	reqRes.SetResponseContentType(string(reqRes.Accept())) // FIXME: should set a default for when not set on request.
+	reqRes.SetResponseHeader("X-Request-Id", reqRes.RequestId())
 
-	if asBodyRequester, ok := any(handlerInstance).(body.Requester); ok {
-		if err = self.processRequest(requester, asBodyRequester); err != nil {
-			return self.errorResponse(httpstatus.InternalServerError, err)
+	if asRequester, ok := any(handlerInstance).(body.Requester); ok {
+		if err = self.processRequest(reqRes, asRequester); err != nil {
+			self.processError(reqRes, httpstatus.InternalServerError, err)
+			return
 		}
 	}
 
-	if err = self.processParameters(ctx, requester, handlerInstance); err != nil {
-		return self.errorResponse(httpstatus.InternalServerError, err)
+	if err = self.processParameters(ctx, reqRes, handlerInstance); err != nil {
+		self.processError(reqRes, httpstatus.InternalServerError, err)
+		return
 	}
 
 	if err = ctx.Err(); err != nil {
-		return self.errorResponse(httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
+		self.processError(reqRes, httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
+		return
 	}
 
 	// Run the endpoint
 	var statusCode int
 	if statusCode, err = handlerInstance.Handle(ctx); err != nil {
-		return self.errorResponse(statusCode, err)
+		self.processError(reqRes, statusCode, err)
+		return
 	}
 
 	if err = ctx.Err(); err != nil {
-		return self.errorResponse(httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
+		self.processError(reqRes, httpstatus.RequestTimeout, errors.Wrap(err, ErrTimeout))
+		return
 	}
 
 	// Handle the response.
-	var responseBytes []byte
-	if asBodyResponder, ok := any(handlerInstance).(body.Responder); ok {
-		if responseBytes, err = self.processResponse(requester, asBodyResponder); err != nil {
-			return self.errorResponse(httpstatus.InternalServerError, err)
+	if asResponder, ok := any(handlerInstance).(body.Responder); ok {
+		if err = self.processResponse(reqRes, asResponder); err != nil {
+			self.processError(reqRes, httpstatus.InternalServerError, err)
+			return
 		}
 	}
 
 	if self.maxAgeSeconds != 0 {
 		log.Trace(ctx, "eTagEnabled, handling etag")
-		return response.HandleETag(ctx, requester, self.maxAgeSeconds, statusCode, responseBytes)
+		response.HandleETag(ctx, reqRes, self.maxAgeSeconds, statusCode)
 	}
 
-	return statusCode, responseBytes
+	reqRes.SetStatusCode(statusCode)
 }
 
-func (self *Runner) setLogTags(ctx context.Context, requester request.Requester) {
-	log.Tag(ctx, "request_id", requester.RequestId())
-	log.Tag(ctx, "method", string(requester.Method()))
-	log.Tag(ctx, "route", requester.MatchedPath())
-	log.Tag(ctx, "path", string(requester.Path()))
+func (self *Runner) setLogTags(ctx context.Context, reqRes httptrip.RoundTripper) {
+	log.Tag(ctx, "request_id", reqRes.RequestId())
+	log.Tag(ctx, "method", string(reqRes.Method()))
+	log.Tag(ctx, "route", reqRes.MatchedPath())
+	log.Tag(ctx, "path", string(reqRes.Path()))
 	log.Tag(ctx, "action", self.action)
 }
 
-func (self *Runner) processRequest(requester request.Requester, e body.Requester) error {
-	if mimeTypeHandler, exists := self.mimeTypes[string(requester.ContentType())]; exists {
-		return e.UnmarshalRequestBody(requester.RequestBody(), mimeTypeHandler)
+func (self *Runner) processRequest(reqRes httptrip.RoundTripper, req body.Requester) error {
+	if mimeTypeHandler, exists := self.mimeTypes[string(reqRes.ContentType())]; exists {
+		return req.UnmarshalRequestBody(reqRes.RequestBody(), mimeTypeHandler)
 	}
-	return errors.New("Content-Type mime type not supported: %s", requester.ContentType) // FIXME: wrap error
+	return errors.New("Content-Type mime type not supported: %s", reqRes.ContentType) // FIXME: wrap error
 }
 
-func (self *Runner) processResponse(requester request.Requester, e body.Responder) ([]byte, error) {
-	if mimeTypeHandler, exists := self.mimeTypes[string(requester.Accept())]; exists {
-		return e.MarshalResponseBody(mimeTypeHandler)
+func (self *Runner) processResponse(reqRes httptrip.RoundTripper, res body.Responder) error {
+	if mimeTypeHandler, exists := self.mimeTypes[string(reqRes.Accept())]; exists {
+		responseBytes := reqRes.ResponseBody()
+		err := res.MarshalResponseBody(&responseBytes, mimeTypeHandler)
+		reqRes.SetResponseBody(responseBytes)
+		return err
 	}
-	return nil, errors.New("Accept mime type not supported: %s", requester.ContentType) // FIXME: wrap error
+	return errors.New("Accept mime type not supported: %s", reqRes.ContentType) // FIXME: wrap error
 }
 
-func (self *Runner) processParameters(ctx context.Context, requester request.Requester, e any) error {
-	if asPathParams, ok := e.(request.PathParameters); ok {
+func (self *Runner) processParameters(ctx context.Context, reqRes httptrip.RoundTripper, e any) error {
+	if asPathParams, ok := e.(request.Path); ok {
 		for _, pathParam := range asPathParams.PathParameters() {
-			if pathParamValue, exists := requester.PathParam(pathParam.ParamName()); exists {
+			if pathParamValue, exists := reqRes.PathParam(pathParam.ParamName()); exists {
 				if err := pathParam.SetParam(pathParamValue); err != nil {
 					return err // FIXME: wrap error
 				}
@@ -129,9 +145,9 @@ func (self *Runner) processParameters(ctx context.Context, requester request.Req
 		}
 	}
 
-	if asQueryParams, ok := e.(request.QueryParameters); ok {
+	if asQueryParams, ok := e.(request.Query); ok {
 		for _, queryParam := range asQueryParams.QueryParameters() {
-			if queryParamValue, exists := requester.QueryParam(queryParam.ParamName()); exists {
+			if queryParamValue, exists := reqRes.QueryParam(queryParam.ParamName()); exists {
 				if err := queryParam.SetParam(string(queryParamValue)); err != nil {
 					return err // FIXME: wrap error
 				}
@@ -142,4 +158,12 @@ func (self *Runner) processParameters(ctx context.Context, requester request.Req
 	}
 
 	return nil
+}
+
+func (self *Runner) processError(reqRes httptrip.RoundTripper, statusCode int, err error) {
+	responseBytes := reqRes.ResponseBody()
+	self.errorResponse(&statusCode, &responseBytes, err)
+
+	reqRes.SetStatusCode(statusCode)
+	reqRes.SetResponseBody(responseBytes)
 }

@@ -2,6 +2,9 @@ package response
 
 import (
 	"bytes"
+
+	"github.com/wspowell/context"
+
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
@@ -9,11 +12,10 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/wspowell/context"
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/httpheader"
-	"github.com/wspowell/spiderweb/request"
+	"github.com/wspowell/spiderweb/httptrip"
 )
 
 const (
@@ -24,13 +26,15 @@ const (
 
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
 // If the cache is fresh and a success case with non-empty body, this will return 304 Not Modified with an empty body.
-func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds time.Duration, httpStatus int, responseBody []byte) (int, []byte) {
+func HandleETag(ctx context.Context, reqRes httptrip.RoundTripper, maxAgeSeconds time.Duration, httpStatus int) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
 	defer span.Finish()
 
-	ifNoneMatch := requester.PeekHeader(httpheader.IfNoneMatch)
-	ifMatch := requester.PeekHeader(httpheader.IfMatch)
-	cacheControl := requester.PeekHeader(httpheader.CacheControl)
+	ifNoneMatch := reqRes.PeekHeader(httpheader.IfNoneMatch)
+	ifMatch := reqRes.PeekHeader(httpheader.IfMatch)
+	cacheControl := reqRes.PeekHeader(httpheader.CacheControl)
+
+	responseBody := reqRes.ResponseBody()
 
 	// Simply return the current http status and response body if any:
 	//   1. Not a success response (2xx)
@@ -43,16 +47,16 @@ func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds 
 		(len(ifNoneMatch) == 0 && len(ifMatch) == 0) {
 		log.Trace(ctx, "skipping etag check: httpStatus = %v, response body size = %v, Cache-Control = %v", httpStatus, len(responseBody), cacheControl)
 
-		return httpStatus, responseBody
+		return
 	}
 
 	md5Sum := sha256.Sum256(responseBody)
 	eTagValue := strconv.Itoa(len(responseBody)) + "-" + hex.EncodeToString(md5Sum[:])
 
-	requester.SetResponseHeader(httpheader.ETag, eTagValue)
+	reqRes.SetResponseHeader(httpheader.ETag, eTagValue)
 	if maxAgeSeconds != 0 {
 		log.Trace(ctx, "etag max age seconds: %v", maxAgeSeconds)
-		requester.SetResponseHeader(httpheader.CacheControl, "max-age="+strconv.Itoa(int(maxAgeSeconds.Seconds())))
+		reqRes.SetResponseHeader(httpheader.CacheControl, "max-age="+strconv.Itoa(int(maxAgeSeconds.Seconds())))
 	} else {
 		log.Trace(ctx, "etag max age: indefinite")
 	}
@@ -60,11 +64,12 @@ func HandleETag(ctx context.Context, requester request.Requester, maxAgeSeconds 
 	if newHttpStatus, ok := isCacheFresh(ifNoneMatch, ifMatch, []byte(eTagValue)); ok {
 		log.Trace(ctx, "etag fresh, not modified: %v", eTagValue)
 
-		return newHttpStatus, nil
+		reqRes.SetStatusCode(newHttpStatus)
+		reqRes.SetResponseBody(nil)
+		return
 	}
-	log.Trace(ctx, "refreshed etag: %v", eTagValue)
 
-	return httpStatus, responseBody
+	log.Trace(ctx, "refreshed etag: %v", eTagValue)
 }
 
 // isCacheFresh check whether cache can be used in this HTTP request

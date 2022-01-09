@@ -9,7 +9,7 @@ import (
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/handler"
-	"github.com/wspowell/spiderweb/request"
+	"github.com/wspowell/spiderweb/httptrip"
 )
 
 func Benchmark_Endpoint_Default_Success(b *testing.B) {
@@ -30,14 +30,14 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Accept", "application/json")
 
-		requester, err := request.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+		reqRes, err := httptrip.NewHttpRoundTrip("/resources/{id}/{num}/{flag}", req)
 		if err != nil {
 			panic(err)
 		}
 
 		for pb.Next() {
 			ctx := context.Localize(ctx)
-			runner.Run(ctx, requester)
+			runner.Run(ctx, reqRes)
 		}
 	})
 }
@@ -60,14 +60,14 @@ func Benchmark_Endpoint_Default_Error(b *testing.B) {
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Accept", "application/json")
 
-		requester, err := request.NewHttpRequester("/resources/{id}/{num}/{flag}", req)
+		reqRes, err := httptrip.NewHttpRoundTrip("/resources/{id}/{num}/{flag}", req)
 		if err != nil {
 			panic(err)
 		}
 
 		for pb.Next() {
 			ctx := context.Localize(ctx)
-			runner.Run(ctx, requester)
+			runner.Run(ctx, reqRes)
 		}
 	})
 }

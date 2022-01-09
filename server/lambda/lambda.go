@@ -1,9 +1,10 @@
 package lambda
 
 import (
+	"github.com/wspowell/context"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/wspowell/context"
 
 	"github.com/wspowell/spiderweb/handler"
 )
@@ -45,8 +46,7 @@ func (self *Lambda) wrapLambdaHandler(runner *handler.Runner) HandlerAPIGateway 
 		// span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, handle.Config.Tracer, request.HTTPMethod+" "+self.matchedPath)
 		// defer span.Finish()
 
-		response := events.APIGatewayProxyResponse{}
-		requester := NewApiGatewayRequester(self.matchedPath, &request)
+		reqRes := NewApiGatewayRequester(self.matchedPath, &request)
 
 		ctx, cancel := context.WithTimeout(ctx, runner.Timeout())
 		go func() {
@@ -54,12 +54,8 @@ func (self *Lambda) wrapLambdaHandler(runner *handler.Runner) HandlerAPIGateway 
 			cancel()
 		}()
 
-		httpStatus, responseBody := runner.Run(ctx, requester)
+		runner.Run(ctx, reqRes)
 
-		response.Body = string(responseBody)
-		response.StatusCode = httpStatus
-		response.Headers = requester.responseHeaders
-
-		return response, nil
+		return reqRes.response, nil
 	}
 }

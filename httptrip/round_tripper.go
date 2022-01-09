@@ -1,6 +1,6 @@
-package request
+package httptrip
 
-type Requester interface {
+type RoundTripper interface {
 	RequestId() string
 
 	// HTTP Method.
@@ -24,10 +24,16 @@ type Requester interface {
 	QueryParam(param string) ([]byte, bool)
 
 	RequestBody() []byte
+	ResponseBody() []byte
 
+	StatusCode() int
+	SetStatusCode(statusCode int)
+	SetResponseBody([]byte)
 	SetResponseHeader(header string, value string)
 	SetResponseContentType(contentType string)
-
 	ResponseContentType() string
 	ResponseHeaders() map[string]string
+	WriteResponse()
+
+	Close()
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/wspowell/context"
+
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/profiling"

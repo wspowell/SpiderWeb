@@ -14,8 +14,7 @@ import (
 
 type getResource struct {
 	body.Response[MyResponseBodyModel]
-	ResourceId   int
-	ResponseBody *MyResponseBodyModel
+	ResourceId int
 
 	Db resources.Datastore
 }
@@ -34,7 +33,7 @@ func (self *getResource) Handle(ctx context.Context) (int, error) {
 
 	self.Db.RetrieveValue()
 
-	self.ResponseBody = &MyResponseBodyModel{
+	self.ResponseBody = MyResponseBodyModel{
 		MyString: "test",
 		MyInt:    self.ResourceId,
 	}
