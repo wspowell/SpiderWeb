@@ -12,7 +12,7 @@ require (
 	github.com/valyala/fasthttp v1.30.0
 	github.com/wspowell/context v0.0.8
 	github.com/wspowell/errors v0.3.0
-	github.com/wspowell/log v0.0.10
+	github.com/wspowell/log v0.0.11
 )
 
 require (

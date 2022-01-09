@@ -17,19 +17,19 @@ import (
 	"github.com/wspowell/log"
 
 	"github.com/wspowell/spiderweb/handler"
-	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/mime"
 )
 
 // ServerConfig top level options.
 // These options can be altered per endpoint, if desired.
 type ServerConfig struct {
-	Host         string
-	Port         int
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	LogConfig    log.LoggerConfig
-	EnablePprof  bool
+	Host           string
+	Port           int
+	ReadTimeout    time.Duration
+	WriteTimeout   time.Duration
+	LogConfig      log.LoggerConfig
+	MaxConcurrency int
+	EnablePprof    bool
 }
 
 // Server listens for incoming requests and routes them to the registered endpoint handlers.
@@ -44,6 +44,8 @@ type Server struct {
 
 	serverContext    context.Context
 	shutdownComplete <-chan bool
+
+	concurrency chan struct{}
 }
 
 // NewServer sets up a new server.
@@ -68,12 +70,18 @@ func NewServer(serverConfig *ServerConfig) *Server {
 		serverConfig.Port = 8080
 	}
 
+	if serverConfig.MaxConcurrency == 0 {
+		// Use the same default as github.com/valyala/fasthttp.
+		serverConfig.MaxConcurrency = 256 * 1024
+	}
+
 	httpServer := &fasthttp.Server{}
 	httpServer.Name = "spiderweb"
 	httpServer.NoDefaultContentType = true
 	httpServer.Logger = log.NewLog(serverConfig.LogConfig)
 	httpServer.ReadTimeout = serverConfig.ReadTimeout
 	httpServer.WriteTimeout = serverConfig.WriteTimeout
+	httpServer.Concurrency = serverConfig.MaxConcurrency
 
 	ctx, shutdownComplete := newServerContext(httpServer)
 	ctx = log.WithContext(ctx, serverConfig.LogConfig)
@@ -103,11 +111,17 @@ func NewServer(serverConfig *ServerConfig) *Server {
 
 		serverContext:    ctx,
 		shutdownComplete: shutdownComplete,
+
+		concurrency: make(chan struct{}, serverConfig.MaxConcurrency),
 	}
 }
 
-func (self *Server) HandleNotFound(handler *handler.Handle) {
-	requestHandler := self.wrapFasthttpHandler(handler.Runner())
+func (self *Server) HandleNotFound(handle *handler.Handle) {
+	handle = handle.WithTimeout(self.serverConfig.ReadTimeout + self.serverConfig.WriteTimeout)
+	handle = handle.WithMimeTypes(self.mimeTypes)
+	handle = handle.WithLogConfig(self.serverConfig.LogConfig)
+
+	requestHandler := self.wrapFasthttpHandler(handle.Runner())
 
 	self.router.NotFound = requestHandler
 }
@@ -115,9 +129,9 @@ func (self *Server) HandleNotFound(handler *handler.Handle) {
 // Handle the given route to the provided endpoint handler.
 // This starts a builder pattern where the endpoint may be modified from the root endpoint configuration.
 func (self *Server) Handle(httpMethod string, path string, handle *handler.Handle) {
-	handle.WithTimeout(self.serverConfig.ReadTimeout + self.serverConfig.WriteTimeout)
-	handle.WithMimeTypes(self.mimeTypes)
-	handle.WithLogConfig(self.serverConfig.LogConfig)
+	handle = handle.WithTimeout(self.serverConfig.ReadTimeout + self.serverConfig.WriteTimeout)
+	handle = handle.WithMimeTypes(self.mimeTypes)
+	handle = handle.WithLogConfig(self.serverConfig.LogConfig)
 
 	runner := handle.Runner()
 	self.routes[path+" "+httpMethod] = runner
@@ -202,19 +216,30 @@ func (self *Server) Handler(httpMethod string, path string) *handler.Runner {
 func (self *Server) wrapFasthttpHandler(runner *handler.Runner) fasthttp.RequestHandler {
 	// Wrapping the handler in a timeout will force a timeout response.
 	// This does not stop the endpoint from running. The endpoint itself will need to check if it should continue.
-	return fasthttp.TimeoutWithCodeHandler(func(requestCtx *fasthttp.RequestCtx) {
+	return fasthttp.CompressHandler(func(requestCtx *fasthttp.RequestCtx) {
 		// span, ctx := opentracing.StartSpanFromContextWithTracer(requestCtx, routeEndpoint.Config.Tracer, string(requestCtx.Method())+" "+matchedPath(requestCtx))
 		// defer span.Finish()
 
-		ctx := context.Localize(requestCtx)
+		// Set the Connection header to "close".
+		// Closes the connection after this function returns.
+		defer requestCtx.Response.SetConnectionClose()
 
 		reqRes := newFasthttpRequester(requestCtx)
 		defer reqRes.Close()
 
-		runner.Run(ctx, reqRes)
+		ctx := context.Localize(requestCtx)
 
-		// Set the Connection header to "close".
-		// Closes the connection after this function returns.
-		requestCtx.Response.SetConnectionClose()
-	}, runner.Timeout(), "", httpstatus.RequestTimeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, runner.Timeout())
+		defer cancel()
+
+		select {
+		case <-timeoutCtx.Done():
+			cancel()
+			// Call the handler with a canceled context so the handler can react appropriately instead of using some default response.
+			runner.Run(timeoutCtx, reqRes)
+		case self.concurrency <- struct{}{}:
+			runner.Run(timeoutCtx, reqRes)
+			<-self.concurrency
+		}
+	})
 }

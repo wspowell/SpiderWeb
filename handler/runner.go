@@ -45,6 +45,8 @@ func (self *Runner) Run(ctx context.Context, reqRes httptrip.RoundTripper) {
 func (self *Runner) run(ctx context.Context, reqRes httptrip.RoundTripper) {
 	var err error
 
+	// Check for timeout first. The request may have already waited too long.
+	// This may occur if max concurrency is set too low or if the server has too many long running requests.
 	if err = ctx.Err(); err != nil {
 		statusCode := httpstatus.RequestTimeout
 		responseBytes := reqRes.ResponseBody()

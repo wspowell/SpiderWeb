@@ -7,7 +7,7 @@ import (
 )
 
 type NoopLogConfig struct {
-	log.Config
+	*log.Config
 }
 
 func (self *NoopLogConfig) Out() io.Writer {

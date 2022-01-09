@@ -238,6 +238,7 @@ func Test_handleETag(t *testing.T) {
 			assert.Nil(t, err)
 			defer reqRes.Close()
 
+			reqRes.SetStatusCode(testCase.httpStatus)
 			reqRes.SetResponseBody(uncachedResponse())
 
 			response.HandleETag(ctx, reqRes, testCase.maxAgeSeconds, testCase.httpStatus)

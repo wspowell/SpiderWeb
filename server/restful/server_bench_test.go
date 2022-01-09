@@ -20,11 +20,12 @@ func routes() *restful.Server {
 		LogConfig: &test.NoopLogConfig{
 			Config: log.NewConfig().WithLevel(log.LevelFatal),
 		},
-		Host:         "localhost",
-		Port:         8080,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		EnablePprof:  false,
+		Host:           "localhost",
+		Port:           8080,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		MaxConcurrency: 20,
+		EnablePprof:    false,
 	}
 
 	sample := restful.NewServer(serverConfig)
