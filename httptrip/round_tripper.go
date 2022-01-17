@@ -1,39 +1,56 @@
 package httptrip
 
-type RoundTripper interface {
+type Request interface {
+	// RequestId unique to the request.
+	// Usually used for tracing and debugging.
 	RequestId() string
 
-	// HTTP Method.
+	// Method, ie HTTP Method.
 	Method() []byte
-	// Path of the actual request URL.
+	// Path of the incoming request.
 	Path() []byte
 
+	// ContentType header of the request.
 	ContentType() []byte
+	// Accept header of the request.
 	Accept() []byte
 
-	PeekHeader(key string) []byte
-	VisitHeaders(f func(key []byte, value []byte))
+	PeekRequestHeader(header string) []byte
+	VisitRequestHeaders(f func(header []byte, value []byte))
 
-	// MatchedPath returns the endpoint path that the request URL matches.
+	// MatchedPath returns the routing path that the incoming request path matched.
 	// Ex: /some/path/{id}
 	MatchedPath() string
 
 	// PathParam returns the path parameter value for the given parameter name.
 	// Returns false if parameter not found.
 	PathParam(param string) (string, bool)
-	QueryParam(param string) ([]byte, bool)
+	// QueryParam returns the query parameter value for the given parameter name.
+	// Returns false if parameter not found.
+	QueryParam(param string) (string, bool)
 
+	// RequestBody returns the read body.
+	// This function should be able to be called multiple times.
 	RequestBody() []byte
-	ResponseBody() []byte
+}
 
-	StatusCode() int
+type Response interface {
 	SetStatusCode(statusCode int)
-	SetResponseBody([]byte)
+	SetResponseBody(responseBody []byte)
 	SetResponseHeader(header string, value string)
 	SetResponseContentType(contentType string)
-	ResponseContentType() string
-	ResponseHeaders() map[string]string
+
+	StatusCode() int
+	ResponseContentType() []byte
+	PeekResponseHeader(header string) []byte
+	VisitResponseHeaders(f func(header []byte, value []byte))
+	ResponseBody() []byte
 	WriteResponse()
+}
+
+type RoundTripper interface {
+	Request
+	Response
 
 	Close()
 }

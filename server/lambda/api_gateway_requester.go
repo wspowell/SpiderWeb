@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/wspowell/spiderweb/httpheader"
+	"github.com/wspowell/spiderweb/httptrip"
 )
 
 var (
@@ -17,6 +19,8 @@ var (
 		},
 	}
 )
+
+var _ httptrip.RoundTripper = (*ApiGatewayRequester)(nil)
 
 type ApiGatewayRequester struct {
 	matchedPath string
@@ -65,14 +69,14 @@ func (self *ApiGatewayRequester) Path() []byte {
 }
 
 func (self *ApiGatewayRequester) ContentType() []byte {
-	return []byte(self.request.Headers["Content-Type"])
+	return []byte(self.request.Headers[httpheader.ContentType])
 }
 
 func (self *ApiGatewayRequester) Accept() []byte {
-	return []byte(self.request.Headers["Accept"])
+	return []byte(self.request.Headers[httpheader.Accept])
 }
 
-func (self *ApiGatewayRequester) PeekHeader(key string) []byte {
+func (self *ApiGatewayRequester) PeekRequestHeader(key string) []byte {
 	if value, exists := self.request.Headers[key]; exists {
 		return []byte(value)
 	}
@@ -80,7 +84,7 @@ func (self *ApiGatewayRequester) PeekHeader(key string) []byte {
 	return nil
 }
 
-func (self *ApiGatewayRequester) VisitHeaders(f func(key []byte, value []byte)) {
+func (self *ApiGatewayRequester) VisitRequestHeaders(f func(key []byte, value []byte)) {
 	for header, value := range self.request.Headers {
 		f([]byte(header), []byte(value))
 	}
@@ -93,9 +97,10 @@ func (self *ApiGatewayRequester) MatchedPath() string {
 func (self *ApiGatewayRequester) PathParam(param string) (string, bool) {
 	urlParts := strings.Split(self.request.Path, "/")
 	pathParts := strings.Split(self.matchedPath, "/")
+	paramVariable := "{" + param + "}"
 
 	for index, value := range pathParts {
-		if value == "{"+param+"}" {
+		if value == paramVariable {
 			return urlParts[index], true
 		}
 	}
@@ -103,10 +108,10 @@ func (self *ApiGatewayRequester) PathParam(param string) (string, bool) {
 	return "", false
 }
 
-func (self *ApiGatewayRequester) QueryParam(param string) ([]byte, bool) {
+func (self *ApiGatewayRequester) QueryParam(param string) (string, bool) {
 	value, exists := self.request.QueryStringParameters[param]
 
-	return []byte(value), exists
+	return value, exists
 }
 
 func (self *ApiGatewayRequester) RequestBody() []byte {
@@ -126,7 +131,7 @@ func (self *ApiGatewayRequester) SetStatusCode(statusCode int) {
 }
 
 func (self *ApiGatewayRequester) SetResponseHeader(header string, value string) {
-	self.responseHeaders[header] = value
+	self.responseHeaders[string(header)] = string(value)
 }
 
 func (self *ApiGatewayRequester) SetResponseBody(body []byte) {
@@ -134,15 +139,25 @@ func (self *ApiGatewayRequester) SetResponseBody(body []byte) {
 }
 
 func (self *ApiGatewayRequester) SetResponseContentType(contentType string) {
-	self.responseHeaders["Content-Type"] = contentType
+	self.responseHeaders[httpheader.ContentType] = string(contentType)
 }
 
-func (self *ApiGatewayRequester) ResponseContentType() string {
-	return self.responseHeaders["Content-Type"]
+func (self *ApiGatewayRequester) ResponseContentType() []byte {
+	return []byte(self.responseHeaders[httpheader.ContentType])
 }
 
-func (self *ApiGatewayRequester) ResponseHeaders() map[string]string {
-	return self.responseHeaders
+func (self *ApiGatewayRequester) PeekResponseHeader(header string) []byte {
+	value, exists := self.responseHeaders[header]
+	if exists {
+		return []byte(value)
+	}
+	return nil
+}
+
+func (self *ApiGatewayRequester) VisitResponseHeaders(f func(header []byte, value []byte)) {
+	for header, value := range self.responseHeaders {
+		f([]byte(header), []byte(value))
+	}
 }
 
 func (self *ApiGatewayRequester) WriteResponse() {

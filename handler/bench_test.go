@@ -35,6 +35,8 @@ func Benchmark_Endpoint_Default_Success(b *testing.B) {
 			panic(err)
 		}
 
+		defer reqRes.Close()
+
 		for pb.Next() {
 			ctx := context.Localize(ctx)
 			runner.Run(ctx, reqRes)
@@ -64,6 +66,8 @@ func Benchmark_Endpoint_Default_Error(b *testing.B) {
 		if err != nil {
 			panic(err)
 		}
+
+		defer reqRes.Close()
 
 		for pb.Next() {
 			ctx := context.Localize(ctx)

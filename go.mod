@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.26.0
 	github.com/fasthttp/router v1.4.3
 	github.com/google/gofuzz v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/ugorji/go/codec v1.2.6

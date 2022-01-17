@@ -1,25 +1,25 @@
 package restful
 
 import (
-	"strconv"
 	"sync"
 
 	"github.com/fasthttp/router"
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
 	"github.com/wspowell/spiderweb/httpheader"
+	"github.com/wspowell/spiderweb/httptrip"
 )
 
 var (
 	bytesPool = sync.Pool{
 		New: func() interface{} {
-			// The Pool's New function should generally only return pointer
-			// types, since a pointer can be put into the return interface
-			// value without an allocation:
 			return []byte{}
 		},
 	}
 )
+
+var _ httptrip.RoundTripper = (*fasthttpRequester)(nil)
 
 type fasthttpRequester struct {
 	requestCtx        *fasthttp.RequestCtx
@@ -42,7 +42,11 @@ func (self *fasthttpRequester) Close() {
 }
 
 func (self *fasthttpRequester) RequestId() string {
-	return strconv.Itoa(int(self.requestCtx.ID()))
+	requestId := self.requestCtx.Request.Header.Peek(httpheader.XRequestId)
+	if requestId == nil {
+		return uuid.NewString() // This call is (relatively) slow. Would be nice to have a faster UUID package.
+	}
+	return string(requestId)
 }
 
 func (self *fasthttpRequester) Method() []byte {
@@ -61,11 +65,11 @@ func (self *fasthttpRequester) Accept() []byte {
 	return self.requestCtx.Request.Header.Peek(httpheader.Accept)
 }
 
-func (self *fasthttpRequester) PeekHeader(key string) []byte {
+func (self *fasthttpRequester) PeekRequestHeader(key string) []byte {
 	return self.requestCtx.Request.Header.Peek(key)
 }
 
-func (self *fasthttpRequester) VisitHeaders(f func(key []byte, value []byte)) {
+func (self *fasthttpRequester) VisitRequestHeaders(f func(key []byte, value []byte)) {
 	self.requestCtx.Request.Header.VisitAll(f)
 }
 
@@ -81,15 +85,17 @@ func (self *fasthttpRequester) MatchedPath() string {
 }
 
 func (self *fasthttpRequester) PathParam(param string) (string, bool) {
+	// Note: Path is stored as a string, not []byte.
+	//       See: fasthttp/router.go saveMatchedRoutePath()
 	value, ok := self.requestCtx.UserValue(param).(string)
 
 	return value, ok
 }
 
-func (self *fasthttpRequester) QueryParam(param string) ([]byte, bool) {
+func (self *fasthttpRequester) QueryParam(param string) (string, bool) {
 	value := self.requestCtx.URI().QueryArgs().Peek(param)
 
-	return value, value != nil
+	return string(value), value != nil
 }
 
 func (self *fasthttpRequester) RequestBody() []byte {
@@ -120,17 +126,16 @@ func (self *fasthttpRequester) SetResponseContentType(contentType string) {
 	self.requestCtx.SetContentType(contentType)
 }
 
-func (self *fasthttpRequester) ResponseContentType() string {
-	return string(self.requestCtx.Response.Header.Peek("Content-Type"))
+func (self *fasthttpRequester) ResponseContentType() []byte {
+	return self.requestCtx.Response.Header.Peek(httpheader.ContentType)
 }
 
-func (self *fasthttpRequester) ResponseHeaders() map[string]string {
-	headers := map[string]string{}
-	self.requestCtx.Response.Header.VisitAll(func(key []byte, value []byte) {
-		headers[string(key)] = string(value)
-	})
+func (self *fasthttpRequester) PeekResponseHeader(header string) []byte {
+	return self.requestCtx.Response.Header.Peek(header)
+}
 
-	return headers
+func (self *fasthttpRequester) VisitResponseHeaders(f func(header []byte, value []byte)) {
+	self.requestCtx.Response.Header.VisitAll(f)
 }
 
 func (self *fasthttpRequester) WriteResponse() {

@@ -8,7 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/wspowell/errors"
+	"github.com/wspowell/spiderweb/httpheader"
 )
 
 var (
@@ -18,9 +20,6 @@ var (
 var (
 	bytesPool = sync.Pool{
 		New: func() interface{} {
-			// The Pool's New function should generally only return pointer
-			// types, since a pointer can be put into the return interface
-			// value without an allocation:
 			return []byte{}
 		},
 	}
@@ -44,6 +43,7 @@ func NewHttpRoundTrip(matchedPath string, request *http.Request) (*HttpRoundTrip
 		bufWriter := bytes.NewBuffer(b)
 
 		if _, err := io.Copy(bufWriter, request.Body); err != nil {
+			bytesPool.Put(b)
 			return nil, errors.Wrap(err, ErrInvalidBody)
 		}
 
@@ -71,7 +71,11 @@ func (self *HttpRoundTrip) Close() {
 }
 
 func (self *HttpRoundTrip) RequestId() string {
-	return "abc-123"
+	requestId, exists := self.request.Header[httpheader.XRequestId]
+	if !exists {
+		return uuid.New().String()
+	}
+	return requestId[0]
 }
 
 func (self *HttpRoundTrip) Method() []byte {
@@ -83,14 +87,14 @@ func (self *HttpRoundTrip) Path() []byte {
 }
 
 func (self *HttpRoundTrip) ContentType() []byte {
-	return []byte(self.request.Header.Get("Content-Type"))
+	return []byte(self.request.Header.Get(httpheader.ContentType))
 }
 
 func (self *HttpRoundTrip) Accept() []byte {
-	return []byte(self.request.Header.Get("Accept"))
+	return []byte(self.request.Header.Get(httpheader.Accept))
 }
 
-func (self *HttpRoundTrip) PeekHeader(key string) []byte {
+func (self *HttpRoundTrip) PeekRequestHeader(key string) []byte {
 	if value, exists := self.request.Header[key]; exists {
 		return []byte(value[0])
 	}
@@ -98,7 +102,7 @@ func (self *HttpRoundTrip) PeekHeader(key string) []byte {
 	return nil
 }
 
-func (self *HttpRoundTrip) VisitHeaders(f func(key []byte, value []byte)) {
+func (self *HttpRoundTrip) VisitRequestHeaders(f func(key []byte, value []byte)) {
 	for header, value := range self.request.Header {
 		f([]byte(header), []byte(value[0]))
 	}
@@ -111,9 +115,10 @@ func (self *HttpRoundTrip) MatchedPath() string {
 func (self *HttpRoundTrip) PathParam(param string) (string, bool) {
 	urlParts := strings.Split(self.request.URL.Path, "/")
 	pathParts := strings.Split(self.matchedPath, "/")
+	paramVariable := "{" + param + "}"
 
 	for index, value := range pathParts {
-		if value == "{"+param+"}" {
+		if value == paramVariable {
 			return urlParts[index], true
 		}
 	}
@@ -121,10 +126,10 @@ func (self *HttpRoundTrip) PathParam(param string) (string, bool) {
 	return "", false
 }
 
-func (self *HttpRoundTrip) QueryParam(param string) ([]byte, bool) {
-	value := self.request.URL.Query().Get(param)
+func (self *HttpRoundTrip) QueryParam(param string) (string, bool) {
+	value := self.request.URL.Query().Get(string(param))
 
-	return []byte(value), value != ""
+	return value, value != ""
 }
 
 func (self *HttpRoundTrip) RequestBody() []byte {
@@ -152,20 +157,25 @@ func (self *HttpRoundTrip) SetResponseBody(body []byte) {
 }
 
 func (self *HttpRoundTrip) SetResponseContentType(contentType string) {
-	self.request.Response.Header.Set("Content-Type", contentType)
+	self.request.Response.Header.Set(httpheader.ContentType, contentType)
 }
 
-func (self *HttpRoundTrip) ResponseContentType() string {
-	return self.request.Response.Header.Get("Content-Type")
+func (self *HttpRoundTrip) ResponseContentType() []byte {
+	return []byte(self.request.Response.Header.Get(httpheader.ContentType))
 }
 
-func (self *HttpRoundTrip) ResponseHeaders() map[string]string {
-	headers := map[string]string{}
-	for key, value := range self.request.Response.Header {
-		headers[key] = value[0]
+func (self *HttpRoundTrip) PeekResponseHeader(header string) []byte {
+	value, exists := self.request.Response.Header[header]
+	if exists {
+		return []byte(value[0])
 	}
+	return nil
+}
 
-	return headers
+func (self *HttpRoundTrip) VisitResponseHeaders(f func(header []byte, value []byte)) {
+	for key, value := range self.request.Response.Header {
+		f([]byte(key), []byte(value[0]))
+	}
 }
 
 func (self *HttpRoundTrip) WriteResponse() {

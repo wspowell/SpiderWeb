@@ -36,6 +36,7 @@ func testRequest(ctx context.Context) *httptrip.HttpRoundTrip {
 	if err != nil {
 		panic(err)
 	}
+	defer reqRes.Close()
 
 	return reqRes
 }
@@ -61,7 +62,7 @@ type ResponseBodyModel struct {
 type BasicAuth struct{}
 
 func (self *BasicAuth) Authorize(reqRes httptrip.RoundTripper) error {
-	authHeader := reqRes.PeekHeader(httpheader.Authorization)
+	authHeader := reqRes.PeekRequestHeader(httpheader.Authorization)
 
 	if bytes.HasPrefix(authHeader, handler.AuthBasic) {
 		authHeader = bytes.TrimPrefix(authHeader, handler.AuthBasic)

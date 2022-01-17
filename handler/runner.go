@@ -6,6 +6,7 @@ import (
 	"github.com/wspowell/errors"
 	"github.com/wspowell/log"
 	"github.com/wspowell/spiderweb/body"
+	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/httptrip"
 	"github.com/wspowell/spiderweb/request"
@@ -59,7 +60,7 @@ func (self *Runner) run(ctx context.Context, reqRes httptrip.RoundTripper) {
 
 	self.setLogTags(ctx, reqRes)
 	reqRes.SetResponseContentType(string(reqRes.Accept())) // FIXME: should set a default for when not set on request.
-	reqRes.SetResponseHeader("X-Request-Id", reqRes.RequestId())
+	reqRes.SetResponseHeader(httpheader.XRequestId, reqRes.RequestId())
 
 	if asRequester, ok := any(handlerInstance).(body.Requester); ok {
 		if err = self.processRequest(reqRes, asRequester); err != nil {
@@ -147,7 +148,7 @@ func (self *Runner) processParameters(ctx context.Context, reqRes httptrip.Round
 				}
 				// Each path parameter is added as a log tag.
 				// Note: It helps if the path parameter name is descriptive.
-				log.Tag(ctx, pathParam.ParamName(), pathParamValue)
+				log.Tag(ctx, string(pathParam.ParamName()), pathParamValue)
 				continue
 			}
 			return errors.New("request does not have path parameter: %s", pathParam.ParamName()) // FIXME: wrap error
@@ -157,7 +158,7 @@ func (self *Runner) processParameters(ctx context.Context, reqRes httptrip.Round
 	if asQueryParams, ok := e.(request.Query); ok {
 		for _, queryParam := range asQueryParams.QueryParameters() {
 			if queryParamValue, exists := reqRes.QueryParam(queryParam.ParamName()); exists {
-				if err := queryParam.SetParam(string(queryParamValue)); err != nil {
+				if err := queryParam.SetParam(queryParamValue); err != nil {
 					return err // FIXME: wrap error
 				}
 				continue

@@ -15,14 +15,6 @@ var (
 	ErrInternalServerError = errors.New("internal server error")
 )
 
-const (
-	null = "null"
-)
-
-func nullBytes() []byte {
-	return []byte(null) // TODO: Is this needed?
-}
-
 type HandlerValue[T any] interface {
 	*T // Essentially forces any Handler to be a value rather than a reference.
 	Handler
@@ -66,6 +58,7 @@ func (self *Handle) WithLogConfig(logConfig log.LoggerConfig) *Handle {
 	}
 	return self
 }
+
 func (self *Handle) LogConfig() log.LoggerConfig {
 	if self.logConfig == nil {
 		self.logConfig = log.NewConfig()

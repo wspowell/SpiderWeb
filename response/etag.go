@@ -18,10 +18,10 @@ import (
 	"github.com/wspowell/spiderweb/httptrip"
 )
 
-const (
-	noCache  = "no-cache"
-	comma    = ","
-	anything = "*"
+var (
+	noCache  = []byte("no-cache")
+	comma    = []byte(",")
+	anything = []byte("*")
 )
 
 // handleETag passes through the http status and response if the cache is stale (or does not yet exist).
@@ -30,9 +30,9 @@ func HandleETag(ctx context.Context, reqRes httptrip.RoundTripper, maxAgeSeconds
 	span, ctx := opentracing.StartSpanFromContext(ctx, "handleETag()")
 	defer span.Finish()
 
-	ifNoneMatch := reqRes.PeekHeader(httpheader.IfNoneMatch)
-	ifMatch := reqRes.PeekHeader(httpheader.IfMatch)
-	cacheControl := reqRes.PeekHeader(httpheader.CacheControl)
+	ifNoneMatch := reqRes.PeekRequestHeader(httpheader.IfNoneMatch)
+	ifMatch := reqRes.PeekRequestHeader(httpheader.IfMatch)
+	cacheControl := reqRes.PeekRequestHeader(httpheader.CacheControl)
 
 	responseBody := reqRes.ResponseBody()
 
@@ -43,7 +43,7 @@ func HandleETag(ctx context.Context, reqRes httptrip.RoundTripper, maxAgeSeconds
 	//   4. Neither header is set: If-None-Match, If-Match
 	if !(httpStatus >= 200 && httpStatus < 300) ||
 		len(responseBody) == 0 ||
-		bytes.Contains(cacheControl, []byte(noCache)) ||
+		bytes.Contains(cacheControl, noCache) ||
 		(len(ifNoneMatch) == 0 && len(ifMatch) == 0) {
 		log.Trace(ctx, "skipping etag check: httpStatus = %v, response body size = %v, Cache-Control = %v", httpStatus, len(responseBody), cacheControl)
 
@@ -77,11 +77,11 @@ func isCacheFresh(ifNoneMatch []byte, ifMatch []byte, eTagValue []byte) (int, bo
 	if len(ifNoneMatch) != 0 {
 		// Check for cache freshness.
 		// Header If-None-Match
-		return http.StatusNotModified, checkEtagNoneMatch(trimTags(bytes.Split(ifNoneMatch, []byte(comma))), eTagValue)
+		return http.StatusNotModified, checkEtagNoneMatch(trimTags(bytes.Split(ifNoneMatch, comma)), eTagValue)
 	}
 	// Check etag precondition.
 	// Header If-Match
-	return http.StatusPreconditionFailed, checkEtagMatch(trimTags(bytes.Split(ifMatch, []byte(comma))), eTagValue)
+	return http.StatusPreconditionFailed, checkEtagMatch(trimTags(bytes.Split(ifMatch, comma)), eTagValue)
 }
 
 func trimTags(tags [][]byte) [][]byte {
@@ -96,7 +96,7 @@ func trimTags(tags [][]byte) [][]byte {
 
 func checkEtagNoneMatch(etagsToNoneMatch [][]byte, eTagValue []byte) bool {
 	for _, etagToNoneMatch := range etagsToNoneMatch {
-		if bytes.Equal(etagToNoneMatch, []byte(anything)) || bytes.Equal(etagToNoneMatch, eTagValue) {
+		if bytes.Equal(etagToNoneMatch, anything) || bytes.Equal(etagToNoneMatch, eTagValue) {
 			return true
 		}
 	}
@@ -106,7 +106,7 @@ func checkEtagNoneMatch(etagsToNoneMatch [][]byte, eTagValue []byte) bool {
 
 func checkEtagMatch(etagsToMatch [][]byte, eTagValue []byte) bool {
 	for _, etagToMatch := range etagsToMatch {
-		if bytes.Equal(etagToMatch, []byte(anything)) {
+		if bytes.Equal(etagToMatch, anything) {
 			return false
 		}
 

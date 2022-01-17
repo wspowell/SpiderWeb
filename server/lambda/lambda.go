@@ -47,6 +47,7 @@ func (self *Lambda) wrapLambdaHandler(runner *handler.Runner) HandlerAPIGateway 
 		// defer span.Finish()
 
 		reqRes := NewApiGatewayRequester(self.matchedPath, &request)
+		defer reqRes.Close()
 
 		ctx, cancel := context.WithTimeout(ctx, runner.Timeout())
 		go func() {

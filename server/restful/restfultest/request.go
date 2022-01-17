@@ -3,148 +3,128 @@ package restfultest
 import (
 	"bytes"
 	"os"
-	"runtime/debug"
 	"strings"
-	"sync"
 	"testing"
 
 	fuzz "github.com/google/gofuzz"
-	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
 
+	"github.com/wspowell/errors"
+	"github.com/wspowell/spiderweb/httpheader"
 	"github.com/wspowell/spiderweb/server/restful"
 )
-
-var (
-	// nolint:gochecknoglobals // reason: Remove the need for this by fixing runTest().
-	// Tests alter the endpoint config for mocks, so these cannot run in parallel without locking.
-	mutex = &sync.Mutex{}
-)
-
-type Mocker interface {
-	AssertExpectations(t mock.TestingT) bool
-}
 
 type testCase struct {
 	server *restful.Server
 	name   string
+
+	httpMethod     string
+	path           string
+	requestBody    []byte
+	requestHeaders map[string]string
+	queryParams    map[string]string
+	pathParams     map[string]string
+
+	httpStatus      int
+	responseHeaders map[string]string
+	responseBody    []byte
+	emptyBody       bool
 }
 
-func TestCase(server *restful.Server, name string) *testCase {
-	return &testCase{
-		server: server,
-		name:   name,
-	}
-}
-
-type requestTestCase struct {
+type caseBuilder struct {
 	*testCase
-
-	httpMethod      string
-	path            string
-	requestMimeType string
-	requestBody     []byte
-	headers         map[string]string
-	queryParams     map[string]string
-	pathParams      map[string]string
-	resourceMocks   map[string]Mocker
 }
 
-// GivenRequest starts a request test case to be provided to TestRequest.
-func (self *testCase) GivenRequest(httpMethod string, path string) *requestTestCase {
-	return &requestTestCase{
-		testCase:      self,
-		httpMethod:    httpMethod,
-		path:          path,
-		headers:       map[string]string{},
-		queryParams:   map[string]string{},
-		pathParams:    map[string]string{},
-		resourceMocks: map[string]Mocker{},
+func Server(server *restful.Server) *caseBuilder {
+	return &caseBuilder{
+		testCase: &testCase{
+			server:          server,
+			emptyBody:       true,
+			requestHeaders:  map[string]string{},
+			queryParams:     map[string]string{},
+			pathParams:      map[string]string{},
+			responseHeaders: map[string]string{},
+		},
 	}
 }
 
-func (self *requestTestCase) WithHeader(header string, value string) *requestTestCase {
-	self.headers[header] = value
+func (self *caseBuilder) Case(name string) *routeBuilder {
+	self.testCase.name = name
+	return &routeBuilder{self.testCase}
+}
+
+type routeBuilder struct {
+	*testCase
+}
+
+// ForRoute starts a request test case to be provided to TestRequest.
+func (self *routeBuilder) ForRoute(httpMethod string, path string) *requestBuilder {
+	self.testCase.httpMethod = httpMethod
+	self.testCase.path = path
+	return &requestBuilder{self.testCase}
+}
+
+type requestBuilder struct {
+	*testCase
+}
+
+func (self *requestBuilder) WithHeader(header string, value string) *requestBuilder {
+	self.testCase.requestHeaders[header] = value
 
 	return self
 }
 
-func (self *requestTestCase) WithQueryParam(param string, value string) *requestTestCase {
-	self.queryParams[param] = value
+func (self *requestBuilder) WithQueryParam(param string, value string) *requestBuilder {
+	self.testCase.queryParams[param] = value
 
 	return self
 }
 
-func (self *requestTestCase) WithPathParam(param string, value string) *requestTestCase {
-	self.pathParams[param] = value
+func (self *requestBuilder) WithPathParam(param string, value string) *requestBuilder {
+	self.testCase.pathParams[param] = value
 
 	return self
 }
 
 // WithRequestBody sets a request body for the request test case.
 // This is optional.
-func (self *requestTestCase) WithRequestBody(mimeType string, requestBody []byte) *requestTestCase {
-	self.requestMimeType = mimeType
+func (self *requestBuilder) WithRequestBody(requestBody []byte) *requestBuilder {
 	self.requestBody = requestBody
 
 	return self
 }
 
-func (self *requestTestCase) WithResourceMock(resource string, resourceMock Mocker) *requestTestCase {
-	self.resourceMocks[resource] = resourceMock
-
-	return self
-}
-
-func (self *requestTestCase) ExpectResponse(httpStatus int) *responseTestCase {
-	return &responseTestCase{
-		testCase:   self.testCase,
-		request:    self,
-		httpStatus: httpStatus,
-		headers:    map[string]string{},
-	}
-}
-
-type responseTestCase struct {
+type responseBuilder struct {
 	*testCase
-
-	request *requestTestCase
-
-	httpStatus       int
-	headers          map[string]string
-	responseMimeType string
-	responseBody     []byte
-	emptyBody        bool
 }
 
-func (self *responseTestCase) WithHeader(header string, value string) *responseTestCase {
-	self.headers[header] = value
-
-	return self
+func (self *requestBuilder) ExpectStatusCode(httpStatus int) *responseBuilder {
+	self.testCase.httpStatus = httpStatus
+	return &responseBuilder{self.testCase}
 }
 
-func (self *responseTestCase) WithEmptyBody() *responseTestCase {
-	self.emptyBody = true
+func (self *responseBuilder) WithHeader(header string, value string) *responseBuilder {
+	self.testCase.responseHeaders[header] = value
 
 	return self
 }
 
 // Expect the response to match the given body.
-func (self *responseTestCase) WithResponseBody(mimeType string, responseBody []byte) *responseTestCase {
-	self.responseMimeType = mimeType
+func (self *responseBuilder) WithResponseBody(responseBody []byte) *responseBuilder {
+	self.emptyBody = false
 	self.responseBody = responseBody
 
 	return self
 }
 
-func (self *responseTestCase) Run(t *testing.T) {
+func (self *responseBuilder) Run(t *testing.T) {
 	t.Helper()
 	t.Run(self.name, func(t *testing.T) {
 		self.runTest(t)
 	})
 }
 
-func (self *responseTestCase) RunParallel(t *testing.T) {
+func (self *responseBuilder) RunParallel(t *testing.T) {
 	t.Helper()
 	t.Run(self.name, func(t *testing.T) {
 		t.Parallel()
@@ -152,124 +132,59 @@ func (self *responseTestCase) RunParallel(t *testing.T) {
 	})
 }
 
-func (self *responseTestCase) runTest(t *testing.T) {
+func (self *testCase) runTest(t *testing.T) {
 	t.Helper()
 
-	// FIXME: Tests alter the endpoint config for mocks, so these cannot run in parallel without locking.
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	copyRequestBody := make([]byte, len(self.request.requestBody))
-	copy(copyRequestBody, self.request.requestBody)
-
-	copyResponseBody := make([]byte, len(self.responseBody))
-	copy(copyResponseBody, self.responseBody)
-
-	copyTestCase := responseTestCase{
-		request: &requestTestCase{
-			httpMethod:      self.request.httpMethod,
-			path:            self.request.path,
-			requestMimeType: self.request.requestMimeType,
-			requestBody:     copyRequestBody,
-			headers:         self.request.headers,
-			queryParams:     self.request.queryParams,
-			pathParams:      self.request.pathParams,
-			resourceMocks:   self.request.resourceMocks,
-		},
-
-		httpStatus:       self.httpStatus,
-		responseMimeType: self.responseMimeType,
-		responseBody:     copyResponseBody,
-		headers:          self.headers,
-		emptyBody:        self.emptyBody,
-	}
-
-	url := copyTestCase.request.path
-	for param, value := range copyTestCase.request.pathParams {
+	url := self.path
+	for param, value := range self.pathParams {
 		url = strings.Replace(url, "{"+param+"}", value, 1)
 	}
 
 	var req fasthttp.Request
 
-	req.Header.SetMethod(copyTestCase.request.httpMethod)
+	req.Header.SetMethod(self.httpMethod)
 	req.Header.SetRequestURI(url)
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 
-	if copyTestCase.request.requestMimeType == "" && copyTestCase.responseMimeType == "" {
-		copyTestCase.request.requestMimeType = "application/json"
-		copyTestCase.responseMimeType = "application/json"
-	} else if copyTestCase.responseMimeType == "" {
-		copyTestCase.responseMimeType = copyTestCase.request.requestMimeType
-	}
-	req.Header.Set("Content-Type", copyTestCase.request.requestMimeType)
-	req.Header.Set("Accept", copyTestCase.responseMimeType)
-
-	for header, value := range copyTestCase.request.headers {
+	for header, value := range self.requestHeaders {
 		req.Header.Set(header, value)
 	}
 
-	req.SetBody(copyTestCase.request.requestBody)
+	req.SetBody(self.requestBody)
 
 	requestCtx := fasthttp.RequestCtx{}
 	requestCtx.Init(&req, nil, nil)
 
-	// Setup mock calls.
-	//endpoint := self.server.Handler(copyTestCase.request.httpMethod, copyTestCase.request.path)
-	//originalResources := map[string]any{}
-	// FIXME: figure out how to handle mocks with testing
-	// if endpoint != nil {
-	// 	for name, resource := range endpoint.Config.Resources {
-	// 		originalResources[name] = resource
-	// 		if resourceMock, ok := copyTestCase.request.resourceMocks[name]; ok {
-	// 			endpoint.Config.Resources[name] = resourceMock
-	// 		} else {
-	// 			// Do not call resources. Must be mocked.
-	// 			endpoint.Config.Resources[name] = nil
-	// 		}
-	// 	}
-	// }
-
 	actualHttpStatus, actualResponseBody := self.server.Execute(&requestCtx)
 
-	// FIXME: figure out how to handle mocks with testing
-	// if endpoint != nil {
-	// 	// Put the resources back.
-	// 	for name, originalResource := range originalResources {
-	// 		if resourceMock, ok := copyTestCase.request.resourceMocks[name]; ok {
-	// 			resourceMock.AssertExpectations(t)
-	// 		}
-	// 		endpoint.Config.Resources[name] = originalResource
-	// 	}
-	// }
-
-	for header, value := range copyTestCase.headers {
-		actualHeaderValue := requestCtx.Response.Header.Peek(header)
+	for responseHeader, value := range self.responseHeaders {
+		actualHeaderValue := requestCtx.Response.Header.Peek(responseHeader)
 		if !bytes.Equal(actualHeaderValue, []byte(value)) {
-			t.Errorf("expected header %v = %v , but got %v = %v", header, value, header, actualHeaderValue)
+			t.Errorf("expected response header %v = %v , but got %v = %v", responseHeader, value, responseHeader, actualHeaderValue)
 		}
 	}
 
-	if copyTestCase.httpStatus != actualHttpStatus {
-		t.Errorf("expected http status %v, but got %v", copyTestCase.httpStatus, actualHttpStatus)
+	if self.httpStatus != actualHttpStatus {
+		t.Errorf("expected http status %v, but got %v", self.httpStatus, actualHttpStatus)
 	}
 
-	if copyTestCase.emptyBody {
+	if self.emptyBody {
 		if !bytes.Equal(nil, actualResponseBody) {
-			t.Errorf("expected empty response body, but got '%v'", string(actualResponseBody))
+			t.Errorf("expected empty response body, but got '%s'", actualResponseBody)
 		}
 	} else {
 		if requestCtx.Response.Header.ContentType() == nil {
 			t.Errorf("response is missing header Content-Type")
-		} else if !bytes.Equal(requestCtx.Response.Header.ContentType(), []byte(copyTestCase.responseMimeType)) {
-			t.Errorf("expected response mime type '%v', but got '%v'", copyTestCase.responseMimeType, requestCtx.Response.Header.ContentType())
+		} else if !bytes.Equal([]byte(self.responseHeaders[httpheader.ContentType]), requestCtx.Response.Header.ContentType()) {
+			t.Errorf("expected response mime type '%v', but got '%v'", self.responseHeaders[httpheader.ContentType], requestCtx.Response.Header.ContentType())
 		}
 
-		if !bytes.Equal(copyTestCase.responseBody, actualResponseBody) {
-			t.Errorf("expected response body '%v', but got '%v'", string(copyTestCase.responseBody), string(actualResponseBody))
+		if !bytes.Equal(self.responseBody, actualResponseBody) {
+			t.Errorf("expected response body '%v', but got '%v'", string(self.responseBody), string(actualResponseBody))
 		}
 	}
 
-	requestFuzzTest(t, self.server, self.request.httpMethod, self.request.path)
+	requestFuzzTest(t, self.server, self.httpMethod, self.path)
 }
 
 func requestFuzzTest(t *testing.T, server *restful.Server, httpMethod string, path string) {
@@ -280,27 +195,32 @@ func requestFuzzTest(t *testing.T, server *restful.Server, httpMethod string, pa
 	}
 
 	var requestBody []byte
-	defer func() {
-		if err := recover(); err != nil {
-			t.Fatalf("%+v\route: %v %v\nrequest body: %+v\n%+v", err, httpMethod, path, string(requestBody), string(debug.Stack()))
+
+	err := errors.Catch(func() {
+		for i := 0; i < 10000; i++ {
+			// TODO: Make this work better.
+			f := fuzz.New().
+				NilChance(0.1).
+				MaxDepth(20).
+				NumElements(0, 100)
+
+			f.Fuzz(&requestBody)
+
+			var req fasthttp.Request
+
+			req.Header.SetMethod(httpMethod)
+			req.Header.SetRequestURI(path)
+			req.Header.Set(fasthttp.HeaderHost, "localhost")
+			req.SetBody(requestBody)
+
+			requestCtx := fasthttp.RequestCtx{}
+			requestCtx.Init(&req, nil, nil)
+
+			server.Execute(&requestCtx)
 		}
-	}()
+	})
 
-	f := fuzz.New()
-
-	for i := 0; i < 100; i++ {
-		f.Fuzz(&requestBody)
-
-		var req fasthttp.Request
-
-		req.Header.SetMethod(httpMethod)
-		req.Header.SetRequestURI(path)
-		req.Header.Set(fasthttp.HeaderHost, "localhost")
-		req.SetBody(requestBody)
-
-		requestCtx := fasthttp.RequestCtx{}
-		requestCtx.Init(&req, nil, nil)
-
-		server.Execute(&requestCtx)
+	if err != nil {
+		t.Errorf("fuzz test caused panice in route(%v %v): %+v", httpMethod, path, err)
 	}
 }

@@ -3,6 +3,7 @@ FUZZ=false
 
 prereq:
 	go install gotest.tools/gotestsum@latest
+	go install github.com/dvyukov/go-fuzz-corpus
 
 build:
 	go build ./...

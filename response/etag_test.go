@@ -243,7 +243,10 @@ func Test_handleETag(t *testing.T) {
 
 			response.HandleETag(ctx, reqRes, testCase.maxAgeSeconds, testCase.httpStatus)
 
-			responseHeaders := reqRes.ResponseHeaders()
+			responseHeaders := map[string]string{}
+			reqRes.VisitResponseHeaders(func(header []byte, value []byte) {
+				responseHeaders[string(header)] = string(value)
+			})
 			for key, expectedValue := range testCase.expectedResponseHeaders {
 				actualValue, exists := responseHeaders[key]
 				assert.True(t, exists, "header does not exist: %v", key)
