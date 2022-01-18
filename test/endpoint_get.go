@@ -39,8 +39,11 @@ func (self *Get) Handle(ctx context.Context) (int, error) {
 
 	log.Info(ctx, "resource id: %v", self.ResourceId)
 
+	value := self.Db.RetrieveValue()
+	log.Debug(ctx, "retrieved value: %s", value)
+
 	self.ResponseBody = fooResponseModel{
-		OutputString: self.Db.RetrieveValue(),
+		OutputString: value,
 		OutputInt:    self.ResourceId,
 	}
 

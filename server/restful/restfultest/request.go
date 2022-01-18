@@ -3,7 +3,6 @@ package restfultest
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
 
 	fuzz "github.com/google/gofuzz"
@@ -14,43 +13,24 @@ import (
 	"github.com/wspowell/spiderweb/server/restful"
 )
 
-type testCase struct {
-	server *restful.Server
-	name   string
-
-	httpMethod     string
-	path           string
-	requestBody    []byte
-	requestHeaders map[string]string
-	queryParams    map[string]string
-	pathParams     map[string]string
-
-	httpStatus      int
-	responseHeaders map[string]string
-	responseBody    []byte
-	emptyBody       bool
-}
-
 type caseBuilder struct {
 	*testCase
 }
 
-func Server(server *restful.Server) *caseBuilder {
-	return &caseBuilder{
+func Server(server *restful.Server) caseBuilder {
+	return caseBuilder{
 		testCase: &testCase{
-			server:          server,
-			emptyBody:       true,
-			requestHeaders:  map[string]string{},
-			queryParams:     map[string]string{},
-			pathParams:      map[string]string{},
-			responseHeaders: map[string]string{},
+			server:                  server,
+			expectResponseBody:      true,
+			requestHeaders:          map[string]string{},
+			expectedResponseHeaders: map[string]string{},
 		},
 	}
 }
 
-func (self *caseBuilder) Case(name string) *routeBuilder {
-	self.testCase.name = name
-	return &routeBuilder{self.testCase}
+func (self caseBuilder) Case(name string) routeBuilder {
+	self.name = name
+	return routeBuilder{self.testCase}
 }
 
 type routeBuilder struct {
@@ -58,92 +38,99 @@ type routeBuilder struct {
 }
 
 // ForRoute starts a request test case to be provided to TestRequest.
-func (self *routeBuilder) ForRoute(httpMethod string, path string) *requestBuilder {
+func (self routeBuilder) ForRoute(httpMethod string, url string) requestStarter {
 	self.testCase.httpMethod = httpMethod
-	self.testCase.path = path
-	return &requestBuilder{self.testCase}
+	self.testCase.url = url
+	return requestStarter{self.testCase}
+}
+
+type requestStarter struct {
+	*testCase
+}
+
+func (self requestStarter) GivenRequest() requestBuilder {
+	return requestBuilder{self.testCase}
 }
 
 type requestBuilder struct {
 	*testCase
 }
 
-func (self *requestBuilder) WithHeader(header string, value string) *requestBuilder {
+func (self requestBuilder) Header(header string, value string) requestBuilder {
 	self.testCase.requestHeaders[header] = value
-
-	return self
-}
-
-func (self *requestBuilder) WithQueryParam(param string, value string) *requestBuilder {
-	self.testCase.queryParams[param] = value
-
-	return self
-}
-
-func (self *requestBuilder) WithPathParam(param string, value string) *requestBuilder {
-	self.testCase.pathParams[param] = value
 
 	return self
 }
 
 // WithRequestBody sets a request body for the request test case.
 // This is optional.
-func (self *requestBuilder) WithRequestBody(requestBody []byte) *requestBuilder {
+func (self requestBuilder) Body(requestBody []byte) requestBuilder {
 	self.requestBody = requestBody
 
 	return self
+}
+
+func (self requestBuilder) ExpectResponse() responseBuilder {
+	return responseBuilder{self.testCase}
 }
 
 type responseBuilder struct {
 	*testCase
 }
 
-func (self *requestBuilder) ExpectStatusCode(httpStatus int) *responseBuilder {
-	self.testCase.httpStatus = httpStatus
-	return &responseBuilder{self.testCase}
-}
-
-func (self *responseBuilder) WithHeader(header string, value string) *responseBuilder {
-	self.testCase.responseHeaders[header] = value
+func (self responseBuilder) Header(header string, value string) responseBuilder {
+	self.testCase.expectedResponseHeaders[header] = value
 
 	return self
 }
 
 // Expect the response to match the given body.
-func (self *responseBuilder) WithResponseBody(responseBody []byte) *responseBuilder {
-	self.emptyBody = false
-	self.responseBody = responseBody
+func (self responseBuilder) Body(responseBody []byte) responseBuilder {
+	self.expectResponseBody = false
+	self.expectedResponseBody = responseBody
 
 	return self
 }
 
-func (self *responseBuilder) Run(t *testing.T) {
+func (self responseBuilder) StatusCode(httpStatus int) testCaseRunner {
+	self.testCase.expectedHttpStatus = httpStatus
+
+	return testCaseRunner{self.testCase}
+}
+
+type testCaseRunner struct {
+	*testCase
+}
+
+func (self testCaseRunner) Run(t *testing.T) {
 	t.Helper()
 	t.Run(self.name, func(t *testing.T) {
 		self.runTest(t)
 	})
 }
 
-func (self *responseBuilder) RunParallel(t *testing.T) {
-	t.Helper()
-	t.Run(self.name, func(t *testing.T) {
-		t.Parallel()
-		self.runTest(t)
-	})
+type testCase struct {
+	server *restful.Server
+	name   string
+
+	httpMethod     string
+	url            string
+	requestBody    []byte
+	requestHeaders map[string]string
+
+	expectedHttpStatus      int
+	expectedResponseHeaders map[string]string
+	expectedResponseBody    []byte
+	expectResponseBody      bool
 }
 
 func (self *testCase) runTest(t *testing.T) {
 	t.Helper()
 
-	url := self.path
-	for param, value := range self.pathParams {
-		url = strings.Replace(url, "{"+param+"}", value, 1)
-	}
-
 	var req fasthttp.Request
 
 	req.Header.SetMethod(self.httpMethod)
-	req.Header.SetRequestURI(url)
+	req.Header.SetRequestURI(self.url)
 	req.Header.Set(fasthttp.HeaderHost, "localhost")
 
 	for header, value := range self.requestHeaders {
@@ -157,34 +144,34 @@ func (self *testCase) runTest(t *testing.T) {
 
 	actualHttpStatus, actualResponseBody := self.server.Execute(&requestCtx)
 
-	for responseHeader, value := range self.responseHeaders {
-		actualHeaderValue := requestCtx.Response.Header.Peek(responseHeader)
-		if !bytes.Equal(actualHeaderValue, []byte(value)) {
-			t.Errorf("expected response header %v = %v , but got %v = %v", responseHeader, value, responseHeader, actualHeaderValue)
+	for expectedResponseHeader, expectedHeaderValue := range self.expectedResponseHeaders {
+		actualHeaderValue := requestCtx.Response.Header.Peek(expectedResponseHeader)
+		if !bytes.Equal([]byte(expectedHeaderValue), actualHeaderValue) {
+			t.Errorf("expected response header '%s' = '%s' , but got '%s'= '%s'", expectedResponseHeader, expectedHeaderValue, expectedResponseHeader, actualHeaderValue)
 		}
 	}
 
-	if self.httpStatus != actualHttpStatus {
-		t.Errorf("expected http status %v, but got %v", self.httpStatus, actualHttpStatus)
+	if self.expectedHttpStatus != actualHttpStatus {
+		t.Errorf("expected http status %d, but got %d", self.expectedHttpStatus, actualHttpStatus)
 	}
 
-	if self.emptyBody {
+	if self.expectResponseBody {
 		if !bytes.Equal(nil, actualResponseBody) {
 			t.Errorf("expected empty response body, but got '%s'", actualResponseBody)
 		}
 	} else {
 		if requestCtx.Response.Header.ContentType() == nil {
 			t.Errorf("response is missing header Content-Type")
-		} else if !bytes.Equal([]byte(self.responseHeaders[httpheader.ContentType]), requestCtx.Response.Header.ContentType()) {
-			t.Errorf("expected response mime type '%v', but got '%v'", self.responseHeaders[httpheader.ContentType], requestCtx.Response.Header.ContentType())
+		} else if !bytes.Equal([]byte(self.expectedResponseHeaders[httpheader.ContentType]), requestCtx.Response.Header.ContentType()) {
+			t.Errorf("expected response mime type '%s', but got '%s'", self.expectedResponseHeaders[httpheader.ContentType], requestCtx.Response.Header.ContentType())
 		}
 
-		if !bytes.Equal(self.responseBody, actualResponseBody) {
-			t.Errorf("expected response body '%v', but got '%v'", string(self.responseBody), string(actualResponseBody))
+		if !bytes.Equal(self.expectedResponseBody, actualResponseBody) {
+			t.Errorf("expected response body '%s', but got '%s'", self.expectedResponseBody, actualResponseBody)
 		}
 	}
 
-	requestFuzzTest(t, self.server, self.httpMethod, self.path)
+	requestFuzzTest(t, self.server, self.httpMethod, self.url)
 }
 
 func requestFuzzTest(t *testing.T, server *restful.Server, httpMethod string, path string) {

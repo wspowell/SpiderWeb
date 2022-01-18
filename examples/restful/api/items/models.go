@@ -1,4 +1,4 @@
-package resources
+package items
 
 type MyRequestBodyModel struct {
 	MyString   string `json:"myString"`

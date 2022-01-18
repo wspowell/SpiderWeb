@@ -5,19 +5,18 @@ import (
 
 	"github.com/wspowell/log"
 
-	"github.com/wspowell/spiderweb/examples/restful/api/resources"
-	"github.com/wspowell/spiderweb/examples/restful/resources/db"
+	"github.com/wspowell/spiderweb/examples/restful/api/items"
+	"github.com/wspowell/spiderweb/examples/restful/resources"
 	"github.com/wspowell/spiderweb/handler"
 	"github.com/wspowell/spiderweb/httpstatus"
 	"github.com/wspowell/spiderweb/server/restful"
 )
 
-func Routes(custom *restful.Server) {
-	database := db.NewDatabase()
-
+func Routes(custom *restful.Server, datastore resources.Datastore) {
 	custom.HandleNotFound(handler.NewHandle(noRoute{}).
 		WithLogConfig(log.NewConfig().WithLevel(log.LevelDebug)))
-	resources.Routes(custom, database)
+
+	items.Routes(custom, datastore)
 }
 
 type noRoute struct{}

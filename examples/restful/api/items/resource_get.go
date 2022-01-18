@@ -1,4 +1,4 @@
-package resources
+package items
 
 import (
 	"net/http"

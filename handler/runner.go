@@ -106,12 +106,12 @@ func (self *Runner) run(ctx context.Context, reqRes httptrip.RoundTripper) {
 		}
 	}
 
+	reqRes.SetStatusCode(statusCode)
+
 	if self.maxAgeSeconds != 0 {
 		log.Trace(ctx, "eTagEnabled, handling etag")
 		response.HandleETag(ctx, reqRes, self.maxAgeSeconds, statusCode)
 	}
-
-	reqRes.SetStatusCode(statusCode)
 }
 
 func (self *Runner) setLogTags(ctx context.Context, reqRes httptrip.RoundTripper) {

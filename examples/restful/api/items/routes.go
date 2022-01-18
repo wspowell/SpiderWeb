@@ -1,4 +1,4 @@
-package resources
+package items
 
 import (
 	"time"
@@ -11,9 +11,9 @@ import (
 )
 
 func Routes(custom *restful.Server, database resources.Datastore) {
-	custom.Handle(httpmethod.Post, "/resources", handler.NewHandle(postResource{}).
+	custom.Handle(httpmethod.Post, "/items", handler.NewHandle(postResource{}).
 		WithErrorResponse(middleware.AllErrorsTeapot))
-	custom.Handle(httpmethod.Get, "/resources/{id}", handler.NewHandle(getResource{
+	custom.Handle(httpmethod.Get, "/items/{id}", handler.NewHandle(getResource{
 		Db: database,
 	}).WithETag(30*time.Second))
 }

@@ -1,6 +1,7 @@
 package restfultest_test
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/wspowell/log"
@@ -13,6 +14,7 @@ import (
 )
 
 func RoutesTest(database resources.Datastore) *restful.Server {
+	fmt.Printf("%p\n", database)
 	serverConfig := &restful.ServerConfig{
 		LogConfig: &test.NoopLogConfig{
 			Config: log.NewConfig().WithLevel(log.LevelDebug),
